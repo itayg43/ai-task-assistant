@@ -1,4 +1,4 @@
-import signalHandler from "./signal-handler/signal-handler";
+import signalHandler from "../signal-handler/signal-handler";
 
 const processHandlers = () => {
   process.on("SIGINT", signalHandler(0, "SIGINT: Gracefully shutting down..."));
