@@ -7,8 +7,7 @@
     "start": "tsc && node dist/server.js",
     "start:dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:ui": "vitest --ui"
   },
   "keywords": [],
   "author": "",

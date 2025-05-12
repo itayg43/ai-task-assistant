@@ -1,5 +1,5 @@
 backend/node_modules/
 backend/dist/
-backend/coverage
+backend/coverage/
 backend/.DS_Store
 backend/.env
