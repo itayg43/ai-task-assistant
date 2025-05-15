@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${PORT:-3001}:3001"
+      - 51204:51204
     volumes:
       - ./backend:/app
       - /app/node_modules
