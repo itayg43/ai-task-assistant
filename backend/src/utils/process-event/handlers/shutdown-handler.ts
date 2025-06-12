@@ -3,25 +3,13 @@ import http from "http";
 const REGULAR_EXIT_CODE = 0;
 const ERROR_EXIT_CODE = 1;
 
-const registerProcessEventHandlers = (server: http.Server) => {
-  process.on("SIGINT", () => shutdownHandler(server, "SIGINT"));
-  process.on("SIGTERM", () => shutdownHandler(server, "SIGTERM"));
-
-  process.on("uncaughtException", (error) =>
-    shutdownHandler(server, "uncaughtException", error)
-  );
-  process.on("unhandledRejection", (reason) =>
-    shutdownHandler(server, "unhandledRejection", reason)
-  );
-};
-
 let isShuttingDown = false;
 
-function shutdownHandler(
+const shutdownHandler = (
   server: http.Server,
   event: string,
   errorOrReason?: unknown
-) {
+) => {
   if (isShuttingDown) {
     return;
   }
@@ -42,6 +30,6 @@ function shutdownHandler(
     console.log("HTTP server closed.");
     process.exit(errorOrReason ? ERROR_EXIT_CODE : REGULAR_EXIT_CODE);
   });
-}
+};
 
-export default registerProcessEventHandlers;
+export default shutdownHandler;
