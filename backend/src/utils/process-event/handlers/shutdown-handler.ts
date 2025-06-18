@@ -1,7 +1,9 @@
 import http from "http";
 
-const REGULAR_EXIT_CODE = 0;
-const ERROR_EXIT_CODE = 1;
+const EXIT_CODE = {
+  REGULAR: 0,
+  ERROR: 1,
+} as const;
 
 let isShuttingDown = false;
 
@@ -24,11 +26,11 @@ const shutdownHandler = (
   server.close((closeError) => {
     if (closeError) {
       console.error("Error while closing the server:", closeError);
-      process.exit(ERROR_EXIT_CODE);
+      process.exit(EXIT_CODE.ERROR);
     }
 
     console.log("HTTP server closed.");
-    process.exit(errorOrReason ? ERROR_EXIT_CODE : REGULAR_EXIT_CODE);
+    process.exit(errorOrReason ? EXIT_CODE.ERROR : EXIT_CODE.REGULAR);
   });
 };
 
