@@ -1,8 +1,7 @@
 import http from "http";
 
-import shutdownHandler, {
-  ShutdownState,
-} from "./handlers/shutdown-handler/shutdown-handler";
+import { ShutdownState } from "../../types/shutdown-state";
+import shutdownHandler from "./handlers/shutdown-handler/shutdown-handler";
 
 const shutdownState: ShutdownState = {
   isShuttingDown: false,
