@@ -1,21 +1,24 @@
 import http from "http";
 
-const EXIT_CODE = {
+export const EXIT_CODE = {
   REGULAR: 0,
   ERROR: 1,
 } as const;
 
-let isShuttingDown = false;
+export type ShutdownState = {
+  isShuttingDown: boolean;
+};
 
 const shutdownHandler = (
   server: http.Server,
   event: string,
-  errorOrReason?: unknown
+  errorOrReason: unknown,
+  state: ShutdownState
 ) => {
-  if (isShuttingDown) {
+  if (state.isShuttingDown) {
     return;
   }
-  isShuttingDown = true;
+  state.isShuttingDown = true;
 
   if (errorOrReason) {
     console.error(`Shutting down due to ${event}:`, errorOrReason);
