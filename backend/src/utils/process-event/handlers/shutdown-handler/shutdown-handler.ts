@@ -1,13 +1,7 @@
 import http from "http";
 
-export const EXIT_CODE = {
-  REGULAR: 0,
-  ERROR: 1,
-} as const;
-
-export type ShutdownState = {
-  isShuttingDown: boolean;
-};
+import { EXIT_CODE } from "../../../../constants/exit-code";
+import { ShutdownState } from "../../../../types/shutdown-state";
 
 const shutdownHandler = (
   server: http.Server,
