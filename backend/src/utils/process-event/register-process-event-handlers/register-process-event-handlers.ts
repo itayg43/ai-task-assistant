@@ -14,7 +14,6 @@ const registerProcessEventHandlers = (server: http.Server) => {
   process.on("SIGTERM", () =>
     shutdownHandler(server, "SIGTERM", undefined, shutdownState)
   );
-
   process.on("uncaughtException", (error) =>
     shutdownHandler(server, "uncaughtException", error, shutdownState)
   );
