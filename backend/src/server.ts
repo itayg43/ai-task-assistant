@@ -2,7 +2,7 @@ import http from "http";
 
 import app from "./app";
 import env from "./config/env";
-import registerProcessEventHandlers from "./utils/process-event/register-process-event-handlers";
+import registerProcessEventHandlers from "./utils/process-event/register-process-event-handlers/register-process-event-handlers";
 
 const server = http.createServer(app);
 
