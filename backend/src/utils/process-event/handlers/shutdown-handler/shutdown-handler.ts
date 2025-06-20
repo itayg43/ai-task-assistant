@@ -1,6 +1,7 @@
 import http from "http";
 
 import { EXIT_CODE } from "../../../../constants/exit-code";
+import { SHUTDOWN_STATE } from "../../../../constants/shutdown-state";
 
 const shutdownHandler = (
   server: http.Server,
@@ -9,9 +10,8 @@ const shutdownHandler = (
   shutdownView: Uint8Array
 ) => {
   // use atomic compare-and-exchange to ensure only one handler proceeds
-  // 0 = not shutting down, 1 = shutting down
-  const expected = 0;
-  const replacement = 1;
+  const expected = SHUTDOWN_STATE.NOT_SHUTTING_DOWN;
+  const replacement = SHUTDOWN_STATE.SHUTTING_DOWN;
 
   if (
     Atomics.compareExchange(shutdownView, 0, expected, replacement) !== expected
