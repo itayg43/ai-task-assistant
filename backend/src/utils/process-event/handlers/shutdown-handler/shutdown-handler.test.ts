@@ -24,7 +24,7 @@ describe("shutdownHandler", () => {
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    // create a fresh shutdown view for each test
+    // create shutdown view for each test
     const buffer = new SharedArrayBuffer(1);
     shutdownView = new Uint8Array(buffer);
   });
