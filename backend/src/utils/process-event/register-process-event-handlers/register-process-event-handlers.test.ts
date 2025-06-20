@@ -77,9 +77,7 @@ describe("registerProcessEventHandlers", () => {
           mockServer,
           name,
           errorOrReason,
-          expect.objectContaining({
-            isShuttingDown: false,
-          })
+          expect.any(Uint8Array)
         );
       }
     }

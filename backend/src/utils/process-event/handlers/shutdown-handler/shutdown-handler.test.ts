@@ -2,7 +2,6 @@ import http from "http";
 import { describe, it, vi, expect, beforeEach, afterEach } from "vitest";
 
 import { EXIT_CODE } from "../../../../constants/exit-code";
-import { ShutdownState } from "../../../../types/shutdown-state";
 import shutdownHandler from "./shutdown-handler";
 
 describe("shutdownHandler", () => {
@@ -10,7 +9,7 @@ describe("shutdownHandler", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
-  let state: ShutdownState;
+  let shutdownView: Uint8Array;
 
   beforeEach(() => {
     mockServer = {
@@ -25,9 +24,9 @@ describe("shutdownHandler", () => {
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    state = {
-      isShuttingDown: false,
-    };
+    // create a fresh shutdown view for each test
+    const buffer = new SharedArrayBuffer(1);
+    shutdownView = new Uint8Array(buffer);
   });
 
   afterEach(() => {
@@ -36,7 +35,12 @@ describe("shutdownHandler", () => {
 
   it("should log and exit with code 0 on normal shutdown", () => {
     try {
-      shutdownHandler(mockServer as http.Server, "SIGTERM", undefined, state);
+      shutdownHandler(
+        mockServer as http.Server,
+        "SIGTERM",
+        undefined,
+        shutdownView
+      );
     } catch (e) {
       // expected due to process.exit mock
     }
@@ -53,7 +57,7 @@ describe("shutdownHandler", () => {
         mockServer as http.Server,
         "uncaughtException",
         mockError,
-        state
+        shutdownView
       );
     } catch (e) {
       // expected due to process.exit mock
@@ -74,7 +78,12 @@ describe("shutdownHandler", () => {
     }) as any;
 
     try {
-      shutdownHandler(mockServer as http.Server, "SIGTERM", undefined, state);
+      shutdownHandler(
+        mockServer as http.Server,
+        "SIGTERM",
+        undefined,
+        shutdownView
+      );
     } catch (e) {
       // expected due to process.exit mock
     }
@@ -90,10 +99,20 @@ describe("shutdownHandler", () => {
   it("should not call server.close more than once if already shutting down", () => {
     // first call should trigger shutdown
     try {
-      shutdownHandler(mockServer as http.Server, "SIGTERM", undefined, state);
+      shutdownHandler(
+        mockServer as http.Server,
+        "SIGTERM",
+        undefined,
+        shutdownView
+      );
     } catch (e) {}
     // second call should do nothing
-    shutdownHandler(mockServer as http.Server, "SIGINT", undefined, state);
+    shutdownHandler(
+      mockServer as http.Server,
+      "SIGINT",
+      undefined,
+      shutdownView
+    );
 
     expect(mockServer.close).toHaveBeenCalledTimes(1);
     expect(exitSpy).toHaveBeenCalledTimes(1);
