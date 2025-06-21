@@ -1,0 +1,11 @@
+services:
+  backend:
+    build:
+      dockerfile: Dockerfile.dev
+    ports:
+      - "51204:51204"
+    env_file:
+      - ./backend/.env.dev
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
