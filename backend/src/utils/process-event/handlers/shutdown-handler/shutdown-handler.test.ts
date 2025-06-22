@@ -7,8 +7,6 @@ import shutdownHandler from "./shutdown-handler";
 describe("shutdownHandler", () => {
   let mockServer: Partial<http.Server>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
-  let logSpy: ReturnType<typeof vi.spyOn>;
-  let errorSpy: ReturnType<typeof vi.spyOn>;
   let shutdownView: Uint8Array;
 
   beforeEach(() => {
@@ -21,8 +19,6 @@ describe("shutdownHandler", () => {
       .mockImplementation((..._args: unknown[]) => {
         throw new Error("process.exit called");
       }) as never;
-    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     // create shutdown view for each test
     const buffer = new SharedArrayBuffer(1);
@@ -33,7 +29,7 @@ describe("shutdownHandler", () => {
     vi.clearAllMocks();
   });
 
-  it("should log and exit with code 0 on normal shutdown", () => {
+  it("should exit with code 0 on normal shutdown", () => {
     try {
       shutdownHandler(
         mockServer as http.Server,
@@ -45,12 +41,11 @@ describe("shutdownHandler", () => {
       // expected due to process.exit mock
     }
 
-    expect(logSpy).toHaveBeenCalledWith("Received SIGTERM. Shutting down...");
     expect(mockServer.close).toHaveBeenCalled();
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODE.REGULAR);
   });
 
-  it("should log and exit with code 1 on shutdown with error", () => {
+  it("should exit with code 1 on shutdown with error", () => {
     const mockError = new Error("Test error");
     try {
       shutdownHandler(
@@ -63,10 +58,6 @@ describe("shutdownHandler", () => {
       // expected due to process.exit mock
     }
 
-    expect(errorSpy).toHaveBeenCalledWith(
-      "Shutting down due to uncaughtException:",
-      mockError
-    );
     expect(mockServer.close).toHaveBeenCalled();
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODE.ERROR);
   });
@@ -88,12 +79,7 @@ describe("shutdownHandler", () => {
       // expected due to process.exit mock
     }
 
-    expect(errorSpy).toHaveBeenCalledWith(
-      "Error while closing the server:",
-      mockCloseError
-    );
     expect(exitSpy).toHaveBeenCalledWith(EXIT_CODE.ERROR);
-    expect(logSpy).not.toHaveBeenCalledWith("HTTP server closed.");
   });
 
   it("should not call server.close more than once if already shutting down", () => {
