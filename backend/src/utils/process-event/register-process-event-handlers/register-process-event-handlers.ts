@@ -1,6 +1,10 @@
 import http from "http";
 
+import { TAG } from "../../../constants/tag";
 import shutdownHandler from "../handlers/shutdown-handler/shutdown-handler";
+import createLogger from "../../../config/logger";
+
+const logger = createLogger(TAG.PROCESS_EVENT_HANDLER);
 
 // use SharedArrayBuffer for atomic operations to prevent race conditions
 const shutdownBuffer = new SharedArrayBuffer(1);
@@ -19,6 +23,8 @@ const registerProcessEventHandlers = (server: http.Server) => {
   process.on("unhandledRejection", (reason) =>
     shutdownHandler(server, "unhandledRejection", reason, shutdownView)
   );
+
+  logger.info("Process event handlers registered successfully");
 };
 
 export default registerProcessEventHandlers;
