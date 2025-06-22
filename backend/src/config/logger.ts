@@ -1,4 +1,8 @@
-import { createLogger, format, transports } from "winston";
+import {
+  createLogger as createWinstonLogger,
+  format,
+  transports,
+} from "winston";
 
 import { LogMeta } from "../types/log-meta";
 
@@ -29,7 +33,7 @@ const errorSerializer = format((info) => {
   return info;
 });
 
-const baseLogger = createLogger({
+const baseLogger = createWinstonLogger({
   level: "info",
   format: format.combine(
     errorSerializer(),
@@ -45,7 +49,7 @@ const baseLogger = createLogger({
   transports: [new transports.Console()],
 });
 
-const logger = (tag: string) => ({
+const createLogger = (tag: string) => ({
   info: (message: string, meta?: LogMeta) =>
     baseLogger.info(message, {
       tag,
@@ -58,4 +62,4 @@ const logger = (tag: string) => ({
     }),
 });
 
-export default logger;
+export default createLogger;
