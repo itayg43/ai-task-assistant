@@ -1,7 +1,11 @@
 import http from "http";
 
+import logger from "../../../../config/logger";
 import { EXIT_CODE } from "../../../../constants/exit-code";
 import { SHUTDOWN_STATE } from "../../../../constants/shutdown-state";
+import { TAG } from "../../../../constants/tag";
+
+const log = logger(TAG.SHUTDOWN_HANDLER);
 
 const shutdownHandler = (
   server: http.Server,
@@ -9,31 +13,41 @@ const shutdownHandler = (
   errorOrReason: unknown,
   shutdownView: Uint8Array
 ) => {
+  log.info(`Invoked by event: ${event}`);
+
   // use atomic compare-and-exchange to ensure only one handler proceeds
   const expected = SHUTDOWN_STATE.NOT_SHUTTING_DOWN;
   const replacement = SHUTDOWN_STATE.SHUTTING_DOWN;
 
-  if (
-    Atomics.compareExchange(shutdownView, 0, expected, replacement) !== expected
-  ) {
-    // another handler already started the shutdown process
+  const isShutdownAlreadyInProgress =
+    Atomics.compareExchange(shutdownView, 0, expected, replacement) !==
+    expected;
+  if (isShutdownAlreadyInProgress) {
+    log.info("Shutdown already in progress, skipping.");
+
     return;
   }
 
   if (errorOrReason) {
-    console.error(`Shutting down due to ${event}:`, errorOrReason);
+    log.error(`Shutting down due to ${event}:`, {
+      errorOrReason,
+    });
   } else {
-    console.log(`Received ${event}. Shutting down...`);
+    log.info(`Received ${event}. Shutting down...`);
   }
 
+  log.info("Closing HTTP server...");
   server.close((closeError) => {
     if (closeError) {
-      console.error("Error while closing the server:", closeError);
+      log.error(`Error while closing the server:`, {
+        closeError,
+      });
       process.exit(EXIT_CODE.ERROR);
     }
 
-    console.log("HTTP server closed.");
-    process.exit(errorOrReason ? EXIT_CODE.ERROR : EXIT_CODE.REGULAR);
+    const exitCode = errorOrReason ? EXIT_CODE.ERROR : EXIT_CODE.REGULAR;
+    log.info(`HTTP server closed. Exiting process. Exit code: ${exitCode}`);
+    process.exit(exitCode);
   });
 };
 
