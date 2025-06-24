@@ -8,7 +8,7 @@
 ## Development
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
 ```
 
 ## Environment Files - excluded from Docker builds via `.dockerignore`
