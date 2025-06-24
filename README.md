@@ -2,12 +2,12 @@
 
 ## Development
 
-## File Structure
+### File Structure
 
 - `docker-compose.yml` - Base configuration
 - `docker-compose.dev.yml` - Development-specific overrides
 
-## Prerequisites
+### Prerequisites
 
 Before building the Docker image, make sure to set environment variables for development:
 
@@ -21,7 +21,7 @@ Build and run the container in development mode:
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
 ```
 
-## Tests
+### Tests
 
 ```bash
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm backend npm run test
