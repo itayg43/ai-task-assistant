@@ -7,8 +7,6 @@
 - `docker-compose.yml` - Base configuration
 - `docker-compose.dev.yml` - Development-specific overrides
 
-### Prerequisites
-
 Before building the Docker image, make sure to set environment variables for development:
 
 1. Navigate to the `backend/` directory
