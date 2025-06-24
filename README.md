@@ -19,7 +19,7 @@ Build and run the container in development mode:
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
 ```
 
-### Tests
+Build and run tests in a new temporary container:
 
 ```bash
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm backend npm run test
