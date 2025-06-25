@@ -1,7 +1,7 @@
 import http from "http";
 
 import { TAG } from "@constants";
-import { shutdownHandler } from "../handlers/shutdown-handler/shutdown-handler";
+import { shutdownHandler } from "../handlers";
 import { createLogger } from "@config";
 
 const logger = createLogger(TAG.PROCESS_EVENT_HANDLER);
