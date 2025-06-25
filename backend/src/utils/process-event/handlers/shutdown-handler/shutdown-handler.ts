@@ -1,6 +1,6 @@
 import http from "http";
 
-import createLogger from "../../../../config/logger";
+import { createLogger } from "../../../../config";
 import { EXIT_CODE, SHUTDOWN_STATE, TAG } from "../../../../constants";
 
 const logger = createLogger(TAG.SHUTDOWN_HANDLER);
