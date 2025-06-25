@@ -4,7 +4,7 @@ import {
   transports,
 } from "winston";
 
-import { LogMeta } from "../types/log-meta";
+import { LogMeta } from "../types";
 
 const errorSerializer = format((info) => {
   function serialize(obj: any): any {
