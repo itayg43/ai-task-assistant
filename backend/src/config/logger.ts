@@ -49,7 +49,7 @@ const baseLogger = createWinstonLogger({
   transports: [new transports.Console()],
 });
 
-const createLogger = (tag: string) => ({
+export const createLogger = (tag: string) => ({
   info: (message: string, meta?: LogMeta) =>
     baseLogger.info(message, {
       tag,
@@ -61,5 +61,3 @@ const createLogger = (tag: string) => ({
       ...meta,
     }),
 });
-
-export default createLogger;
