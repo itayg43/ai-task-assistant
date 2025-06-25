@@ -1,11 +1,11 @@
 import http from "http";
 
-import { createLogger } from "../../../../config";
-import { EXIT_CODE, SHUTDOWN_STATE, TAG } from "../../../../constants";
+import { createLogger } from "@config";
+import { EXIT_CODE, SHUTDOWN_STATE, TAG } from "@constants";
 
 const logger = createLogger(TAG.SHUTDOWN_HANDLER);
 
-const shutdownHandler = (
+export const shutdownHandler = (
   server: http.Server,
   event: string,
   errorOrReason: unknown,
@@ -48,5 +48,3 @@ const shutdownHandler = (
     process.exit(exitCode);
   });
 };
-
-export default shutdownHandler;

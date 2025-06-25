@@ -1,11 +1,11 @@
 import http from "http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import shutdownHandler from "../handlers/shutdown-handler/shutdown-handler";
-import registerProcessEventHandlers from "./register-process-event-handlers";
+import { shutdownHandler } from "../handlers/shutdown-handler/shutdown-handler";
+import { registerProcessEventHandlers } from "./register-process-event-handlers";
 
 vi.mock("../handlers/shutdown-handler/shutdown-handler", () => ({
-  default: vi.fn(),
+  shutdownHandler: vi.fn(),
 }));
 
 describe("registerProcessEventHandlers", () => {

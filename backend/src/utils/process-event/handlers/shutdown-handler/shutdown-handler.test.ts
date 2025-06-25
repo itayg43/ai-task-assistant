@@ -1,8 +1,8 @@
 import http from "http";
 import { describe, it, vi, expect, beforeEach, afterEach } from "vitest";
 
-import { EXIT_CODE } from "../../../../constants";
-import shutdownHandler from "./shutdown-handler";
+import { EXIT_CODE } from "@constants";
+import { shutdownHandler } from "./shutdown-handler";
 
 describe("shutdownHandler", () => {
   let mockServer: Partial<http.Server>;

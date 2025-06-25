@@ -1,8 +1,8 @@
 import http from "http";
 
-import { TAG } from "../../../constants";
-import shutdownHandler from "../handlers/shutdown-handler/shutdown-handler";
-import { createLogger } from "../../../config";
+import { TAG } from "@constants";
+import { shutdownHandler } from "../handlers/shutdown-handler/shutdown-handler";
+import { createLogger } from "@config";
 
 const logger = createLogger(TAG.PROCESS_EVENT_HANDLER);
 
@@ -10,7 +10,7 @@ const logger = createLogger(TAG.PROCESS_EVENT_HANDLER);
 const shutdownBuffer = new SharedArrayBuffer(1);
 const shutdownView = new Uint8Array(shutdownBuffer);
 
-const registerProcessEventHandlers = (server: http.Server) => {
+export const registerProcessEventHandlers = (server: http.Server) => {
   process.on("SIGINT", () =>
     shutdownHandler(server, "SIGINT", undefined, shutdownView)
   );
@@ -26,5 +26,3 @@ const registerProcessEventHandlers = (server: http.Server) => {
 
   logger.info("Process event handlers registered successfully");
 };
-
-export default registerProcessEventHandlers;

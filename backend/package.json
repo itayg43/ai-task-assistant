@@ -4,9 +4,9 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "start": "node dist/server.js",
-    "start:dev": "ts-node-dev --respawn src/server.ts",
+    "start:dev": "ts-node-dev -r tsconfig-paths/register --respawn src/server.ts",
     "test": "vitest"
   },
   "keywords": [],
@@ -18,7 +18,10 @@
     "@types/node": "^24.0.0",
     "@types/winston": "^2.4.4",
     "ts-node-dev": "^2.0.0",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3",
+    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
   "dependencies": {
