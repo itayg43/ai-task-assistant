@@ -2,7 +2,7 @@
 
 ## Development
 
-Before building the Docker image, make sure to set the environment variables required for development:
+Before starting make sure to set the required environment variables:
 
 1. Navigate to the `backend/` directory
 2. Create a `.env.dev` file
