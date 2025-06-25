@@ -1,6 +1,6 @@
 import http from "http";
 
-import { TAG } from "../../../constants/tag";
+import { TAG } from "../../../constants";
 import shutdownHandler from "../handlers/shutdown-handler/shutdown-handler";
 import createLogger from "../../../config/logger";
 
