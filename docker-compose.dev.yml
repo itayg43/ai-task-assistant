@@ -3,6 +3,7 @@ services:
     build:
       dockerfile: Dockerfile.dev
     ports:
+      - "3001:3001"
       - "51204:51204"
     env_file:
       - ./backend/.env.dev

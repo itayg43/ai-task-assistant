@@ -8,6 +8,9 @@ Before starting make sure to set the required environment variables:
 2. Create a `.env.dev` file
 3. Copy the contents of `backend/.env.example` and fill in your local values
 
+> **⚠️ Note:**
+> If you set a port in your `.env.dev` file that is different from `3001`, you must also update the port in both `backend/Dockerfile.dev` (the `EXPOSE` line) and `docker-compose.dev.yml` (the `ports` mapping) to match your chosen port.
+
 Build and run the application:
 
 ```bash
