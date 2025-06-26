@@ -2,9 +2,12 @@ import express, { Request, Response } from "express";
 import helmet from "helmet";
 import { StatusCodes } from "http-status-codes";
 
+import { requestResponseMetadata } from "@middlewares";
+
 export const app = express();
 
 app.use(helmet());
+app.use(requestResponseMetadata);
 app.use(express.json());
 app.use(
   express.urlencoded({
