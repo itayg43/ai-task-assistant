@@ -20,15 +20,18 @@ export const requestResponseMetadata = (
   logger.info("Incoming request", requestMetadata);
 
   const originalEnd = res.end;
+  let completed = false; // Guard: per-request, not shared
   res.end = function (chunk?: any, encoding?: any) {
-    const duration = Date.now() - startTimestamp;
+    if (!completed) {
+      completed = true;
+      const duration = Date.now() - startTimestamp;
 
-    logger.info("Request completed", {
-      ...requestMetadata,
-      statusCode: res.statusCode,
-      duration: `${duration}ms`,
-    });
-
+      logger.info("Request completed", {
+        ...requestMetadata,
+        statusCode: res.statusCode,
+        duration: `${duration}ms`,
+      });
+    }
     return originalEnd.call(this, chunk, encoding);
   };
 

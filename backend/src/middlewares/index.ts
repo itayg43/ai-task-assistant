@@ -1,1 +1,1 @@
-export { requestResponseMetadata } from "./request-reponse-metadata";
+export { requestResponseMetadata } from "./request-response-metadata/request-reponse-metadata";
