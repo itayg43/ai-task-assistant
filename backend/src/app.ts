@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import helmet from "helmet";
 import { StatusCodes } from "http-status-codes";
 
-import { requestResponseMetadata } from "@middlewares";
+import { errorHandler, requestResponseMetadata } from "@middlewares";
 
 export const app = express();
 
@@ -18,3 +18,5 @@ app.use(
 app.get("/api/v1/health", (_req: Request, res: Response) => {
   res.sendStatus(StatusCodes.OK);
 });
+
+app.use(errorHandler);

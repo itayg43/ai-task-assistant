@@ -19,7 +19,9 @@
       "@utils": ["src/utils"],
       "@utils/*": ["src/utils/*"],
       "@middlewares": ["src/middlewares"],
-      "@middlewares/*": ["src/middlewares/*"]
+      "@middlewares/*": ["src/middlewares/*"],
+      "@errors": ["src/errors"],
+      "@errors/*": ["src/errors/*"]
     }
   },
   "include": ["src/"],

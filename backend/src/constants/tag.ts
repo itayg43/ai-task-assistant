@@ -3,4 +3,5 @@ export const TAG = {
   PROCESS_EVENT_HANDLER: "processEventHandler",
   SHUTDOWN_HANDLER: "shutdownHandler",
   REQUEST_RESPONSE_METADATA: "requestResponseMetadata",
+  ERROR_HANDLER: "errorHandler",
 } as const;
