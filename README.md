@@ -19,3 +19,9 @@ Build and run the tests:
 ```bash
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm backend npm run test
 ```
+
+Connect to Redis CLI:
+
+```bash
+docker exec -it <redis_container_id> redis-cli
+```
