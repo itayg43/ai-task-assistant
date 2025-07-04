@@ -4,14 +4,14 @@ import { app } from "./app";
 import { env, createLogger } from "@config";
 import { registerProcessEventHandlers } from "@utils";
 import { TAG } from "@constants";
-import { redisClient } from "@clients";
+import { connectRedisClient } from "@clients";
 
 const logger = createLogger(TAG.SERVER);
 
 const server = http.createServer(app);
 
 (async () => {
-  await redisClient.connect();
+  await connectRedisClient();
 
   registerProcessEventHandlers(server);
 
