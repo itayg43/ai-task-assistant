@@ -12,7 +12,7 @@ vi.mock("@clients", () => ({
 
 describe("shutdownHandler", () => {
   let mockServer: Partial<http.Server>;
-  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let mockExit: (code: number) => never;
   let shutdownView: Uint8Array;
 
   beforeEach(() => {
@@ -20,7 +20,7 @@ describe("shutdownHandler", () => {
       close: vi.fn((cb) => cb()),
     };
 
-    exitSpy = vi.spyOn(process, "exit") as never;
+    mockExit = vi.fn() as unknown as (code: number) => never;
 
     // create shutdown view for each test
     const buffer = new SharedArrayBuffer(1);
@@ -32,43 +32,33 @@ describe("shutdownHandler", () => {
   });
 
   it("should exit with code 0 on normal shutdown", async () => {
-    await new Promise((resolve) => {
-      exitSpy.mockImplementation((code) => {
-        expect(code).toBe(EXIT_CODE.REGULAR);
-        resolve(undefined);
-      });
-
-      shutdownHandler(
-        mockServer as http.Server,
-        "SIGTERM",
-        undefined,
-        shutdownView
-      );
-    });
+    await shutdownHandler(
+      mockServer as http.Server,
+      "SIGTERM",
+      undefined,
+      shutdownView,
+      mockExit
+    );
 
     expect(mockServer.close).toHaveBeenCalled();
     expect(closeRedisClient).toHaveBeenCalled();
+    expect(mockExit).toHaveBeenCalledWith(EXIT_CODE.REGULAR);
   });
 
   it("should exit with code 1 on shutdown with error", async () => {
     const mockError = new Error("Test error");
 
-    await new Promise((resolve) => {
-      exitSpy.mockImplementation((code) => {
-        expect(code).toBe(EXIT_CODE.ERROR);
-        resolve(undefined);
-      });
-
-      shutdownHandler(
-        mockServer as http.Server,
-        "uncaughtException",
-        mockError,
-        shutdownView
-      );
-    });
+    await shutdownHandler(
+      mockServer as http.Server,
+      "uncaughtException",
+      mockError,
+      shutdownView,
+      mockExit
+    );
 
     expect(mockServer.close).toHaveBeenCalled();
     expect(closeRedisClient).toHaveBeenCalled();
+    expect(mockExit).toHaveBeenCalledWith(EXIT_CODE.ERROR);
   });
 
   it("should exit with code 1 if server.close errors", async () => {
@@ -77,50 +67,40 @@ describe("shutdownHandler", () => {
       cb(mockCloseError);
     }) as any;
 
-    await new Promise((resolve) => {
-      exitSpy.mockImplementation((code) => {
-        expect(code).toBe(EXIT_CODE.ERROR);
-        resolve(undefined);
-      });
-
-      shutdownHandler(
-        mockServer as http.Server,
-        "SIGTERM",
-        undefined,
-        shutdownView
-      );
-    });
+    await shutdownHandler(
+      mockServer as http.Server,
+      "SIGTERM",
+      undefined,
+      shutdownView,
+      mockExit
+    );
 
     expect(mockServer.close).toHaveBeenCalled();
     expect(destroyRedisClient).toHaveBeenCalled();
+    expect(mockExit).toHaveBeenCalledWith(EXIT_CODE.ERROR);
   });
 
   it("should not call server.close more than once if already shutting down", async () => {
-    await new Promise((resolve) => {
-      exitSpy.mockImplementation((code) => {
-        expect(code).toBe(EXIT_CODE.REGULAR);
-        resolve(undefined);
-      });
+    // first call should trigger shutdown
+    await shutdownHandler(
+      mockServer as http.Server,
+      "SIGTERM",
+      undefined,
+      shutdownView,
+      mockExit
+    );
 
-      // first call should trigger shutdown
-      shutdownHandler(
-        mockServer as http.Server,
-        "SIGTERM",
-        undefined,
-        shutdownView
-      );
-
-      // second call should do nothing
-      shutdownHandler(
-        mockServer as http.Server,
-        "SIGINT",
-        undefined,
-        shutdownView
-      );
-    });
+    // second call should do nothing
+    await shutdownHandler(
+      mockServer as http.Server,
+      "SIGINT",
+      undefined,
+      shutdownView,
+      mockExit
+    );
 
     expect(mockServer.close).toHaveBeenCalledTimes(1);
     expect(closeRedisClient).toHaveBeenCalledTimes(1);
-    expect(exitSpy).toHaveBeenCalledTimes(1);
+    expect(mockExit).toHaveBeenCalledTimes(1);
   });
 });

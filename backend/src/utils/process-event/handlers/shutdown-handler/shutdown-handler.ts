@@ -30,7 +30,11 @@ const closeServer = async (server: http.Server): Promise<void> => {
   });
 };
 
-const processShutdown = async (server: http.Server, errorOrReason: unknown) => {
+const processShutdown = async (
+  server: http.Server,
+  errorOrReason: unknown,
+  exitCallback: (code: number) => never
+) => {
   logger.info("Closing HTTP server...");
 
   try {
@@ -40,7 +44,8 @@ const processShutdown = async (server: http.Server, errorOrReason: unknown) => {
 
     const exitCode = errorOrReason ? EXIT_CODE.ERROR : EXIT_CODE.REGULAR;
     logger.info(`HTTP server closed. Exiting process. Exit code: ${exitCode}`);
-    process.exit(exitCode);
+
+    exitCallback(exitCode);
   } catch (error) {
     logger.error(`Error while closing the server:`, {
       error,
@@ -48,7 +53,7 @@ const processShutdown = async (server: http.Server, errorOrReason: unknown) => {
 
     destroyRedisClient();
 
-    process.exit(EXIT_CODE.ERROR);
+    exitCallback(EXIT_CODE.ERROR);
   }
 };
 
@@ -56,7 +61,8 @@ export const shutdownHandler = async (
   server: http.Server,
   event: string,
   errorOrReason: unknown,
-  shutdownView: Uint8Array
+  shutdownView: Uint8Array,
+  exitCallback: (code: number) => never = process.exit
 ) => {
   logger.info(`Invoked by event: ${event}`);
 
@@ -76,5 +82,5 @@ export const shutdownHandler = async (
     logger.info(`Received ${event}. Shutting down...`);
   }
 
-  await processShutdown(server, errorOrReason);
+  await processShutdown(server, errorOrReason, exitCallback);
 };
