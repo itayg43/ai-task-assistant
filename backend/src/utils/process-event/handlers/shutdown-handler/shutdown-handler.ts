@@ -3,6 +3,7 @@ import http from "http";
 import { createLogger } from "@config";
 import { EXIT_CODE, SHUTDOWN_STATE, TAG } from "@constants";
 import { closeRedisClient, destroyRedisClient } from "@clients";
+import { ExitCallback } from "@types";
 
 const logger = createLogger(TAG.SHUTDOWN_HANDLER);
 
@@ -33,7 +34,7 @@ const closeServer = async (server: http.Server): Promise<void> => {
 const processShutdown = async (
   server: http.Server,
   errorOrReason: unknown,
-  exitCallback: (code: number) => never
+  exitCallback: ExitCallback
 ) => {
   logger.info("Closing HTTP server...");
 
@@ -62,7 +63,7 @@ export const shutdownHandler = async (
   event: string,
   errorOrReason: unknown,
   shutdownView: Uint8Array,
-  exitCallback: (code: number) => never = process.exit
+  exitCallback: ExitCallback = process.exit
 ) => {
   logger.info(`Invoked by event: ${event}`);
 

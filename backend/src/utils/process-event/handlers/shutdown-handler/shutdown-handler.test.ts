@@ -4,6 +4,7 @@ import { describe, it, vi, expect, beforeEach, afterEach } from "vitest";
 import { EXIT_CODE } from "@constants";
 import { shutdownHandler } from "./shutdown-handler";
 import { closeRedisClient, destroyRedisClient } from "@clients";
+import { ExitCallback } from "@types";
 
 vi.mock("@clients", () => ({
   closeRedisClient: vi.fn().mockResolvedValue(undefined),
@@ -12,7 +13,7 @@ vi.mock("@clients", () => ({
 
 describe("shutdownHandler", () => {
   let mockServer: Partial<http.Server>;
-  let mockExit: (code: number) => never;
+  let mockExitCallback: ExitCallback;
   let shutdownView: Uint8Array;
 
   beforeEach(() => {
@@ -20,7 +21,7 @@ describe("shutdownHandler", () => {
       close: vi.fn((cb) => cb()),
     };
 
-    mockExit = vi.fn() as unknown as (code: number) => never;
+    mockExitCallback = vi.fn() as unknown as ExitCallback;
 
     // create shutdown view for each test
     const buffer = new SharedArrayBuffer(1);
@@ -37,12 +38,12 @@ describe("shutdownHandler", () => {
       "SIGTERM",
       undefined,
       shutdownView,
-      mockExit
+      mockExitCallback
     );
 
     expect(mockServer.close).toHaveBeenCalled();
     expect(closeRedisClient).toHaveBeenCalled();
-    expect(mockExit).toHaveBeenCalledWith(EXIT_CODE.REGULAR);
+    expect(mockExitCallback).toHaveBeenCalledWith(EXIT_CODE.REGULAR);
   });
 
   it("should exit with code 1 on shutdown with error", async () => {
@@ -53,12 +54,12 @@ describe("shutdownHandler", () => {
       "uncaughtException",
       mockError,
       shutdownView,
-      mockExit
+      mockExitCallback
     );
 
     expect(mockServer.close).toHaveBeenCalled();
     expect(closeRedisClient).toHaveBeenCalled();
-    expect(mockExit).toHaveBeenCalledWith(EXIT_CODE.ERROR);
+    expect(mockExitCallback).toHaveBeenCalledWith(EXIT_CODE.ERROR);
   });
 
   it("should exit with code 1 if server.close errors", async () => {
@@ -72,12 +73,12 @@ describe("shutdownHandler", () => {
       "SIGTERM",
       undefined,
       shutdownView,
-      mockExit
+      mockExitCallback
     );
 
     expect(mockServer.close).toHaveBeenCalled();
     expect(destroyRedisClient).toHaveBeenCalled();
-    expect(mockExit).toHaveBeenCalledWith(EXIT_CODE.ERROR);
+    expect(mockExitCallback).toHaveBeenCalledWith(EXIT_CODE.ERROR);
   });
 
   it("should not call server.close more than once if already shutting down", async () => {
@@ -87,7 +88,7 @@ describe("shutdownHandler", () => {
       "SIGTERM",
       undefined,
       shutdownView,
-      mockExit
+      mockExitCallback
     );
 
     // second call should do nothing
@@ -96,11 +97,11 @@ describe("shutdownHandler", () => {
       "SIGINT",
       undefined,
       shutdownView,
-      mockExit
+      mockExitCallback
     );
 
     expect(mockServer.close).toHaveBeenCalledTimes(1);
     expect(closeRedisClient).toHaveBeenCalledTimes(1);
-    expect(mockExit).toHaveBeenCalledTimes(1);
+    expect(mockExitCallback).toHaveBeenCalledTimes(1);
   });
 });
