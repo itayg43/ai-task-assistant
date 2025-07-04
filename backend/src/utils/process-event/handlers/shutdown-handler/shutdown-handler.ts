@@ -6,7 +6,53 @@ import { closeRedisClient, destroyRedisClient } from "@clients";
 
 const logger = createLogger(TAG.SHUTDOWN_HANDLER);
 
-export const shutdownHandler = (
+const checkIfShutdownAlreadyInProgress = (shutdownView: Uint8Array) => {
+  // use atomic compare-and-exchange to ensure only one handler proceeds
+  const expected = SHUTDOWN_STATE.NOT_SHUTTING_DOWN;
+  const replacement = SHUTDOWN_STATE.SHUTTING_DOWN;
+
+  const result =
+    Atomics.compareExchange(shutdownView, 0, expected, replacement) !==
+    expected;
+
+  return result;
+};
+
+const closeServer = async (server: http.Server): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    server.close((closeError) => {
+      if (closeError) {
+        reject(closeError);
+      } else {
+        resolve();
+      }
+    });
+  });
+};
+
+const processShutdown = async (server: http.Server, errorOrReason: unknown) => {
+  logger.info("Closing HTTP server...");
+
+  try {
+    await closeServer(server);
+
+    await closeRedisClient();
+
+    const exitCode = errorOrReason ? EXIT_CODE.ERROR : EXIT_CODE.REGULAR;
+    logger.info(`HTTP server closed. Exiting process. Exit code: ${exitCode}`);
+    process.exit(exitCode);
+  } catch (error) {
+    logger.error(`Error while closing the server:`, {
+      error,
+    });
+
+    destroyRedisClient();
+
+    process.exit(EXIT_CODE.ERROR);
+  }
+};
+
+export const shutdownHandler = async (
   server: http.Server,
   event: string,
   errorOrReason: unknown,
@@ -14,13 +60,8 @@ export const shutdownHandler = (
 ) => {
   logger.info(`Invoked by event: ${event}`);
 
-  // use atomic compare-and-exchange to ensure only one handler proceeds
-  const expected = SHUTDOWN_STATE.NOT_SHUTTING_DOWN;
-  const replacement = SHUTDOWN_STATE.SHUTTING_DOWN;
-
   const isShutdownAlreadyInProgress =
-    Atomics.compareExchange(shutdownView, 0, expected, replacement) !==
-    expected;
+    checkIfShutdownAlreadyInProgress(shutdownView);
   if (isShutdownAlreadyInProgress) {
     logger.info("Shutdown already in progress, skipping.");
 
@@ -35,28 +76,5 @@ export const shutdownHandler = (
     logger.info(`Received ${event}. Shutting down...`);
   }
 
-  logger.info("Closing HTTP server...");
-  server.close((closeError) => {
-    if (closeError) {
-      logger.error(`Error while closing the server:`, {
-        closeError,
-      });
-
-      destroyRedisClient();
-
-      process.exit(EXIT_CODE.ERROR);
-
-      return; // Prevents further execution in tests where process.exit is mocked
-    }
-
-    (async () => {
-      await closeRedisClient();
-
-      const exitCode = errorOrReason ? EXIT_CODE.ERROR : EXIT_CODE.REGULAR;
-      logger.info(
-        `HTTP server closed. Exiting process. Exit code: ${exitCode}`
-      );
-      process.exit(exitCode);
-    })();
-  });
+  await processShutdown(server, errorOrReason);
 };
