@@ -10,25 +10,21 @@ export const redisClient = createClient({
 });
 
 export const connectRedisClient = async () => {
+  logger.info("Connecting redis client...");
   await redisClient.connect();
   logger.info("Redis client connected");
 };
 
 export const closeRedisClient = async () => {
   logger.info("Closing redis client...");
-  try {
-    await redisClient.close();
-    logger.info("Redis client closed successfully");
-  } catch (error) {
-    logger.error("Error while closing redis client:", {
-      error,
-    });
-  }
+  await redisClient.close();
+  logger.info("Redis client closed");
 };
 
 export const destroyRedisClient = () => {
+  logger.info("Destroying redis client...");
   redisClient.destroy();
-  logger.info("Redis client destroyed successfully");
+  logger.info("Redis client destroyed");
 };
 
 redisClient.on("error", (error) => {
