@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { shutdownHandler } from "../handlers";
 import { registerProcessEventHandlers } from "./register-process-event-handlers";
+import { ExitCallback } from "@types";
 
 vi.mock("../handlers/shutdown-handler/shutdown-handler", () => ({
   shutdownHandler: vi.fn(),
@@ -12,6 +13,7 @@ describe("registerProcessEventHandlers", () => {
   let mockServer: Partial<http.Server>;
   let processOnSpy: any;
   let mockShutdownHandler: ReturnType<typeof vi.mocked<typeof shutdownHandler>>;
+  let mockExitCallback: ExitCallback;
 
   const events: {
     name: string;
@@ -48,6 +50,7 @@ describe("registerProcessEventHandlers", () => {
     processOnSpy = vi.spyOn(process, "on");
 
     mockShutdownHandler = vi.mocked(shutdownHandler);
+    mockExitCallback = vi.fn() as unknown as ExitCallback;
   });
 
   afterEach(() => {
@@ -57,7 +60,7 @@ describe("registerProcessEventHandlers", () => {
   it.each(events)(
     "should register handler for $name event that calls $expectedHandler",
     ({ name, errorOrReason, expectedHandler }) => {
-      registerProcessEventHandlers(mockServer as http.Server);
+      registerProcessEventHandlers(mockServer as http.Server, mockExitCallback);
 
       // verify that process.on was called with the correct event and a function
       expect(processOnSpy).toHaveBeenCalledWith(name, expect.any(Function));
@@ -77,7 +80,8 @@ describe("registerProcessEventHandlers", () => {
           mockServer,
           name,
           errorOrReason,
-          expect.any(Uint8Array)
+          expect.any(Uint8Array),
+          mockExitCallback
         );
       }
     }
