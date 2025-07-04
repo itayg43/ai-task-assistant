@@ -3,6 +3,12 @@ import { describe, it, vi, expect, beforeEach, afterEach } from "vitest";
 
 import { EXIT_CODE } from "@constants";
 import { shutdownHandler } from "./shutdown-handler";
+import { closeRedisClient, destroyRedisClient } from "@clients";
+
+vi.mock("@clients", () => ({
+  closeRedisClient: vi.fn().mockResolvedValue(undefined),
+  destroyRedisClient: vi.fn(),
+}));
 
 describe("shutdownHandler", () => {
   let mockServer: Partial<http.Server>;
@@ -14,11 +20,7 @@ describe("shutdownHandler", () => {
       close: vi.fn((cb) => cb()),
     };
 
-    exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation((..._args: unknown[]) => {
-        throw new Error("process.exit called");
-      }) as never;
+    exitSpy = vi.spyOn(process, "exit") as never;
 
     // create shutdown view for each test
     const buffer = new SharedArrayBuffer(1);
@@ -29,78 +31,96 @@ describe("shutdownHandler", () => {
     vi.clearAllMocks();
   });
 
-  it("should exit with code 0 on normal shutdown", () => {
-    try {
+  it("should exit with code 0 on normal shutdown", async () => {
+    await new Promise((resolve) => {
+      exitSpy.mockImplementation((code) => {
+        expect(code).toBe(EXIT_CODE.REGULAR);
+        resolve(undefined);
+      });
+
       shutdownHandler(
         mockServer as http.Server,
         "SIGTERM",
         undefined,
         shutdownView
       );
-    } catch (e) {
-      // expected due to process.exit mock
-    }
+    });
 
     expect(mockServer.close).toHaveBeenCalled();
-    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODE.REGULAR);
+    expect(closeRedisClient).toHaveBeenCalled();
   });
 
-  it("should exit with code 1 on shutdown with error", () => {
+  it("should exit with code 1 on shutdown with error", async () => {
     const mockError = new Error("Test error");
-    try {
+
+    await new Promise((resolve) => {
+      exitSpy.mockImplementation((code) => {
+        expect(code).toBe(EXIT_CODE.ERROR);
+        resolve(undefined);
+      });
+
       shutdownHandler(
         mockServer as http.Server,
-        "uncaughtException",
+        "SIGTERM",
         mockError,
         shutdownView
       );
-    } catch (e) {
-      // expected due to process.exit mock
-    }
+    });
 
     expect(mockServer.close).toHaveBeenCalled();
-    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODE.ERROR);
+    expect(closeRedisClient).toHaveBeenCalled();
   });
 
-  it("should exit with code 1 if server.close errors", () => {
+  it("should exit with code 1 if server.close errors", async () => {
     const mockCloseError = new Error("Close error");
     mockServer.close = vi.fn((cb) => {
       cb(mockCloseError);
     }) as any;
 
-    try {
+    await new Promise((resolve) => {
+      exitSpy.mockImplementation((code) => {
+        expect(code).toBe(EXIT_CODE.ERROR);
+        resolve(undefined);
+      });
+
       shutdownHandler(
         mockServer as http.Server,
         "SIGTERM",
         undefined,
         shutdownView
       );
-    } catch (e) {
-      // expected due to process.exit mock
-    }
+    });
 
-    expect(exitSpy).toHaveBeenCalledWith(EXIT_CODE.ERROR);
+    expect(mockServer.close).toHaveBeenCalled();
+    expect(destroyRedisClient).toHaveBeenCalled();
   });
 
-  it("should not call server.close more than once if already shutting down", () => {
-    // first call should trigger shutdown
-    try {
+  it("should not call server.close more than once if already shutting down", async () => {
+    await new Promise((resolve) => {
+      exitSpy.mockImplementation((code) => {
+        expect(code).toBe(EXIT_CODE.REGULAR);
+        resolve(undefined);
+      });
+
+      // first call should trigger shutdown
       shutdownHandler(
         mockServer as http.Server,
         "SIGTERM",
         undefined,
         shutdownView
       );
-    } catch (e) {}
-    // second call should do nothing
-    shutdownHandler(
-      mockServer as http.Server,
-      "SIGINT",
-      undefined,
-      shutdownView
-    );
+
+      // second call should do nothing
+      shutdownHandler(
+        mockServer as http.Server,
+        "SIGINT",
+        undefined,
+        shutdownView
+      );
+    });
 
     expect(mockServer.close).toHaveBeenCalledTimes(1);
+    expect(closeRedisClient).toHaveBeenCalledTimes(1);
     expect(exitSpy).toHaveBeenCalledTimes(1);
   });
 });

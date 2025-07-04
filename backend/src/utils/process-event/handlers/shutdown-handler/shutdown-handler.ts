@@ -2,6 +2,7 @@ import http from "http";
 
 import { createLogger } from "@config";
 import { EXIT_CODE, SHUTDOWN_STATE, TAG } from "@constants";
+import { closeRedisClient, destroyRedisClient } from "@clients";
 
 const logger = createLogger(TAG.SHUTDOWN_HANDLER);
 
@@ -40,11 +41,22 @@ export const shutdownHandler = (
       logger.error(`Error while closing the server:`, {
         closeError,
       });
+
+      destroyRedisClient();
+
       process.exit(EXIT_CODE.ERROR);
+
+      return; // Prevents further execution in tests where process.exit is mocked
     }
 
-    const exitCode = errorOrReason ? EXIT_CODE.ERROR : EXIT_CODE.REGULAR;
-    logger.info(`HTTP server closed. Exiting process. Exit code: ${exitCode}`);
-    process.exit(exitCode);
+    (async () => {
+      await closeRedisClient();
+
+      const exitCode = errorOrReason ? EXIT_CODE.ERROR : EXIT_CODE.REGULAR;
+      logger.info(
+        `HTTP server closed. Exiting process. Exit code: ${exitCode}`
+      );
+      process.exit(exitCode);
+    })();
   });
 };
