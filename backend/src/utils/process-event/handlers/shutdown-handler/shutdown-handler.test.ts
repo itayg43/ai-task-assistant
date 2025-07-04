@@ -61,7 +61,7 @@ describe("shutdownHandler", () => {
 
       shutdownHandler(
         mockServer as http.Server,
-        "SIGTERM",
+        "uncaughtException",
         mockError,
         shutdownView
       );
