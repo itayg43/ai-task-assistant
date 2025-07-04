@@ -1,10 +1,9 @@
 import dotenv from "dotenv";
-import { cleanEnv, port } from "envalid";
+import { cleanEnv, port, str } from "envalid";
 
 dotenv.config();
 
 export const env = cleanEnv(process.env, {
-  PORT: port({
-    default: 3000,
-  }),
+  PORT: port(),
+  REDIS_URL: str(),
 });

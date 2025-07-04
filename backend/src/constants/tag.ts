@@ -4,4 +4,5 @@ export const TAG = {
   SHUTDOWN_HANDLER: "shutdownHandler",
   REQUEST_RESPONSE_METADATA: "requestResponseMetadata",
   ERROR_HANDLER: "errorHandler",
+  REDIS: "redis",
 } as const;

@@ -4,13 +4,18 @@ import { app } from "./app";
 import { env, createLogger } from "@config";
 import { registerProcessEventHandlers } from "@utils";
 import { TAG } from "@constants";
+import { redisClient } from "@clients";
 
 const logger = createLogger(TAG.SERVER);
 
 const server = http.createServer(app);
 
-registerProcessEventHandlers(server);
+(async () => {
+  await redisClient.connect();
 
-server.listen(env.PORT, () => {
-  logger.info(`Running at http://localhost:${env.PORT}`);
-});
+  registerProcessEventHandlers(server);
+
+  server.listen(env.PORT, () => {
+    logger.info(`Running at http://localhost:${env.PORT}`);
+  });
+})();

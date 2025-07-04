@@ -2,3 +2,11 @@ services:
   backend:
     build:
       context: ./backend
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:8.0
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
