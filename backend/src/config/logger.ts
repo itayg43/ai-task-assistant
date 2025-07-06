@@ -6,33 +6,6 @@ import {
 
 import { LogMeta } from "@types";
 
-const errorSerializer = format((info) => {
-  function serialize(obj: any): any {
-    if (obj instanceof Error) {
-      return {
-        ...obj,
-        name: obj.name,
-        message: obj.message,
-        stack: obj.stack,
-      };
-    } else if (obj && typeof obj === "object") {
-      for (const key of Object.keys(obj)) {
-        obj[key] = serialize(obj[key]);
-      }
-    }
-
-    return obj;
-  }
-
-  if (info) {
-    for (const key of Object.keys(info)) {
-      info[key] = serialize(info[key]);
-    }
-  }
-
-  return info;
-});
-
 const baseLogger = createWinstonLogger({
   level: "info",
   format: format.combine(
@@ -49,15 +22,46 @@ const baseLogger = createWinstonLogger({
   transports: [new transports.Console()],
 });
 
-export const createLogger = (tag: string) => ({
-  info: (message: string, meta?: LogMeta) =>
-    baseLogger.info(message, {
-      tag,
-      ...meta,
-    }),
-  error: (message: string, meta?: LogMeta) =>
-    baseLogger.error(message, {
-      tag,
-      ...meta,
-    }),
-});
+export const createLogger = (tag: string) => {
+  return {
+    info: (message: string, meta?: LogMeta) =>
+      baseLogger.info(message, {
+        tag,
+        ...meta,
+      }),
+    error: (message: string, meta?: LogMeta) =>
+      baseLogger.error(message, {
+        tag,
+        ...meta,
+      }),
+  };
+};
+
+function errorSerializer() {
+  return format(function (info) {
+    function serialize(obj: any): any {
+      if (obj instanceof Error) {
+        return {
+          ...obj,
+          name: obj.name,
+          message: obj.message,
+          stack: obj.stack,
+        };
+      } else if (obj && typeof obj === "object") {
+        for (const key of Object.keys(obj)) {
+          obj[key] = serialize(obj[key]);
+        }
+      }
+
+      return obj;
+    }
+
+    if (info) {
+      for (const key of Object.keys(info)) {
+        info[key] = serialize(info[key]);
+      }
+    }
+
+    return info;
+  })();
+}
