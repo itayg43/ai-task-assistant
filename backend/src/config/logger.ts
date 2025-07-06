@@ -22,20 +22,18 @@ const baseLogger = createWinstonLogger({
   transports: [new transports.Console()],
 });
 
-export const createLogger = (tag: string) => {
-  return {
-    info: (message: string, meta?: LogMeta) =>
-      baseLogger.info(message, {
-        tag,
-        ...meta,
-      }),
-    error: (message: string, meta?: LogMeta) =>
-      baseLogger.error(message, {
-        tag,
-        ...meta,
-      }),
-  };
-};
+export const createLogger = (tag: string) => ({
+  info: (message: string, meta?: LogMeta) =>
+    baseLogger.info(message, {
+      tag,
+      ...meta,
+    }),
+  error: (message: string, meta?: LogMeta) =>
+    baseLogger.error(message, {
+      tag,
+      ...meta,
+    }),
+});
 
 function errorSerializer() {
   return format(function (info) {
