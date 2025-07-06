@@ -7,7 +7,7 @@ import {
 import { LogMeta } from "@types";
 
 const baseLogger = createWinstonLogger({
-  level: "info",
+  level: "warn",
   format: format.combine(
     errorSerializer(),
     format.colorize(),
@@ -30,6 +30,11 @@ export const createLogger = (tag: string) => ({
     }),
   error: (message: string, meta?: LogMeta) =>
     baseLogger.error(message, {
+      tag,
+      ...meta,
+    }),
+  warn: (message: string, meta?: LogMeta) =>
+    baseLogger.warn(message, {
       tag,
       ...meta,
     }),
