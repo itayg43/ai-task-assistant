@@ -5,4 +5,5 @@ export const TAG = {
   REQUEST_RESPONSE_METADATA: "requestResponseMetadata",
   ERROR_HANDLER: "errorHandler",
   REDIS: "redis",
+  WITH_LOCK: "withLock",
 } as const;
