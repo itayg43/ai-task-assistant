@@ -7,7 +7,7 @@ import {
 import { LogMeta } from "@types";
 
 const baseLogger = createWinstonLogger({
-  level: "warn",
+  level: "info",
   format: format.combine(
     errorSerializer(),
     format.colorize(),
