@@ -70,7 +70,7 @@ describe("withLock", () => {
       expectedResult: undefined,
       expectedError: mockFailFnExecutionError,
     },
-  ];
+  ] as const;
 
   const setupMockAcquire = (value: unknown, shouldResolve: boolean = true) => {
     if (shouldResolve) {
