@@ -35,16 +35,7 @@ export const withLock = async <T>(
     throw error;
   } finally {
     if (lock) {
-      try {
-        await lock.release();
-
-        const totalTime = getElapsedTime(startTime);
-        logger.info(`Lock released for ${lockKey}, total time: ${totalTime}ms`);
-      } catch (error) {
-        logger.error(`Failed to release lock for ${lockKey}`, {
-          error,
-        });
-      }
+      await releaseLock(lock, lockKey, startTime);
     }
   }
 };
@@ -70,5 +61,18 @@ function logLockError(
       `Lock acquired, function execution failed for ${lockKey} after ${errorTime}ms`,
       { error }
     );
+  }
+}
+
+async function releaseLock(lock: Lock, lockKey: string, startTime: number) {
+  try {
+    await lock.release();
+
+    const totalTime = getElapsedTime(startTime);
+    logger.info(`Lock released for ${lockKey}, total time: ${totalTime}ms`);
+  } catch (error) {
+    logger.error(`Failed to release lock for ${lockKey}`, {
+      error,
+    });
   }
 }
