@@ -12,28 +12,24 @@ export const withLock = async <T>(
   lockDuration: number,
   fn: () => Promise<T>
 ) => {
-  const startTimestamp = Date.now();
+  const startTime = Date.now();
 
   let lock: Lock | undefined;
 
   try {
     lock = await redlock.acquire([lockKey], lockDuration);
 
-    const lockAcquisitionTime = getElapsedTime(startTimestamp);
-    logger.info(
-      `Lock acquired for key ${lockKey} in ${lockAcquisitionTime} ms`
-    );
+    const lockAcquisitionTime = getElapsedTime(startTime);
+    logger.info(`Lock acquired for ${lockKey} in ${lockAcquisitionTime}ms`);
 
     const fnStartTime = Date.now();
     const result = await fn();
-    const functionExecutionTime = getElapsedTime(fnStartTime);
-    logger.info(
-      `Function executed for key ${lockKey} in ${functionExecutionTime} ms`
-    );
+    const fnExecutionTime = getElapsedTime(fnStartTime);
+    logger.info(`Function executed for ${lockKey} in ${fnExecutionTime}ms`);
 
     return result;
   } catch (error) {
-    const errorTime = getElapsedTime(startTimestamp);
+    const errorTime = getElapsedTime(startTime);
     logLockError(lockKey, error, errorTime, !!lock);
 
     throw error;
@@ -42,12 +38,10 @@ export const withLock = async <T>(
       try {
         await lock.release();
 
-        const totalTime = getElapsedTime(startTimestamp);
-        logger.info(
-          `Lock released for key ${lockKey}, total time: ${totalTime} ms`
-        );
+        const totalTime = getElapsedTime(startTime);
+        logger.info(`Lock released for ${lockKey}, total time: ${totalTime}ms`);
       } catch (error) {
-        logger.error(`Failed to release lock for key ${lockKey}`, {
+        logger.error(`Failed to release lock for ${lockKey}`, {
           error,
         });
       }
@@ -64,16 +58,16 @@ function logLockError(
   if (!lockAcquired) {
     error instanceof ResourceLockedError
       ? logger.warn(
-          `Failed to acquire lock due to timeout error for key ${lockKey} after ${errorTime} ms`,
+          `Failed to acquire lock due to timeout error for ${lockKey} after ${errorTime}ms`,
           { error }
         )
       : logger.error(
-          `Failed to acquire lock due to unknown error for key ${lockKey} after ${errorTime} ms`,
+          `Failed to acquire lock due to unknown error for ${lockKey} after ${errorTime}ms`,
           { error }
         );
   } else {
     logger.error(
-      `Lock acquired, function execution failed for key ${lockKey} after ${errorTime} ms`,
+      `Lock acquired, function execution failed for ${lockKey} after ${errorTime}ms`,
       { error }
     );
   }
