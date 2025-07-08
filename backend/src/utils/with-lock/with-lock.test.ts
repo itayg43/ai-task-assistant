@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it, Mock, vi } from "vitest";
 import { redlock } from "@clients";
 import { withLock } from "./with-lock";
 
+/**
+ * - Separate test for lock acquisition failure.
+ * - Table-driven tests for successful lock acquisition scenarios.
+ */
+
 vi.mock("@clients", () => ({
   redlock: {
     acquire: vi.fn(),
@@ -27,76 +32,60 @@ describe("withLock", () => {
     "Failed to acquire lock"
   );
 
+  const shouldAcquireLockCases = [
+    {
+      description: "should acquire lock, execute fn and release lock",
+      mockAcquire: {
+        release: mockRelease,
+      },
+      _mockFn: mockFn,
+      expectedResult: mockFnResult,
+      expectedError: undefined,
+    },
+    {
+      description: "should acquire lock, fail to execute fn and release lock",
+      mockAcquire: {
+        release: mockRelease,
+      },
+      _mockFn: mockFnFail,
+      expectedResult: undefined,
+      expectedError: mockFailFnExecutionError,
+    },
+    {
+      description: "should acquire lock, execute fn and fail to release lock",
+      mockAcquire: {
+        release: mockReleaseFail,
+      },
+      _mockFn: mockFn,
+      expectedResult: mockFnResult,
+      expectedError: undefined,
+    },
+    {
+      description:
+        "should acquire lock, fail to execute fn and fail to release lock",
+      mockAcquire: {
+        release: mockReleaseFail,
+      },
+      _mockFn: mockFnFail,
+      expectedResult: undefined,
+      expectedError: mockFailFnExecutionError,
+    },
+  ];
+
+  const setupMockAcquire = (value: unknown, shouldResolve: boolean = true) => {
+    if (shouldResolve) {
+      (redlock.acquire as Mock).mockResolvedValue(value);
+    } else {
+      (redlock.acquire as Mock).mockRejectedValue(value);
+    }
+  };
+
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should acquire lock, execute fn and release lock", async () => {
-    (redlock.acquire as Mock).mockResolvedValue({
-      release: mockRelease,
-    });
-
-    const result = await withLock(mockLockKey, mockLockDuration, mockFn);
-
-    expect(redlock.acquire).toHaveBeenCalledWith(
-      [mockLockKey],
-      mockLockDuration
-    );
-    expect(mockFn).toHaveBeenCalled();
-    expect(result).toBe(mockFnResult);
-    expect(mockRelease).toHaveBeenCalled();
-  });
-
-  it("should acquire lock, execute fn and fail to release lock", async () => {
-    (redlock.acquire as Mock).mockResolvedValue({
-      release: mockReleaseFail,
-    });
-
-    const result = await withLock(mockLockKey, mockLockDuration, mockFn);
-
-    expect(redlock.acquire).toHaveBeenCalledWith(
-      [mockLockKey],
-      mockLockDuration
-    );
-    expect(mockFn).toHaveBeenCalled();
-    expect(result).toBe(mockFnResult);
-    expect(mockReleaseFail).toHaveBeenCalled();
-  });
-
-  it("should acquire lock, fail to execute fn and release lock", async () => {
-    (redlock.acquire as Mock).mockResolvedValue({
-      release: mockRelease,
-    });
-
-    await expect(
-      withLock(mockLockKey, mockLockDuration, mockFnFail)
-    ).rejects.toThrow(mockFailFnExecutionError);
-    expect(redlock.acquire).toHaveBeenCalledWith(
-      [mockLockKey],
-      mockLockDuration
-    );
-    expect(mockFnFail).toHaveBeenCalled();
-    expect(mockRelease).toHaveBeenCalled();
-  });
-
-  it("should acquire lock, fail to execute fn and fail to release lock", async () => {
-    (redlock.acquire as Mock).mockResolvedValue({
-      release: mockReleaseFail,
-    });
-
-    await expect(
-      withLock(mockLockKey, mockLockDuration, mockFnFail)
-    ).rejects.toThrow(mockFailFnExecutionError);
-    expect(redlock.acquire).toHaveBeenCalledWith(
-      [mockLockKey],
-      mockLockDuration
-    );
-    expect(mockFnFail).toHaveBeenCalled();
-    expect(mockReleaseFail).toHaveBeenCalled();
-  });
-
   it("should fail to acquire lock, not execute fn and not release lock", async () => {
-    (redlock.acquire as Mock).mockRejectedValue(mockFailAcquireLockError);
+    setupMockAcquire(mockFailAcquireLockError, false);
 
     await expect(
       withLock(mockLockKey, mockLockDuration, mockFn)
@@ -108,4 +97,30 @@ describe("withLock", () => {
     expect(mockFn).not.toHaveBeenCalled();
     expect(mockRelease).not.toHaveBeenCalled();
   });
+
+  // Table-driven tests for successful lock acquisition
+  it.each(shouldAcquireLockCases)(
+    "$description",
+    async ({ mockAcquire, _mockFn, expectedResult, expectedError }) => {
+      let result;
+
+      setupMockAcquire(mockAcquire);
+
+      if (expectedError) {
+        await expect(
+          withLock(mockLockKey, mockLockDuration, _mockFn)
+        ).rejects.toThrow(expectedError);
+      } else {
+        result = await withLock(mockLockKey, mockLockDuration, _mockFn);
+      }
+
+      expect(redlock.acquire).toHaveBeenCalledWith(
+        [mockLockKey],
+        mockLockDuration
+      );
+      expect(_mockFn).toHaveBeenCalled();
+      expect(result).toBe(expectedResult);
+      expect(mockAcquire.release).toHaveBeenCalled();
+    }
+  );
 });
