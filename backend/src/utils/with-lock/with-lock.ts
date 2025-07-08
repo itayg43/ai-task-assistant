@@ -29,8 +29,7 @@ export const withLock = async <T>(
 
     return result;
   } catch (error) {
-    const errorTime = getElapsedTime(startTime);
-    logLockError(lockKey, error, errorTime, !!lock);
+    logLockError(!!lock, lockKey, error, startTime);
 
     throw error;
   } finally {
@@ -41,11 +40,13 @@ export const withLock = async <T>(
 };
 
 function logLockError(
+  lockAcquired: boolean,
   lockKey: string,
   error: unknown,
-  errorTime: number,
-  lockAcquired: boolean
+  startTime: number
 ) {
+  const errorTime = getElapsedTime(startTime);
+
   if (!lockAcquired) {
     error instanceof ResourceLockedError
       ? logger.warn(
