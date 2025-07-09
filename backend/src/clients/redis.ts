@@ -1,34 +1,27 @@
-import { createClient } from "redis";
+import { Redis } from "ioredis";
 
 import { env, createLogger } from "@config";
 import { TAG } from "@constants";
 
 const logger = createLogger(TAG.REDIS);
 
-export const redisClient = createClient({
-  url: env.REDIS_URL,
-});
+export const redis = new Redis(env.REDIS_URL);
 
-export const connectRedisClient = async () => {
-  logger.info("Connecting redis client...");
-  await redisClient.connect();
-  logger.info("Redis client connected");
-};
+redis.on("connect", () => logger.info("Redis client connected"));
+redis.on("error", (error) =>
+  logger.error("Redis client error", {
+    error,
+  })
+);
 
 export const closeRedisClient = async () => {
   logger.info("Closing redis client...");
-  await redisClient.close();
+  await redis.quit();
   logger.info("Redis client closed");
 };
 
 export const destroyRedisClient = () => {
   logger.info("Destroying redis client...");
-  redisClient.destroy();
+  redis.disconnect();
   logger.info("Redis client destroyed");
 };
-
-redisClient.on("error", (error) => {
-  logger.error("Redis client error", {
-    error,
-  });
-});

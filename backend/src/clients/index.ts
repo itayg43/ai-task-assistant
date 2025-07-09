@@ -1,7 +1,2 @@
-export {
-  redisClient,
-  connectRedisClient,
-  closeRedisClient,
-  destroyRedisClient,
-} from "./redis";
+export { redis, closeRedisClient, destroyRedisClient } from "./redis";
 export { redlock } from "./redlock";
