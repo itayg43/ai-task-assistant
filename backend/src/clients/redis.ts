@@ -8,6 +8,7 @@ const logger = createLogger(TAG.REDIS);
 export const redis = new Redis(env.REDIS_URL);
 
 redis.on("connect", () => logger.info("Redis client connected"));
+
 redis.on("error", (error) =>
   logger.error("Redis client error", {
     error,
