@@ -9,11 +9,7 @@ import { withLock } from "./with-lock";
  * - Table-driven tests for successful lock acquisition scenarios.
  */
 
-vi.mock("@clients", () => ({
-  redlock: {
-    acquire: vi.fn(),
-  },
-}));
+vi.mock("@clients");
 
 describe("withLock", () => {
   const mockLockKey = "mockLockKey";
