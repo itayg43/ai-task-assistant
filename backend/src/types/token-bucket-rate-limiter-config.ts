@@ -3,5 +3,5 @@ export type TokenBucketRateLimiterConfig = {
   refillRate: number;
   bucketTtlSeconds: number;
   lockTtlMs: number;
-  keyPrefix: string;
+  redisKeyPrefix: string;
 };

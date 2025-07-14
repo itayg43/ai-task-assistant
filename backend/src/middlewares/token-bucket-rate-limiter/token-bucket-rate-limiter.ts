@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { createLogger } from "@config";
+import { createLogger, env } from "@config";
 import { TAG } from "@constants";
 import { TokenBucketRateLimiterConfig } from "@types";
 import { getTokenBucketLockKey, processTokenBucket, withLock } from "@utils";
@@ -10,12 +10,11 @@ const logger = createLogger(TAG.TOKEN_BUCKET_RATE_LIMITER);
 
 export const tokenBucketRateLimiter = {
   global: createTokenBucketLimiter({
-    bucketSize: 100,
-    refillRate: 1,
-    // set to twice the time it would take to refill the bucket from empty to full
-    bucketTtlSeconds: (2 * 100) / 1,
-    lockTtlMs: 500,
-    keyPrefix: "global",
+    bucketSize: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_BUCKET_SIZE,
+    refillRate: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_REFILL_RATE,
+    bucketTtlSeconds: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_BUCKET_TTL_SECONDS,
+    lockTtlMs: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_LOCK_TTL_MS,
+    redisKeyPrefix: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_REDIS_KEY_PREFIX,
   }),
 } as const;
 
@@ -26,7 +25,7 @@ function createTokenBucketLimiter(config: TokenBucketRateLimiterConfig) {
     next: NextFunction
   ): Promise<void> => {
     const userId = 1;
-    const lockKey = getTokenBucketLockKey(config.keyPrefix, userId);
+    const lockKey = getTokenBucketLockKey(config.redisKeyPrefix, userId);
 
     try {
       const result = await withLock(lockKey, config.lockTtlMs, async () => {
