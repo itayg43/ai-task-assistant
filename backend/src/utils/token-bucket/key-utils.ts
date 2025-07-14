@@ -1,7 +1,9 @@
+import { PROCESS_TOKEN_BUCKET_REDIS_KEY_PREFIX } from "@constants";
+
 export const getTokenBucketKey = (keyPrefix: string, userId: number) => {
-  return `process:token:bucket:${keyPrefix}:${userId}`;
+  return `${PROCESS_TOKEN_BUCKET_REDIS_KEY_PREFIX}:${keyPrefix}:${userId}`;
 };
 
 export const getTokenBucketLockKey = (keyPrefix: string, userId: number) => {
-  return `process:token:bucket:${keyPrefix}:${userId}:lock`;
+  return `${PROCESS_TOKEN_BUCKET_REDIS_KEY_PREFIX}:${keyPrefix}:${userId}:lock`;
 };

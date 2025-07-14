@@ -10,11 +10,11 @@ const logger = createLogger(TAG.TOKEN_BUCKET_RATE_LIMITER);
 
 export const tokenBucketRateLimiter = {
   global: createTokenBucketLimiter({
+    rateLimiterName: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_NAME,
     bucketSize: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_BUCKET_SIZE,
     refillRate: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_REFILL_RATE,
     bucketTtlSeconds: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_BUCKET_TTL_SECONDS,
     lockTtlMs: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_LOCK_TTL_MS,
-    redisKeyPrefix: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_REDIS_KEY_PREFIX,
   }),
 } as const;
 
@@ -25,7 +25,7 @@ function createTokenBucketLimiter(config: TokenBucketRateLimiterConfig) {
     next: NextFunction
   ): Promise<void> => {
     const userId = 1;
-    const lockKey = getTokenBucketLockKey(config.redisKeyPrefix, userId);
+    const lockKey = getTokenBucketLockKey(config.rateLimiterName, userId);
 
     try {
       const result = await withLock(lockKey, config.lockTtlMs, async () => {

@@ -13,7 +13,7 @@ export const processTokenBucket = async (
   userId: number,
   config: TokenBucketRateLimiterConfig
 ): Promise<TokenBucketState> => {
-  const key = getTokenBucketKey(config.redisKeyPrefix, userId);
+  const key = getTokenBucketKey(config.rateLimiterName, userId);
 
   const now = Date.now();
 
