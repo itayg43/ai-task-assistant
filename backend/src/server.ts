@@ -2,8 +2,8 @@ import http from "http";
 
 import { connectRedisClient } from "@clients";
 import { createLogger, env } from "@config";
-import { TAG } from "@constants";
-import { registerProcessEventHandlers } from "@utils";
+import { EXIT_CODE, TAG } from "@constants";
+import { registerProcessEventHandlers, startServer } from "@utils";
 import { app } from "./app";
 
 const logger = createLogger(TAG.SERVER);
@@ -11,13 +11,19 @@ const logger = createLogger(TAG.SERVER);
 const server = http.createServer(app);
 
 (async () => {
-  logger.info("###### Initialize server ######");
+  try {
+    logger.info("###### Initialize server ######");
 
-  await connectRedisClient();
+    await connectRedisClient();
+    registerProcessEventHandlers(server);
+    await startServer(server, env.PORT);
 
-  registerProcessEventHandlers(server);
+    logger.info("###### Initialize server completed ######");
+  } catch (error) {
+    logger.error("###### Initialize server failed ######", {
+      error,
+    });
 
-  server.listen(env.PORT, () => {
-    logger.info(`Running at http://localhost:${env.PORT}`);
-  });
+    process.exit(EXIT_CODE.ERROR);
+  }
 })();
