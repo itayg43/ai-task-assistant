@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TokenBucketRateLimiterConfig } from "@types";
+import { Mocked, TokenBucketRateLimiterConfig } from "@types";
 import { getTokenBucketLockKey, processTokenBucket, withLock } from "@utils";
 import { createTokenBucketLimiter } from "./create-token-bucket-limiter";
 
@@ -22,19 +22,13 @@ vi.mock("@utils/with-lock/with-lock", () => ({
 }));
 
 describe("createTokenBucketLimiter", () => {
-  const mockedGetTokenBucketLockKey = vi.mocked(getTokenBucketLockKey);
-  const mockedProcessTokenBucket = vi.mocked(processTokenBucket);
-  const mockedWithLock = vi.mocked(withLock);
+  let mockedGetTokenBucketLockKey: Mocked<typeof getTokenBucketLockKey>;
+  let mockedProcessTokenBucket: Mocked<typeof processTokenBucket>;
+  let mockedWithLock: Mocked<typeof withLock>;
 
-  const mockRequest: Partial<Request> = {
-    method: "GET",
-    originalUrl: "testUrl",
-  };
-  const mockResponse: Partial<Response> = {
-    status: vi.fn().mockReturnThis(),
-    json: vi.fn(),
-  };
-  const mockNextFunction: NextFunction = vi.fn();
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockNextFunction: NextFunction;
 
   const mockLockKey = "process:token:bucket:lock";
   const mockConfig: TokenBucketRateLimiterConfig = {
@@ -44,6 +38,22 @@ describe("createTokenBucketLimiter", () => {
     bucketTtlSeconds: 100,
     lockTtlMs: 500,
   };
+
+  beforeEach(() => {
+    mockedGetTokenBucketLockKey = vi.mocked(getTokenBucketLockKey);
+    mockedProcessTokenBucket = vi.mocked(processTokenBucket);
+    mockedWithLock = vi.mocked(withLock);
+
+    mockRequest = {
+      method: "GET",
+      originalUrl: "testUrl",
+    };
+    mockResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    mockNextFunction = vi.fn();
+  });
 
   afterEach(() => {
     vi.clearAllMocks();
