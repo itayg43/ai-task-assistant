@@ -11,6 +11,8 @@ const logger = createLogger(TAG.SERVER);
 const server = http.createServer(app);
 
 (async () => {
+  logger.info("###### Initialize server ######");
+
   await connectRedisClient();
 
   registerProcessEventHandlers(server);
