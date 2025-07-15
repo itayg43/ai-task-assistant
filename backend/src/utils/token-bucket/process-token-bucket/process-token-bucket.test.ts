@@ -89,6 +89,9 @@ describe("processTokenBucket", () => {
     },
   ] as const;
 
+  // This calculation intentionally mirrors the refill logic in processTokenBucket for test accuracy.
+  // If the implementation changes, update this function to match the intended behavior.
+  // Do NOT import or reuse the implementation logic directly here.
   const calculateExpectedTokensLeft = (
     expectedAllowed: boolean,
     mockTokens: number,
