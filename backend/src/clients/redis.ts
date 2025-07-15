@@ -1,34 +1,55 @@
-import { createClient } from "redis";
+import { Redis } from "ioredis";
 
-import { env, createLogger } from "@config";
+import { createLogger, env } from "@config";
 import { TAG } from "@constants";
 
 const logger = createLogger(TAG.REDIS);
 
-export const redisClient = createClient({
-  url: env.REDIS_URL,
+export const redis = new Redis(env.REDIS_URL, {
+  connectTimeout: env.REDIS_CONNECT_TIMEOUT_MS,
 });
 
-export const connectRedisClient = async () => {
-  logger.info("Connecting redis client...");
-  await redisClient.connect();
-  logger.info("Redis client connected");
+redis.on("error", (error) =>
+  logger.error("Redis client error", {
+    error,
+  })
+);
+
+/**
+ * Waits for the Redis client to emit the "ready" event, indicating it is fully initialized and ready for use.
+ * Implements a manual timeout to ensure the app startup does not hang indefinitely if Redis is slow to become ready.
+ * Note: This timeout is in addition to the Redis client's `connectTimeout` option, which only covers the TCP connection phase.
+ */
+export const connectRedisClient = async (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("Redis client connection timeout"));
+    }, env.REDIS_CONNECT_TIMEOUT_MS);
+
+    redis.once("connecting", () => {
+      logger.info("Connecting redis client...");
+    });
+
+    redis.once("connect", () => {
+      logger.info("Redis client connected");
+    });
+
+    redis.once("ready", () => {
+      clearTimeout(timer);
+      logger.info("Redis client ready");
+      resolve();
+    });
+  });
 };
 
 export const closeRedisClient = async () => {
   logger.info("Closing redis client...");
-  await redisClient.close();
+  await redis.quit();
   logger.info("Redis client closed");
 };
 
 export const destroyRedisClient = () => {
   logger.info("Destroying redis client...");
-  redisClient.destroy();
+  redis.disconnect();
   logger.info("Redis client destroyed");
 };
-
-redisClient.on("error", (error) => {
-  logger.error("Redis client error", {
-    error,
-  });
-});

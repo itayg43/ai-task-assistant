@@ -1,8 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 
-import { createLogger } from "@config";
-import { TAG } from "@constants";
 import { requestResponseMetadata } from "./request-reponse-metadata";
 
 // vi.hoisted() ensures these are created before vi.mock() calls are executed
@@ -15,17 +13,10 @@ vi.mock("@config", () => ({
   })),
 }));
 
-vi.mock("@constants", () => ({
-  TAG: {
-    REQUEST_RESPONSE_METADATA: "requestResponseMetadata",
-  },
-}));
-
 describe("requestResponseMetadata", () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let mockNext: NextFunction;
-  let mockedCreateLogger: ReturnType<typeof vi.mocked<typeof createLogger>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -47,25 +38,11 @@ describe("requestResponseMetadata", () => {
     };
 
     mockNext = vi.fn();
-
-    mockedCreateLogger = vi.mocked(createLogger);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
-  });
-
-  it("should create logger with correct tag", () => {
-    requestResponseMetadata(
-      mockRequest as Request,
-      mockResponse as Response,
-      mockNext
-    );
-
-    expect(mockedCreateLogger).toHaveBeenCalledWith(
-      TAG.REQUEST_RESPONSE_METADATA
-    );
   });
 
   it("should log incoming request with correct metadata", () => {

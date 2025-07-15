@@ -33,6 +33,11 @@ export const createLogger = (tag: string) => ({
       tag,
       ...meta,
     }),
+  warn: (message: string, meta?: LogMeta) =>
+    baseLogger.warn(message, {
+      tag,
+      ...meta,
+    }),
 });
 
 function errorSerializer() {

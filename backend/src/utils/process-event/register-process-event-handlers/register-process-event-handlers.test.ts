@@ -15,11 +15,7 @@ describe("registerProcessEventHandlers", () => {
   let mockShutdownHandler: ReturnType<typeof vi.mocked<typeof shutdownHandler>>;
   let mockExitCallback: ExitCallback;
 
-  const events: {
-    name: string;
-    errorOrReason: undefined | Error | string;
-    expectedHandler: string;
-  }[] = [
+  const events = [
     {
       name: "SIGINT",
       errorOrReason: undefined,
@@ -40,7 +36,7 @@ describe("registerProcessEventHandlers", () => {
       errorOrReason: "Test unhandled rejection",
       expectedHandler: "shutdownHandler",
     },
-  ];
+  ] as const;
 
   beforeEach(() => {
     mockServer = {

@@ -1,15 +1,12 @@
 import http from "http";
-import { describe, it, vi, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { EXIT_CODE } from "@constants";
-import { shutdownHandler } from "./shutdown-handler";
 import { closeRedisClient, destroyRedisClient } from "@clients";
+import { EXIT_CODE } from "@constants";
 import { ExitCallback } from "@types";
+import { shutdownHandler } from "./shutdown-handler";
 
-vi.mock("@clients", () => ({
-  closeRedisClient: vi.fn().mockResolvedValue(undefined),
-  destroyRedisClient: vi.fn(),
-}));
+vi.mock("@clients");
 
 describe("shutdownHandler", () => {
   let mockServer: Partial<http.Server>;
