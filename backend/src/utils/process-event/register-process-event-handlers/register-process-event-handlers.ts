@@ -42,5 +42,5 @@ export const registerProcessEventHandlers = (
     )
   );
 
-  logger.info("Process event handlers registered successfully");
+  logger.info("Process event handlers registered");
 };
