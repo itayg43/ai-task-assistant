@@ -4,12 +4,12 @@ import { afterEach, describe, expect, it, Mock, vi } from "vitest";
 import { redlock } from "@clients";
 import { withLock } from "./with-lock";
 
+vi.mock("@clients");
+
 /**
  * - Separate test for lock acquisition failure.
  * - Table-driven tests for successful lock acquisition scenarios.
  */
-
-vi.mock("@clients");
 
 describe("withLock", () => {
   const mockLockKey = "mockLockKey";
