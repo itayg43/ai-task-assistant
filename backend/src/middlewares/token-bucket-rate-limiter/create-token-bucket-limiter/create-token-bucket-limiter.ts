@@ -8,14 +8,9 @@ import { getTokenBucketLockKey, processTokenBucket, withLock } from "@utils";
 
 const logger = createLogger(TAG.TOKEN_BUCKET_RATE_LIMITER);
 
-export const createTokenBucketLimiter = (
-  config: TokenBucketRateLimiterConfig
-) => {
-  return async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
+export const createTokenBucketLimiter =
+  (config: TokenBucketRateLimiterConfig) =>
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = 1;
     const lockKey = getTokenBucketLockKey(config.rateLimiterName, userId);
 
@@ -54,4 +49,3 @@ export const createTokenBucketLimiter = (
       });
     }
   };
-};
