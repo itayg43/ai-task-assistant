@@ -1,16 +1,21 @@
 import http from "http";
 
-import { app } from "./app";
-import { env, createLogger } from "@config";
-import { registerProcessEventHandlers } from "@utils";
+import { connectRedisClient } from "@clients";
+import { createLogger, env } from "@config";
 import { TAG } from "@constants";
+import { registerProcessEventHandlers } from "@utils";
+import { app } from "./app";
 
 const logger = createLogger(TAG.SERVER);
 
 const server = http.createServer(app);
 
-registerProcessEventHandlers(server);
+(async () => {
+  await connectRedisClient();
 
-server.listen(env.PORT, () => {
-  logger.info(`Running at http://localhost:${env.PORT}`);
-});
+  registerProcessEventHandlers(server);
+
+  server.listen(env.PORT, () => {
+    logger.info(`Running at http://localhost:${env.PORT}`);
+  });
+})();
