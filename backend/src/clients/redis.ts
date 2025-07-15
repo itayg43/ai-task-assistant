@@ -26,9 +26,17 @@ export const connectRedisClient = async (): Promise<void> => {
       reject(new Error("Redis client connection timeout"));
     }, env.REDIS_CONNECT_TIMEOUT_MS);
 
+    redis.once("connecting", () => {
+      logger.info("Connecting redis client...");
+    });
+
+    redis.once("connect", () => {
+      logger.info("Redis client connected");
+    });
+
     redis.once("ready", () => {
       clearTimeout(timer);
-      logger.info("Redis client connected");
+      logger.info("Redis client ready");
       resolve();
     });
   });
