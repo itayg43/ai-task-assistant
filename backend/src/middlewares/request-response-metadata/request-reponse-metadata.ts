@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 
 import { createLogger } from "@config/logger";
+import { getCurrentTime } from "@utils/time";
 
 const logger = createLogger("requestResponseMetadata");
 
@@ -9,7 +10,7 @@ export const requestResponseMetadata = (
   res: Response,
   next: NextFunction
 ) => {
-  const startTimestamp = Date.now();
+  const startTimestamp = getCurrentTime();
 
   const requestMetadata = {
     method: req.method,
@@ -23,7 +24,7 @@ export const requestResponseMetadata = (
   res.end = function (chunk?: any, encoding?: any) {
     if (!completed) {
       completed = true;
-      const duration = Date.now() - startTimestamp;
+      const duration = getCurrentTime() - startTimestamp;
 
       logger.info("Request completed", {
         ...requestMetadata,

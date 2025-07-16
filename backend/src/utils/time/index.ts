@@ -1,1 +1,1 @@
-export { getElapsedTime } from "./time";
+export { getCurrentTime, getElapsedTime } from "./time";

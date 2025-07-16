@@ -1,6 +1,7 @@
 import { createLogger } from "@config/logger";
-import { MS_PER_SECOND, TAG } from "@constants";
+import { MS_PER_SECOND } from "@constants";
 import { TokenBucketRateLimiterConfig, TokenBucketState } from "@types";
+import { getCurrentTime } from "@utils/time";
 import { getTokenBucketKey } from "@utils/token-bucket/key-utils";
 import {
   getTokenBucketState,
@@ -15,7 +16,7 @@ export const processTokenBucket = async (
 ): Promise<TokenBucketState> => {
   const key = getTokenBucketKey(config.rateLimiterName, userId);
 
-  const now = Date.now();
+  const now = getCurrentTime();
 
   let { tokens, last } = await getTokenBucketState(key, config, now);
 

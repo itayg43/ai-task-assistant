@@ -2,7 +2,7 @@ import { Lock, ResourceLockedError } from "redlock";
 
 import { redlock } from "@clients/redlock";
 import { createLogger } from "@config/logger";
-import { getElapsedTime } from "@utils/time";
+import { getCurrentTime, getElapsedTime } from "@utils/time";
 
 const logger = createLogger("withLock");
 
@@ -11,7 +11,7 @@ export const withLock = async <T>(
   lockDuration: number,
   fn: () => Promise<T>
 ) => {
-  const startTime = Date.now();
+  const startTime = getCurrentTime();
 
   let lock: Lock | undefined;
 
@@ -21,7 +21,7 @@ export const withLock = async <T>(
     const lockAcquisitionTime = getElapsedTime(startTime);
     logger.info(`Lock acquired for ${lockKey} in ${lockAcquisitionTime}ms`);
 
-    const fnStartTime = Date.now();
+    const fnStartTime = getCurrentTime();
     const result = await fn();
     const fnExecutionTime = getElapsedTime(fnStartTime);
     logger.info(`Function executed for ${lockKey} in ${fnExecutionTime}ms`);
