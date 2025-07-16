@@ -10,19 +10,12 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@constants": ["src/constants"],
-      "@constants/*": ["src/constants/*"],
-      "@config": ["src/config"],
-      "@config/*": ["src/config/*"],
       "@types": ["src/types"],
-      "@types/*": ["src/types/*"],
-      "@utils": ["src/utils"],
+      "@constants": ["src/constants"],
+      "@config/*": ["src/config/*"],
       "@utils/*": ["src/utils/*"],
-      "@middlewares": ["src/middlewares"],
       "@middlewares/*": ["src/middlewares/*"],
       "@errors": ["src/errors"],
-      "@errors/*": ["src/errors/*"],
-      "@clients": ["src/clients"],
       "@clients/*": ["src/clients/*"]
     }
   },

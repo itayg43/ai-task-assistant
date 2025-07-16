@@ -1,9 +1,11 @@
 import http from "http";
 
-import { connectRedisClient } from "@clients";
-import { createLogger, env } from "@config";
+import { connectRedisClient } from "@clients/redis";
+import { env } from "@config/env";
+import { createLogger } from "@config/logger";
 import { EXIT_CODE, TAG } from "@constants";
-import { registerProcessEventHandlers, startServer } from "@utils";
+import { registerProcessEventHandlers } from "@utils/process-event/register-process-event-handlers";
+import { startServer } from "@utils/start-server";
 import { app } from "./app";
 
 const logger = createLogger(TAG.SERVER);

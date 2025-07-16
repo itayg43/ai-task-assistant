@@ -1,25 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MS_PER_SECOND } from "@constants";
-import { TokenBucketRateLimiterConfig } from "@types";
+import { Mocked, TokenBucketRateLimiterConfig } from "@types";
+import { getTokenBucketKey } from "@utils/token-bucket/key-utils";
+import { processTokenBucket } from "@utils/token-bucket/process-token-bucket";
 import {
-  getTokenBucketKey,
   getTokenBucketState,
-  processTokenBucket,
   setTokenBucketState,
-} from "@utils/token-bucket";
+} from "@utils/token-bucket/token-bucket-state-utils";
 
-vi.mock("@utils/token-bucket/key-utils", () => ({
-  getTokenBucketKey: vi.fn(),
-}));
-
-vi.mock(
-  "@utils/token-bucket/token-bucket-state-utils/token-bucket-state-utils",
-  () => ({
-    getTokenBucketState: vi.fn(),
-    setTokenBucketState: vi.fn(),
-  })
-);
+vi.mock("@utils/token-bucket/key-utils");
+vi.mock("@utils/token-bucket/token-bucket-state-utils");
 
 /**
  * - Separate test for multiple sequential requests.
@@ -27,6 +18,10 @@ vi.mock(
  */
 
 describe("processTokenBucket", () => {
+  let mockedGetTokenBucketKey: Mocked<typeof getTokenBucketKey>;
+  let mockedGetTokenBucketState: Mocked<typeof getTokenBucketState>;
+  let mockedSetTokenBucketState: Mocked<typeof setTokenBucketState>;
+
   const mockUserId = 1;
   const mockConfig: TokenBucketRateLimiterConfig = {
     rateLimiterName: "test",
@@ -110,6 +105,10 @@ describe("processTokenBucket", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+
+    mockedGetTokenBucketKey = vi.mocked(getTokenBucketKey);
+    mockedGetTokenBucketState = vi.mocked(getTokenBucketState);
+    mockedSetTokenBucketState = vi.mocked(setTokenBucketState);
   });
 
   afterEach(() => {
@@ -127,8 +126,8 @@ describe("processTokenBucket", () => {
 
     vi.setSystemTime(mockNow);
 
-    (getTokenBucketKey as Mock).mockReturnValue(mockKey);
-    (getTokenBucketState as Mock).mockResolvedValue({
+    mockedGetTokenBucketKey.mockReturnValue(mockKey);
+    mockedGetTokenBucketState.mockResolvedValue({
       tokens: mockTokens,
       last: mockLast,
     });
@@ -139,7 +138,7 @@ describe("processTokenBucket", () => {
     expect(result.tokensLeft).toBeCloseTo(1);
 
     // Second request: allowed, tokens = 0
-    (getTokenBucketState as Mock).mockResolvedValue({
+    mockedGetTokenBucketState.mockResolvedValue({
       tokens: 1,
       last: mockNow,
     });
@@ -148,7 +147,7 @@ describe("processTokenBucket", () => {
     expect(result.tokensLeft).toBeCloseTo(0);
 
     // Third request: denied, tokens = 0
-    (getTokenBucketState as Mock).mockResolvedValue({
+    mockedGetTokenBucketState.mockResolvedValue({
       tokens: 0,
       last: mockNow,
     });
@@ -170,8 +169,8 @@ describe("processTokenBucket", () => {
 
       vi.setSystemTime(mockNow);
 
-      (getTokenBucketKey as Mock).mockReturnValue(mockKey);
-      (getTokenBucketState as Mock).mockResolvedValue({
+      mockedGetTokenBucketKey.mockReturnValue(mockKey);
+      mockedGetTokenBucketState.mockResolvedValue({
         tokens: mockTokens,
         last: mockLast,
       });
@@ -179,13 +178,13 @@ describe("processTokenBucket", () => {
       const result = await processTokenBucket(mockUserId, mockConfig);
 
       expectedAllowed
-        ? expect(setTokenBucketState).toHaveBeenCalledWith(
+        ? expect(mockedSetTokenBucketState).toHaveBeenCalledWith(
             mockKey,
             mockConfig,
             expectedTokensLeft,
             mockNow
           )
-        : expect(setTokenBucketState).not.toHaveBeenCalled();
+        : expect(mockedSetTokenBucketState).not.toHaveBeenCalled();
       expect(result.allowed).toBe(expectedAllowed);
       expect(result.tokensLeft).toBeCloseTo(expectedTokensLeft);
     }

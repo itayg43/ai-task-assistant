@@ -2,24 +2,15 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createTokenBucketLimiter } from "@middlewares/token-bucket-rate-limiter/create-token-bucket-limiter";
 import { Mocked, TokenBucketRateLimiterConfig } from "@types";
-import { getTokenBucketLockKey, processTokenBucket, withLock } from "@utils";
-import { createTokenBucketLimiter } from "./create-token-bucket-limiter";
+import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
+import { processTokenBucket } from "@utils/token-bucket/process-token-bucket";
+import { withLock } from "@utils/with-lock";
 
-vi.mock("@utils/token-bucket/key-utils", () => ({
-  getTokenBucketLockKey: vi.fn(),
-}));
-
-vi.mock(
-  "@utils/token-bucket/process-token-bucket/process-token-bucket",
-  () => ({
-    processTokenBucket: vi.fn(),
-  })
-);
-
-vi.mock("@utils/with-lock/with-lock", () => ({
-  withLock: vi.fn(),
-}));
+vi.mock("@utils/token-bucket/key-utils");
+vi.mock("@utils/token-bucket/process-token-bucket");
+vi.mock("@utils/with-lock");
 
 describe("createTokenBucketLimiter", () => {
   let mockedGetTokenBucketLockKey: Mocked<typeof getTokenBucketLockKey>;
@@ -61,12 +52,10 @@ describe("createTokenBucketLimiter", () => {
 
   it("should call next when the request is allowed", async () => {
     mockedGetTokenBucketLockKey.mockReturnValue(mockLockKey);
-
     mockedProcessTokenBucket.mockResolvedValue({
       allowed: true,
       tokensLeft: 1,
     });
-
     mockedWithLock.mockImplementation(async (_lockKey, _lockTtl, callback) => {
       return await callback();
     });
@@ -85,12 +74,10 @@ describe("createTokenBucketLimiter", () => {
 
   it(`should return response with ${StatusCodes.TOO_MANY_REQUESTS} status when request is not allowed`, async () => {
     mockedGetTokenBucketLockKey.mockReturnValue(mockLockKey);
-
     mockedProcessTokenBucket.mockResolvedValue({
       allowed: false,
       tokensLeft: 0,
     });
-
     mockedWithLock.mockImplementation(async (_lockKey, _lockTtl, callback) => {
       return await callback();
     });
@@ -112,9 +99,7 @@ describe("createTokenBucketLimiter", () => {
 
   it(`should return response with ${StatusCodes.SERVICE_UNAVAILABLE} status when error occurred`, async () => {
     mockedGetTokenBucketLockKey.mockReturnValue(mockLockKey);
-
     mockedProcessTokenBucket.mockRejectedValue(undefined);
-
     mockedWithLock.mockImplementation(async (_lockKey, _lockTtl, callback) => {
       return await callback();
     });

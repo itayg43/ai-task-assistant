@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, Mock, vi } from "vitest";
 
-import { redis } from "@clients";
+import { redis } from "@clients/redis";
 import { TokenBucketRateLimiterConfig } from "@types";
-import { getTokenBucketState, setTokenBucketState } from "@utils";
+import {
+  getTokenBucketState,
+  setTokenBucketState,
+} from "@utils/token-bucket/token-bucket-state-utils";
 
-vi.mock("@clients");
+vi.mock("@clients/redis");
 
 describe("bucketStateUtils", () => {
   const mockKey = "token:bucket:state";

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 
-import { getElapsedTime } from "./time";
+import { getElapsedTime } from "@utils/time";
 
 describe("time", () => {
   beforeEach(() => {

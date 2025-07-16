@@ -1,11 +1,11 @@
-import { createLogger } from "@config";
+import { createLogger } from "@config/logger";
 import { MS_PER_SECOND, TAG } from "@constants";
 import { TokenBucketRateLimiterConfig, TokenBucketState } from "@types";
+import { getTokenBucketKey } from "@utils/token-bucket/key-utils";
 import {
-  getTokenBucketKey,
   getTokenBucketState,
   setTokenBucketState,
-} from "@utils";
+} from "@utils/token-bucket/token-bucket-state-utils";
 
 const logger = createLogger(TAG.PROCESS_TOKEN_BUCKET);
 

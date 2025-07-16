@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from "express";
+import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { createLogger } from "@config";
+import { createLogger } from "@config/logger";
 import { TAG } from "@constants";
 import { BaseError } from "@errors";
 import { ErrorResponse } from "@types";

@@ -1,19 +1,19 @@
 import http from "http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { shutdownHandler } from "../handlers";
-import { registerProcessEventHandlers } from "./register-process-event-handlers";
-import { ExitCallback } from "@types";
+import { ExitCallback, Mocked } from "@types";
+import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
+import { registerProcessEventHandlers } from "@utils/process-event/register-process-event-handlers";
 
-vi.mock("../handlers/shutdown-handler/shutdown-handler", () => ({
-  shutdownHandler: vi.fn(),
-}));
+vi.mock("@utils/process-event/handlers/shutdown-handler");
 
 describe("registerProcessEventHandlers", () => {
+  let mockedShutdownHandler: Mocked<typeof shutdownHandler>;
+
   let mockServer: Partial<http.Server>;
-  let processOnSpy: any;
-  let mockShutdownHandler: ReturnType<typeof vi.mocked<typeof shutdownHandler>>;
   let mockExitCallback: ExitCallback;
+
+  let processOnSpy: any;
 
   const events = [
     {
@@ -39,14 +39,14 @@ describe("registerProcessEventHandlers", () => {
   ] as const;
 
   beforeEach(() => {
+    mockedShutdownHandler = vi.mocked(shutdownHandler);
+
     mockServer = {
       close: vi.fn(),
     };
+    mockExitCallback = vi.fn() as unknown as ExitCallback;
 
     processOnSpy = vi.spyOn(process, "on");
-
-    mockShutdownHandler = vi.mocked(shutdownHandler);
-    mockExitCallback = vi.fn() as unknown as ExitCallback;
   });
 
   afterEach(() => {
@@ -72,7 +72,7 @@ describe("registerProcessEventHandlers", () => {
 
       // verify the correct handler was called based on the expectedHandler
       if (expectedHandler === "shutdownHandler") {
-        expect(mockShutdownHandler).toHaveBeenCalledWith(
+        expect(mockedShutdownHandler).toHaveBeenCalledWith(
           mockServer,
           name,
           errorOrReason,

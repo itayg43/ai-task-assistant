@@ -1,10 +1,12 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { createLogger } from "@config";
+import { createLogger } from "@config/logger";
 import { TAG } from "@constants";
 import { TokenBucketRateLimiterConfig } from "@types";
-import { getTokenBucketLockKey, processTokenBucket, withLock } from "@utils";
+import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
+import { processTokenBucket } from "@utils/token-bucket/process-token-bucket";
+import { withLock } from "@utils/with-lock";
 
 const logger = createLogger(TAG.TOKEN_BUCKET_RATE_LIMITER);
 
