@@ -2,11 +2,10 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
 import { createLogger } from "@config/logger";
-import { TAG } from "@constants";
 import { BaseError } from "@errors";
 import { ErrorResponse } from "@types";
 
-const logger = createLogger(TAG.ERROR_HANDLER);
+const logger = createLogger("errorHandler");
 
 export const errorHandler = (
   error: Error,
@@ -14,9 +13,7 @@ export const errorHandler = (
   res: Response<ErrorResponse>,
   _next: NextFunction
 ) => {
-  logger.error(error.message, {
-    error,
-  });
+  logger.error(error.message, error);
 
   const status =
     error instanceof BaseError

@@ -2,19 +2,14 @@ import { Redis } from "ioredis";
 
 import { env } from "@config/env";
 import { createLogger } from "@config/logger";
-import { TAG } from "@constants";
 
-const logger = createLogger(TAG.REDIS);
+const logger = createLogger("redis");
 
 export const redis = new Redis(env.REDIS_URL, {
   connectTimeout: env.REDIS_CONNECT_TIMEOUT_MS,
 });
 
-redis.on("error", (error) =>
-  logger.error("Redis client error", {
-    error,
-  })
-);
+redis.on("error", (error) => logger.error("Redis client error", error));
 
 /**
  * Waits for the Redis client to emit the "ready" event, indicating it is fully initialized and ready for use.

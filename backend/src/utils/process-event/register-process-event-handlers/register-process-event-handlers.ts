@@ -1,11 +1,10 @@
 import http from "http";
 
 import { createLogger } from "@config/logger";
-import { TAG } from "@constants";
 import { ExitCallback } from "@types";
 import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
 
-const logger = createLogger(TAG.PROCESS_EVENT_HANDLER);
+const logger = createLogger("processEventHandler");
 
 // use SharedArrayBuffer for atomic operations to prevent race conditions
 const shutdownBuffer = new SharedArrayBuffer(1);

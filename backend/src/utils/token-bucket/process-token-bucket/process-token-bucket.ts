@@ -7,7 +7,7 @@ import {
   setTokenBucketState,
 } from "@utils/token-bucket/token-bucket-state-utils";
 
-const logger = createLogger(TAG.PROCESS_TOKEN_BUCKET);
+const logger = createLogger("processTokenBucket");
 
 export const processTokenBucket = async (
   userId: number,
