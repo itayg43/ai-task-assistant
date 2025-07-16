@@ -1,5 +1,6 @@
-import { Tag } from "@types";
 import { vi } from "vitest";
+
+import { Tag } from "@types";
 
 const logger = {
   info: vi.fn(),
