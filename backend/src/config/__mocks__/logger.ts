@@ -1,10 +1,9 @@
 import { vi } from "vitest";
 
-export const mockInfo = vi.fn();
-export const mockError = vi.fn();
-export const mockWarn = vi.fn();
-export const createLogger = vi.fn(() => ({
-  info: mockInfo,
-  error: mockError,
-  warn: mockWarn,
-}));
+const logger = {
+  info: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn(),
+};
+
+export const createLogger = vi.fn((_tag: string) => logger);

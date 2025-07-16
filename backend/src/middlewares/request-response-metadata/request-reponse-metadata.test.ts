@@ -1,18 +1,22 @@
 import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 
-import { mockInfo } from "@config/__mocks__/logger";
+import { createLogger } from "@config/logger";
 import { requestResponseMetadata } from "./request-reponse-metadata";
 
 vi.mock("@config/logger");
 
 describe("requestResponseMetadata", () => {
+  let mockedLogger: ReturnType<typeof createLogger>;
+
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let mockNext: NextFunction;
 
   beforeEach(() => {
     vi.useFakeTimers();
+
+    mockedLogger = createLogger("test");
 
     mockRequest = {
       method: "GET",
@@ -43,7 +47,7 @@ describe("requestResponseMetadata", () => {
       mockNext
     );
 
-    expect(mockInfo).toHaveBeenCalledWith("Incoming request", {
+    expect(mockedLogger.info).toHaveBeenCalledWith("Incoming request", {
       method: "GET",
       url: "/api/test",
       userAgent: "Mozilla/5.0 (Test Browser)",
@@ -71,8 +75,8 @@ describe("requestResponseMetadata", () => {
 
     (mockResponse.end as Function)();
 
-    expect(mockInfo).toHaveBeenCalledTimes(2);
-    expect(mockInfo).toHaveBeenLastCalledWith("Request completed", {
+    expect(mockedLogger.info).toHaveBeenCalledTimes(2);
+    expect(mockedLogger.info).toHaveBeenLastCalledWith("Request completed", {
       method: "GET",
       url: "/api/test",
       userAgent: "Mozilla/5.0 (Test Browser)",
@@ -90,7 +94,7 @@ describe("requestResponseMetadata", () => {
       mockNext
     );
 
-    expect(mockInfo).toHaveBeenCalledWith("Incoming request", {
+    expect(mockedLogger.info).toHaveBeenCalledWith("Incoming request", {
       method: "GET",
       url: "/api/test",
       userAgent: undefined,
@@ -111,8 +115,8 @@ describe("requestResponseMetadata", () => {
     (mockResponse.end as any)("second call");
 
     // Should only log completion once (first call)
-    expect(mockInfo).toHaveBeenCalledTimes(2);
-    expect(mockInfo).toHaveBeenLastCalledWith("Request completed", {
+    expect(mockedLogger.info).toHaveBeenCalledTimes(2);
+    expect(mockedLogger.info).toHaveBeenLastCalledWith("Request completed", {
       method: "GET",
       url: "/api/test",
       userAgent: "Mozilla/5.0 (Test Browser)",
