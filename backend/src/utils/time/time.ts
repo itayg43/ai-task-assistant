@@ -1,3 +1,3 @@
-export const getElapsedTime = (startTimestamp: number) => {
-  return Date.now() - startTimestamp;
+export const getElapsedTime = (timestamp: number) => {
+  return Date.now() - timestamp;
 };

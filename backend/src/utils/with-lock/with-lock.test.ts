@@ -2,7 +2,7 @@ import { ResourceLockedError } from "redlock";
 import { afterEach, describe, expect, it, Mock, vi } from "vitest";
 
 import { redlock } from "@clients";
-import { withLock } from "./with-lock";
+import { withLock } from "@utils/with-lock";
 
 vi.mock("@clients");
 

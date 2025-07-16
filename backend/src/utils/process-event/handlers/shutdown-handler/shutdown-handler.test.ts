@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { closeRedisClient, destroyRedisClient } from "@clients";
 import { EXIT_CODE } from "@constants";
 import { ExitCallback } from "@types";
-import { shutdownHandler } from "./shutdown-handler";
+import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
 
 vi.mock("@clients");
 

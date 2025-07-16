@@ -13,7 +13,6 @@
       "@types": ["src/types"],
       "@constants": ["src/constants"],
       "@config/*": ["src/config/*"],
-      "@utils": ["src/utils"],
       "@utils/*": ["src/utils/*"],
       "@middlewares": ["src/middlewares"],
       "@middlewares/*": ["src/middlewares/*"],

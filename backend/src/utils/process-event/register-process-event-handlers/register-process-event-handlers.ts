@@ -3,7 +3,7 @@ import http from "http";
 import { createLogger } from "@config/logger";
 import { TAG } from "@constants";
 import { ExitCallback } from "@types";
-import { shutdownHandler } from "../handlers";
+import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
 
 const logger = createLogger(TAG.PROCESS_EVENT_HANDLER);
 
