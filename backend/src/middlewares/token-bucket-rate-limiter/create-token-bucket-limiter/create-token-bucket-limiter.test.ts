@@ -2,11 +2,11 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createTokenBucketLimiter } from "@middlewares/token-bucket-rate-limiter/create-token-bucket-limiter/create-token-bucket-limiter";
 import { Mocked, TokenBucketRateLimiterConfig } from "@types";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
 import { processTokenBucket } from "@utils/token-bucket/process-token-bucket";
 import { withLock } from "@utils/with-lock";
-import { createTokenBucketLimiter } from "./create-token-bucket-limiter";
 
 vi.mock("@utils/token-bucket/key-utils");
 vi.mock("@utils/token-bucket/process-token-bucket");
