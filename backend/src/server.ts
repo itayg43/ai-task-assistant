@@ -1,6 +1,6 @@
 import http from "http";
 
-import { connectRedisClient } from "@clients";
+import { connectRedisClient } from "@clients/redis";
 import { env } from "@config/env";
 import { createLogger } from "@config/logger";
 import { EXIT_CODE, TAG } from "@constants";

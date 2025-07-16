@@ -1,6 +1,6 @@
 import http from "http";
 
-import { closeRedisClient, destroyRedisClient } from "@clients";
+import { closeRedisClient, destroyRedisClient } from "@clients/redis";
 import { createLogger } from "@config/logger";
 import { EXIT_CODE, SHUTDOWN_STATE, TAG } from "@constants";
 import { ExitCallback } from "@types";

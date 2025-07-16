@@ -1,7 +1,7 @@
 import Redlock from "redlock";
 
 import { env } from "@config/env";
-import { redis } from "./redis";
+import { redis } from "@clients/redis";
 
 export const redlock = new Redlock([redis], {
   retryCount: env.REDLOCK_RETRY_COUNT,

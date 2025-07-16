@@ -1,4 +1,4 @@
-import { redis } from "@clients";
+import { redis } from "@clients/redis";
 import { TokenBucketRateLimiterConfig } from "@types";
 
 export const getTokenBucketState = async (

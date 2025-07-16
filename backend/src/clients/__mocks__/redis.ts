@@ -6,10 +6,5 @@ export const redis = {
   expire: vi.fn(),
 };
 
-export const redlock = {
-  acquire: vi.fn(),
-};
-
 export const closeRedisClient = vi.fn();
-
 export const destroyRedisClient = vi.fn();

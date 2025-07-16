@@ -1,10 +1,10 @@
 import { ResourceLockedError } from "redlock";
 import { afterEach, describe, expect, it, Mock, vi } from "vitest";
 
-import { redlock } from "@clients";
+import { redlock } from "@clients/redlock";
 import { withLock } from "@utils/with-lock";
 
-vi.mock("@clients");
+vi.mock("@clients/redlock");
 
 /**
  * - Separate test for lock acquisition failure.

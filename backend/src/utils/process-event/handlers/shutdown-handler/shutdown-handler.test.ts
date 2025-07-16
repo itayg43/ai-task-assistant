@@ -1,19 +1,25 @@
 import http from "http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { closeRedisClient, destroyRedisClient } from "@clients";
+import { closeRedisClient, destroyRedisClient } from "@clients/redis";
 import { EXIT_CODE } from "@constants";
-import { ExitCallback } from "@types";
+import { ExitCallback, Mocked } from "@types";
 import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
 
-vi.mock("@clients");
+vi.mock("@clients/redis");
 
 describe("shutdownHandler", () => {
+  let mockedCloseRedisClient: Mocked<typeof closeRedisClient>;
+  let mockedDestroyRedisClient: Mocked<typeof destroyRedisClient>;
+
   let mockServer: Partial<http.Server>;
   let mockExitCallback: ExitCallback;
   let shutdownView: Uint8Array;
 
   beforeEach(() => {
+    mockedCloseRedisClient = vi.mocked(closeRedisClient);
+    mockedDestroyRedisClient = vi.mocked(destroyRedisClient);
+
     mockServer = {
       close: vi.fn((cb) => cb()),
     };
@@ -39,7 +45,7 @@ describe("shutdownHandler", () => {
     );
 
     expect(mockServer.close).toHaveBeenCalled();
-    expect(closeRedisClient).toHaveBeenCalled();
+    expect(mockedCloseRedisClient).toHaveBeenCalled();
     expect(mockExitCallback).toHaveBeenCalledWith(EXIT_CODE.REGULAR);
   });
 
@@ -55,7 +61,7 @@ describe("shutdownHandler", () => {
     );
 
     expect(mockServer.close).toHaveBeenCalled();
-    expect(closeRedisClient).toHaveBeenCalled();
+    expect(mockedCloseRedisClient).toHaveBeenCalled();
     expect(mockExitCallback).toHaveBeenCalledWith(EXIT_CODE.ERROR);
   });
 
@@ -74,7 +80,7 @@ describe("shutdownHandler", () => {
     );
 
     expect(mockServer.close).toHaveBeenCalled();
-    expect(destroyRedisClient).toHaveBeenCalled();
+    expect(mockedDestroyRedisClient).toHaveBeenCalled();
     expect(mockExitCallback).toHaveBeenCalledWith(EXIT_CODE.ERROR);
   });
 
@@ -98,7 +104,7 @@ describe("shutdownHandler", () => {
     );
 
     expect(mockServer.close).toHaveBeenCalledTimes(1);
-    expect(closeRedisClient).toHaveBeenCalledTimes(1);
+    expect(mockedCloseRedisClient).toHaveBeenCalledTimes(1);
     expect(mockExitCallback).toHaveBeenCalledTimes(1);
   });
 });

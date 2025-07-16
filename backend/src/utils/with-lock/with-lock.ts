@@ -1,6 +1,6 @@
 import { Lock, ResourceLockedError } from "redlock";
 
-import { redlock } from "@clients";
+import { redlock } from "@clients/redlock";
 import { createLogger } from "@config/logger";
 import { TAG } from "@constants";
 import { getElapsedTime } from "@utils/time";
