@@ -2,7 +2,8 @@ import express, { Request, Response } from "express";
 import helmet from "helmet";
 import { StatusCodes } from "http-status-codes";
 
-import { errorHandler, requestResponseMetadata } from "@middlewares";
+import { errorHandler } from "@middlewares/error-handler";
+import { requestResponseMetadata } from "@middlewares/request-response-metadata";
 
 export const app = express();
 

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { vi, it, describe, beforeEach, afterEach, expect } from "vitest";
 import { StatusCodes } from "http-status-codes";
 
-import { errorHandler } from "./error-handler";
+import { errorHandler } from "@middlewares/error-handler";
 import { BaseError } from "@errors";
 import { ErrorResponse } from "@types";
 

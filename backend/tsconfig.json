@@ -14,7 +14,6 @@
       "@constants": ["src/constants"],
       "@config/*": ["src/config/*"],
       "@utils/*": ["src/utils/*"],
-      "@middlewares": ["src/middlewares"],
       "@middlewares/*": ["src/middlewares/*"],
       "@errors": ["src/errors"],
       "@errors/*": ["src/errors/*"],
