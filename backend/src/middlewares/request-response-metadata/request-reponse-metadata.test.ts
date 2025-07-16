@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 
 import { createLogger } from "@config/logger";
-import { requestResponseMetadata } from "./request-reponse-metadata";
+import { requestResponseMetadata } from "@middlewares/request-response-metadata/request-reponse-metadata";
 
 vi.mock("@config/logger");
 
