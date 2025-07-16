@@ -1,3 +1,4 @@
+import { Tag } from "@types";
 import { vi } from "vitest";
 
 const logger = {
@@ -6,4 +7,4 @@ const logger = {
   warn: vi.fn(),
 };
 
-export const createLogger = vi.fn((_tag: string) => logger);
+export const createLogger = vi.fn((_tag: Tag) => logger);

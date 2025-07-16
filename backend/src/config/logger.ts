@@ -1,70 +1,34 @@
-import {
-  createLogger as createWinstonLogger,
-  format,
-  transports,
-} from "winston";
+import { LOG_LEVEL } from "@constants";
+import { LogContext, LogLevel, Tag } from "@types";
 
-import { LogMeta } from "@types";
-
-const baseLogger = createWinstonLogger({
-  level: "info",
-  format: format.combine(
-    errorSerializer(),
-    format.colorize(),
-    format.timestamp(),
-    format.printf(({ timestamp, level, message, tag, ...meta }) => {
-      const tagString = tag ? `[${tag}]` : "";
-      const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
-
-      return `[${timestamp}] [${level}] ${tagString}: ${message} ${metaString}`;
-    })
-  ),
-  transports: [new transports.Console()],
+export const createLogger = (tag: Tag) => ({
+  info: (message: string, context?: LogContext) =>
+    log("info", tag, message, context),
+  error: (message: string, error?: unknown) =>
+    log("error", tag, message, error),
+  warn: (message: string, contextOrError?: unknown) =>
+    log("warn", tag, message, contextOrError),
 });
 
-export const createLogger = (tag: string) => ({
-  info: (message: string, meta?: LogMeta) =>
-    baseLogger.info(message, {
-      tag,
-      ...meta,
-    }),
-  error: (message: string, meta?: LogMeta) =>
-    baseLogger.error(message, {
-      tag,
-      ...meta,
-    }),
-  warn: (message: string, meta?: LogMeta) =>
-    baseLogger.warn(message, {
-      tag,
-      ...meta,
-    }),
-});
+function log(level: LogLevel, tag: Tag, message: string, extra?: unknown) {
+  const date = new Date().toISOString();
+  const base = `[${date}] [${level.toUpperCase()}] [${tag}]: ${message}`;
+  const args = extra
+    ? [level === LOG_LEVEL.ERROR ? extra : JSON.stringify(extra, null, 2)]
+    : [];
 
-function errorSerializer() {
-  return format(function (info) {
-    function serialize(obj: any): any {
-      if (obj instanceof Error) {
-        return {
-          ...obj,
-          name: obj.name,
-          message: obj.message,
-          stack: obj.stack,
-        };
-      } else if (obj && typeof obj === "object") {
-        for (const key of Object.keys(obj)) {
-          obj[key] = serialize(obj[key]);
-        }
-      }
-
-      return obj;
+  switch (level) {
+    case LOG_LEVEL.INFO: {
+      console.log(base, ...args);
+      break;
     }
-
-    if (info) {
-      for (const key of Object.keys(info)) {
-        info[key] = serialize(info[key]);
-      }
+    case LOG_LEVEL.ERROR: {
+      console.error(base, ...args);
+      break;
     }
-
-    return info;
-  })();
+    case LOG_LEVEL.WARN: {
+      console.warn(base, ...args);
+      break;
+    }
+  }
 }

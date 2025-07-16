@@ -2,13 +2,12 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
 import { createLogger } from "@config/logger";
-import { TAG } from "@constants";
 import { TokenBucketRateLimiterConfig } from "@types";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
 import { processTokenBucket } from "@utils/token-bucket/process-token-bucket";
 import { withLock } from "@utils/with-lock";
 
-const logger = createLogger(TAG.TOKEN_BUCKET_RATE_LIMITER);
+const logger = createLogger("tokenBucketRateLimiter");
 
 export const createTokenBucketLimiter =
   (config: TokenBucketRateLimiterConfig) =>
@@ -41,9 +40,7 @@ export const createTokenBucketLimiter =
     } catch (error) {
       logger.error(
         `Error during rate limiting for user ${userId} on ${req.method} ${req.originalUrl}`,
-        {
-          error,
-        }
+        error
       );
 
       res.status(StatusCodes.SERVICE_UNAVAILABLE).json({

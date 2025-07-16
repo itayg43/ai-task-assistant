@@ -16,7 +16,7 @@ describe("requestResponseMetadata", () => {
   beforeEach(() => {
     vi.useFakeTimers();
 
-    mockedLogger = createLogger("test");
+    mockedLogger = createLogger("requestResponseMetadata");
 
     mockRequest = {
       method: "GET",

@@ -1,9 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 
 import { createLogger } from "@config/logger";
-import { TAG } from "@constants";
 
-const logger = createLogger(TAG.REQUEST_RESPONSE_METADATA);
+const logger = createLogger("requestResponseMetadata");
 
 export const requestResponseMetadata = (
   req: Request,

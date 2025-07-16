@@ -2,10 +2,10 @@ import http from "http";
 
 import { closeRedisClient, destroyRedisClient } from "@clients/redis";
 import { createLogger } from "@config/logger";
-import { EXIT_CODE, SHUTDOWN_STATE, TAG } from "@constants";
+import { EXIT_CODE, SHUTDOWN_STATE } from "@constants";
 import { ExitCallback } from "@types";
 
-const logger = createLogger(TAG.SHUTDOWN_HANDLER);
+const logger = createLogger("shutdownHandler");
 
 export const shutdownHandler = async (
   server: http.Server,
@@ -23,9 +23,7 @@ export const shutdownHandler = async (
   }
 
   if (errorOrReason) {
-    logger.error(`Shutting down due to ${event}:`, {
-      errorOrReason,
-    });
+    logger.error(`Shutting down due to ${event}:`, errorOrReason);
   } else {
     logger.info(`Received ${event}. Shutting down...`);
   }
@@ -60,9 +58,7 @@ async function processShutdown(
 
     exitCallback(exitCode);
   } catch (error) {
-    logger.error(`Error while closing the server:`, {
-      error,
-    });
+    logger.error(`Error while closing the server:`, error);
 
     destroyRedisClient();
 

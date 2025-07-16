@@ -2,10 +2,9 @@ import { Lock, ResourceLockedError } from "redlock";
 
 import { redlock } from "@clients/redlock";
 import { createLogger } from "@config/logger";
-import { TAG } from "@constants";
 import { getElapsedTime } from "@utils/time";
 
-const logger = createLogger(TAG.WITH_LOCK);
+const logger = createLogger("withLock");
 
 export const withLock = async <T>(
   lockKey: string,
@@ -51,16 +50,16 @@ function logLockError(
     error instanceof ResourceLockedError
       ? logger.warn(
           `Failed to acquire lock due to timeout error for ${lockKey} after ${errorTime}ms`,
-          { error }
+          error
         )
       : logger.error(
           `Failed to acquire lock due to unknown error for ${lockKey} after ${errorTime}ms`,
-          { error }
+          error
         );
   } else {
     logger.error(
       `Lock acquired, function execution failed for ${lockKey} after ${errorTime}ms`,
-      { error }
+      error
     );
   }
 }
@@ -72,8 +71,6 @@ async function releaseLock(lock: Lock, lockKey: string, startTime: number) {
     const totalTime = getElapsedTime(startTime);
     logger.info(`Lock released for ${lockKey}, total time: ${totalTime}ms`);
   } catch (error) {
-    logger.error(`Failed to release lock for ${lockKey}`, {
-      error,
-    });
+    logger.error(`Failed to release lock for ${lockKey}`, error);
   }
 }

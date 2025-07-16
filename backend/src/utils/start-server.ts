@@ -1,9 +1,8 @@
 import http from "http";
 
 import { createLogger } from "@config/logger";
-import { TAG } from "@constants";
 
-const logger = createLogger(TAG.SERVER);
+const logger = createLogger("server");
 
 export const startServer = async (
   server: http.Server,
