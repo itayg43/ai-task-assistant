@@ -1,17 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 
+import { mockInfo } from "@config/__mocks__/logger";
 import { requestResponseMetadata } from "./request-reponse-metadata";
 
-// vi.hoisted() ensures these are created before vi.mock() calls are executed
-const mockInfoSpy = vi.hoisted(() => vi.fn());
-
-vi.mock("@config", () => ({
-  createLogger: vi.fn(() => ({
-    info: mockInfoSpy,
-    error: vi.fn(),
-  })),
-}));
+vi.mock("@config/logger");
 
 describe("requestResponseMetadata", () => {
   let mockRequest: Partial<Request>;
@@ -31,12 +24,10 @@ describe("requestResponseMetadata", () => {
         return undefined;
       }) as any,
     };
-
     mockResponse = {
       statusCode: 200,
       end: vi.fn(),
     };
-
     mockNext = vi.fn();
   });
 
@@ -52,7 +43,7 @@ describe("requestResponseMetadata", () => {
       mockNext
     );
 
-    expect(mockInfoSpy).toHaveBeenCalledWith("Incoming request", {
+    expect(mockInfo).toHaveBeenCalledWith("Incoming request", {
       method: "GET",
       url: "/api/test",
       userAgent: "Mozilla/5.0 (Test Browser)",
@@ -80,8 +71,8 @@ describe("requestResponseMetadata", () => {
 
     (mockResponse.end as Function)();
 
-    expect(mockInfoSpy).toHaveBeenCalledTimes(2);
-    expect(mockInfoSpy).toHaveBeenLastCalledWith("Request completed", {
+    expect(mockInfo).toHaveBeenCalledTimes(2);
+    expect(mockInfo).toHaveBeenLastCalledWith("Request completed", {
       method: "GET",
       url: "/api/test",
       userAgent: "Mozilla/5.0 (Test Browser)",
@@ -99,7 +90,7 @@ describe("requestResponseMetadata", () => {
       mockNext
     );
 
-    expect(mockInfoSpy).toHaveBeenCalledWith("Incoming request", {
+    expect(mockInfo).toHaveBeenCalledWith("Incoming request", {
       method: "GET",
       url: "/api/test",
       userAgent: undefined,
@@ -120,8 +111,8 @@ describe("requestResponseMetadata", () => {
     (mockResponse.end as any)("second call");
 
     // Should only log completion once (first call)
-    expect(mockInfoSpy).toHaveBeenCalledTimes(2);
-    expect(mockInfoSpy).toHaveBeenLastCalledWith("Request completed", {
+    expect(mockInfo).toHaveBeenCalledTimes(2);
+    expect(mockInfo).toHaveBeenLastCalledWith("Request completed", {
       method: "GET",
       url: "/api/test",
       userAgent: "Mozilla/5.0 (Test Browser)",

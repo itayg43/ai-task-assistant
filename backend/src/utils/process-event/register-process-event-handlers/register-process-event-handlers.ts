@@ -1,9 +1,9 @@
 import http from "http";
 
+import { createLogger } from "@config/logger";
 import { TAG } from "@constants";
-import { shutdownHandler } from "../handlers";
-import { createLogger } from "@config";
 import { ExitCallback } from "@types";
+import { shutdownHandler } from "../handlers";
 
 const logger = createLogger(TAG.PROCESS_EVENT_HANDLER);
 

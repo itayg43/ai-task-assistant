@@ -1,4 +1,4 @@
-import { createLogger } from "@config";
+import { createLogger } from "@config/logger";
 import { MS_PER_SECOND, TAG } from "@constants";
 import { TokenBucketRateLimiterConfig, TokenBucketState } from "@types";
 import {

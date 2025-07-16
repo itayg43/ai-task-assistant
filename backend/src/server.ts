@@ -1,7 +1,8 @@
 import http from "http";
 
 import { connectRedisClient } from "@clients";
-import { createLogger, env } from "@config";
+import { env } from "@config/env";
+import { createLogger } from "@config/logger";
 import { EXIT_CODE, TAG } from "@constants";
 import { registerProcessEventHandlers, startServer } from "@utils";
 import { app } from "./app";

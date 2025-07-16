@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
+import { NextFunction, Request, Response } from "express";
 
-import { createLogger } from "@config";
+import { createLogger } from "@config/logger";
 import { TAG } from "@constants";
 
 const logger = createLogger(TAG.REQUEST_RESPONSE_METADATA);

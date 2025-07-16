@@ -1,4 +1,4 @@
-import { env } from "@config";
+import { env } from "@config/env";
 import { createTokenBucketLimiter } from "./create-token-bucket-limiter/create-token-bucket-limiter";
 
 export const tokenBucketRateLimiter = {
