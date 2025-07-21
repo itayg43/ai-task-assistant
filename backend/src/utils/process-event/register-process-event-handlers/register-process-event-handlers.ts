@@ -10,6 +10,11 @@ const logger = createLogger("processEventHandler");
 const shutdownBuffer = new SharedArrayBuffer(1);
 const shutdownView = new Uint8Array(shutdownBuffer);
 
+// Using 'once' would ensure each handler runs only once per event type (e.g., only the first SIGINT).
+// However, multiple different events (SIGINT, SIGTERM, uncaughtException, unhandledRejection) can all trigger shutdown.
+// These events can occur nearly simultaneously, so even with 'once', multiple handlers could run in parallel.
+// Therefore, we must use atomic protection (SharedArrayBuffer + Atomics) to ensure only one shutdown sequence proceeds.
+// This guards against race conditions regardless of whether 'on' or 'once' is used.
 export const registerProcessEventHandlers = (
   server: http.Server,
   exitCallback: ExitCallback = process.exit
