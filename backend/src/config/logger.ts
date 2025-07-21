@@ -29,5 +29,11 @@ function log(level: LogLevel, tag: Tag, message: string, extra?: unknown) {
       console.warn(base, ...args);
       break;
     }
+    default: {
+      // This ensures all cases are handled. If a new value is added to the union type,
+      // TypeScript will error here until you handle it above.
+      const _exhaustiveCheck: never = level;
+      throw new Error(`Unhandled log level: ${level}`);
+    }
   }
 }
