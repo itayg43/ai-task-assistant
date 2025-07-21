@@ -30,13 +30,13 @@ npm run start:dev:type-check
 
 This will continuously watch for typescript errors and report them instantly as you edit files.
 
-(Optional) Connect to the running redis cli:
+(Optional) Connect to the running redis:
 
 ```bash
 docker exec -it <redis_container_id> redis-cli
 ```
 
-Run tests:
+Run the tests:
 
 1. Open a new terminal and connect to the running backend container:
 
