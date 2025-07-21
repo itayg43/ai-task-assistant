@@ -1,5 +1,6 @@
 import { LogContext, LogLevel, Tag } from "@types";
 import { exhaustiveSwitch } from "@utils/exhaustive-switch";
+import { getDateISO } from "@utils/time";
 
 export const createLogger = (tag: Tag) => ({
   info: (message: string, context?: LogContext) =>
@@ -11,8 +12,7 @@ export const createLogger = (tag: Tag) => ({
 });
 
 function log(level: LogLevel, tag: Tag, message: string, extra?: unknown) {
-  const date = new Date().toISOString();
-  const base = `[${date}] [${level.toUpperCase()}] [${tag}]: ${message}`;
+  const base = `[${getDateISO()}] [${level.toUpperCase()}] [${tag}]: ${message}`;
 
   let args: unknown[] = [];
 
