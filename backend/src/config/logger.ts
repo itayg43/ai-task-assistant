@@ -1,4 +1,3 @@
-import { LOG_LEVEL } from "@constants";
 import { LogContext, LogLevel, Tag } from "@types";
 
 export const createLogger = (tag: Tag) => ({
@@ -14,19 +13,19 @@ function log(level: LogLevel, tag: Tag, message: string, extra?: unknown) {
   const date = new Date().toISOString();
   const base = `[${date}] [${level.toUpperCase()}] [${tag}]: ${message}`;
   const args = extra
-    ? [level === LOG_LEVEL.ERROR ? extra : JSON.stringify(extra, null, 2)]
+    ? [level === "error" ? extra : JSON.stringify(extra, null, 2)]
     : [];
 
   switch (level) {
-    case LOG_LEVEL.INFO: {
+    case "info": {
       console.log(base, ...args);
       break;
     }
-    case LOG_LEVEL.ERROR: {
+    case "error": {
       console.error(base, ...args);
       break;
     }
-    case LOG_LEVEL.WARN: {
+    case "warn": {
       console.warn(base, ...args);
       break;
     }
