@@ -12,9 +12,12 @@ export const createLogger = (tag: Tag) => ({
 function log(level: LogLevel, tag: Tag, message: string, extra?: unknown) {
   const date = new Date().toISOString();
   const base = `[${date}] [${level.toUpperCase()}] [${tag}]: ${message}`;
-  const args = extra
-    ? [level === "error" ? extra : JSON.stringify(extra, null, 2)]
-    : [];
+
+  let args: unknown[] = [];
+
+  if (extra) {
+    args = extra instanceof Error ? [extra] : [JSON.stringify(extra, null, 2)];
+  }
 
   switch (level) {
     case "info": {
