@@ -30,18 +30,16 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watc
 
 This will continuously watch for TypeScript errors and report them instantly as you edit files.
 
+(Optional) Connect to the Redis CLI:
+
+```bash
+docker exec -it <redis_container_id> redis-cli
+```
+
 ---
 
 Build and run the tests:
 
 ```bash
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --rm backend npm run test
-```
-
----
-
-Connect to Redis CLI:
-
-```bash
-docker exec -it <redis_container_id> redis-cli
 ```
