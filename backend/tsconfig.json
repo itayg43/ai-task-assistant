@@ -16,7 +16,8 @@
       "@utils/*": ["src/utils/*"],
       "@middlewares/*": ["src/middlewares/*"],
       "@errors": ["src/errors"],
-      "@clients/*": ["src/clients/*"]
+      "@clients/*": ["src/clients/*"],
+      "@modules/*": ["src/modules/*"]
     }
   },
   "include": ["src/"],

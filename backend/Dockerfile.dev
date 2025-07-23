@@ -4,6 +4,9 @@ ENV NODE_ENV=development
 
 WORKDIR /app
 
+# For using in healthcheck
+RUN apk add --no-cache curl
+
 COPY package.json package-lock.json ./
 RUN npm install
 
