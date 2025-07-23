@@ -49,8 +49,7 @@ function logLockError(
   if (!lockAcquired) {
     error instanceof ResourceLockedError
       ? logger.warn(
-          `Failed to acquire lock due to timeout error for ${lockKey} after ${errorTime}ms`,
-          error
+          `Failed to acquire lock due to timeout error for ${lockKey} after ${errorTime}ms`
         )
       : logger.error(
           `Failed to acquire lock due to unknown error for ${lockKey} after ${errorTime}ms`,

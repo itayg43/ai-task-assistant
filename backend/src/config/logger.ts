@@ -5,20 +5,24 @@ import { getDateISO } from "@utils/time-date";
 export const createLogger = (tag: Tag) => ({
   info: (message: string, context?: LogContext) =>
     log("info", tag, message, context),
-  error: (message: string, error?: unknown) =>
-    log("error", tag, message, error),
-  warn: (message: string, contextOrError?: unknown) =>
-    log("warn", tag, message, contextOrError),
+  error: (message: string, error: unknown, context?: LogContext) =>
+    log("error", tag, message, context, error),
+  warn: (message: string, context?: LogContext) =>
+    log("warn", tag, message, context),
 });
 
-function log(level: LogLevel, tag: Tag, message: string, extra?: unknown) {
+function log(
+  level: LogLevel,
+  tag: Tag,
+  message: string,
+  context?: LogContext,
+  error?: unknown
+) {
   const base = `[${getDateISO()}] [${level.toUpperCase()}] [${tag}]: ${message}`;
 
   let args: unknown[] = [];
-
-  if (extra) {
-    args = extra instanceof Error ? [extra] : [JSON.stringify(extra, null, 2)];
-  }
+  if (error) args.push(error);
+  if (context) args.push(JSON.stringify(context, null, 2));
 
   exhaustiveSwitch(level, {
     info: () => console.log(base, ...args),
