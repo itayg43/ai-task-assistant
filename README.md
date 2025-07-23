@@ -1,7 +1,5 @@
 ## Development
 
----
-
 Before starting make sure to set the required environment variables:
 
 1. Navigate to the `backend/` directory
