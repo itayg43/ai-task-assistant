@@ -1,9 +1,9 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import helmet from "helmet";
-import { StatusCodes } from "http-status-codes";
 
 import { errorHandler } from "@middlewares/error-handler";
 import { requestResponseMetadata } from "@middlewares/request-response-metadata";
+import { healthRouter } from "@modules/health/health-router";
 
 export const app = express();
 
@@ -15,9 +15,5 @@ app.use(
     extended: true,
   })
 );
-
-app.get("/api/v1/health", (_req: Request, res: Response) => {
-  res.sendStatus(StatusCodes.OK);
-});
-
+app.use("/health", healthRouter);
 app.use(errorHandler);
