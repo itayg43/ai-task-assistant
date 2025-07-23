@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 
 import { createLogger } from "@config/logger";
-import { getCurrentTime } from "@utils/time";
+import { getCurrentTime } from "@utils/time-date";
 
 const logger = createLogger("requestResponseMetadata");
 

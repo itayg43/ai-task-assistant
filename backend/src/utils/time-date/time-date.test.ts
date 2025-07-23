@@ -5,7 +5,7 @@ import {
   getCurrentTime,
   getDateISO,
   getElapsedTime,
-} from "@utils/time";
+} from "@utils/time-date";
 
 describe("time", () => {
   beforeEach(() => {

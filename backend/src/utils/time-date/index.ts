@@ -3,4 +3,4 @@ export {
   getCurrentTime,
   getDateISO,
   getElapsedTime,
-} from "./time";
+} from "./time-date";

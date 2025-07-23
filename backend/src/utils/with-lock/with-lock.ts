@@ -2,7 +2,7 @@ import { Lock, ResourceLockedError } from "redlock";
 
 import { redlock } from "@clients/redlock";
 import { createLogger } from "@config/logger";
-import { getCurrentTime, getElapsedTime } from "@utils/time";
+import { getCurrentTime, getElapsedTime } from "@utils/time-date";
 
 const logger = createLogger("withLock");
 
