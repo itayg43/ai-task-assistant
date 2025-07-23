@@ -1,6 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 
-import { BaseError } from "./base-error";
+import { BaseError } from "@errors";
 
 export class AuthenticationError extends BaseError {
   constructor(message: string) {
