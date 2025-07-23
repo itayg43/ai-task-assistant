@@ -1,7 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 
 import { createLogger } from "@config/logger";
-import { getCurrentTime } from "@utils/time-date";
+import { getAuthenticationContext } from "@utils/authentication-context";
+import { getCurrentTime, getElapsedTime } from "@utils/time-date";
 
 const logger = createLogger("requestResponseMetadata");
 
@@ -10,30 +11,40 @@ export const requestResponseMetadata = (
   res: Response,
   next: NextFunction
 ) => {
-  const startTimestamp = getCurrentTime();
+  try {
+    const startTimestamp = getCurrentTime();
 
-  const requestMetadata = {
-    method: req.method,
-    url: req.url,
-    userAgent: req.get("User-Agent"),
-  };
-  logger.info("Incoming request", requestMetadata);
+    const requestMetadata = {
+      method: req.method,
+      originalUrl: req.originalUrl,
+      userAgent: req.get("User-Agent"),
+      authenticationContext: !req.originalUrl.includes("/health")
+        ? // May throw AuthenticationError
+          getAuthenticationContext(res)
+        : undefined,
+    };
 
-  const originalEnd = res.end;
-  let completed = false; // Guard: per-request, not shared
-  res.end = function (chunk?: any, encoding?: any) {
-    if (!completed) {
-      completed = true;
-      const duration = getCurrentTime() - startTimestamp;
+    logger.info("Incoming request", requestMetadata);
 
-      logger.info("Request completed", {
-        ...requestMetadata,
-        statusCode: res.statusCode,
-        duration: `${duration}ms`,
-      });
-    }
-    return originalEnd.call(this, chunk, encoding);
-  };
+    const originalEnd = res.end;
+    let completed = false; // Guard: per-request, not shared
+    res.end = function (chunk?: any, encoding?: any) {
+      if (!completed) {
+        completed = true;
+        const duration = getElapsedTime(startTimestamp);
 
-  next();
+        logger.info("Request completed", {
+          ...requestMetadata,
+          statusCode: res.statusCode,
+          duration: `${duration}ms`,
+        });
+      }
+      return originalEnd.call(this, chunk, encoding);
+    };
+
+    next();
+  } catch (error) {
+    // Pass AuthenticationError to error handler
+    next(error);
+  }
 };
