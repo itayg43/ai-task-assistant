@@ -8,7 +8,8 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 COPY package.json package-lock.json ./
-RUN npm install
+# --legacy-peer-deps due to openai expects zod@^3
+RUN npm install --legacy-peer-deps
 
 COPY . .
 
