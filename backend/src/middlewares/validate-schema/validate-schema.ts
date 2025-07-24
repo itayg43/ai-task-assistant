@@ -10,9 +10,19 @@ export const validateSchema =
   (schema: z.ZodSchema) =>
   (req: Request, res: Response, next: NextFunction) => {
     try {
+      logger.info("Validate schema", {
+        input: {
+          body: req.body,
+        },
+      });
+
       const parsed = schema.parse(req) as any;
 
-      req.body = parsed.body;
+      Object.assign(req.body, parsed.body);
+
+      logger.info("Validate schema succeeded", {
+        parsed,
+      });
 
       next();
     } catch (error) {
