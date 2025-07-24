@@ -8,4 +8,6 @@ export const TAG = {
   WITH_LOCK: "withLock",
   TOKEN_BUCKET_RATE_LIMITER: "tokenBucketRateLimiter",
   PROCESS_TOKEN_BUCKET: "processTokenBucket",
+  TASKS_CONTROLLER: "tasksController",
+  VALIDATE_SCHEMA: "validateSchema",
 } as const;
