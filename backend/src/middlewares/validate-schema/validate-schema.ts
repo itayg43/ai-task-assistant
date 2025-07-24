@@ -10,25 +10,20 @@ export const validateSchema =
   (schema: z.ZodSchema) =>
   (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = schema.parse(req) as {
-        body: any;
-        query: any;
-        params: any;
-      };
+      const parsed = schema.parse(req) as any;
 
       req.body = parsed.body;
-      req.query = parsed.query;
-      req.params = parsed.params;
 
       next();
     } catch (error) {
-      logger.error("Validate schema failed", error);
-
       if (error instanceof z.ZodError) {
+        logger.error("Validate schema failed", error);
+
         res.status(StatusCodes.BAD_REQUEST).json({
           message: formatZodErrors(error),
         });
       } else {
+        // Pass Error to error handler
         next(error);
       }
     }
