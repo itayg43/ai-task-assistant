@@ -2,11 +2,11 @@ import * as z from "zod";
 
 export const createTaskSchema = z.object({
   body: z.object({
-    naturalLanguageTask: z
+    naturalLanguage: z
       .string()
       .transform((value) => value.trim())
       .refine((value) => value.length, {
-        message: "can't be empty",
+        message: "Can't be empty",
       }),
   }),
 });
