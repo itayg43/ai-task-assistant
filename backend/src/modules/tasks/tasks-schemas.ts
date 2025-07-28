@@ -19,7 +19,7 @@ export const createTaskInputSchema = z.object({
 export const parseTaskOutputSchema = z.object({
   title: z.string().transform(trimString).refine(isNonEmptyString),
 
-  dueDate: z.union([z.iso.datetime(), z.literal(null)]),
+  dueDate: z.iso.datetime().nullable(),
 
   priorityLevel: z.enum(PRIORITY_LEVEL),
   priorityScore: z
@@ -34,9 +34,9 @@ export const parseTaskOutputSchema = z.object({
     .object({
       frequency: z.enum(FREQUENCY),
       interval: z.number().min(1).default(1),
-      dayOfWeek: z.union([z.number().min(0).max(6), z.literal(null)]),
-      dayOfMonth: z.union([z.number().min(1).max(31), z.literal(null)]),
-      endDate: z.union([z.iso.datetime(), z.literal(null)]),
+      dayOfWeek: z.number().min(0).max(6).nullable(),
+      dayOfMonth: z.number().min(1).max(31).nullable(),
+      endDate: z.iso.datetime().nullable(),
     })
     .nullable(),
 
