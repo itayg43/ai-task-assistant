@@ -21,7 +21,7 @@ export const validateSchema =
       Object.assign(req.body, parsed.body);
 
       logger.info("Validate schema succeeded", {
-        parsed,
+        parsedInput: parsed,
       });
 
       next();
