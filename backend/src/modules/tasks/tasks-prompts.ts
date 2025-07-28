@@ -13,6 +13,10 @@ export const parseTaskPrompt = (
 ## Instructions
 Parse the natural language task description into structured JSON data.
 
+**Current Date Context**: Today is ${
+  new Date().toISOString().split("T")[0]
+} (YYYY-MM-DD). Use this context to parse relative dates like "tomorrow", "next Thursday", "this weekend", etc.
+
 Respond with only a valid JSON object. Do not include explanations or any other text. Do not wrap the response in markdown or code block markers (\`\`\`). Do not include comments.
 
 ⚠️ This prompt is designed to be used with OpenAI's API using temperature = 0 to ensure deterministic and consistent output.
@@ -38,10 +42,10 @@ Return only a single JSON object with the following structure:
 }
 
 ## Parsing Rules
-- Parse dates: "tomorrow" → today's date, "next Friday" → next Friday's date
+- Parse dates: Use current date context to interpret "tomorrow", "next Friday", "this weekend", etc.
 - Priority:
   - Map urgency/importance cues to a level: "${priorities.join(", ")}"
-  - Score priority from 0–100 based on urgency, deadlines, and language:
+  - Score priority from 0–100 based on urgency, deadlines, language, AND category context:
     - ${prioritiesScores.CRITICAL.keywords.join(", ")} → ${
   prioritiesScores.CRITICAL.min
 }–${prioritiesScores.CRITICAL.max}
@@ -54,22 +58,25 @@ Return only a single JSON object with the following structure:
     - ${prioritiesScores.LOW.keywords.join(", ")} → ${
   prioritiesScores.LOW.min
 }–${prioritiesScores.LOW.max}
-  - For conflicting indicators, consider context:
-    - Deadline + priority word → prioritize the more urgent one
-    - Emotional language (${emotionalLanguage.INCREASE.join(
-      ", "
-    )}) increases priority
-    - Vague language (${emotionalLanguage.DECREASE.join(
-      ", "
-    )}) decreases priority
-- Include a short natural-language reason explaining the priority
+  - Consider category importance in scoring:
+    - Health tasks: Consider preventive care importance and long-term well-being impact
+    - Personal tasks: Consider emotional significance and relationship impact
+    - Financial tasks: Consider consequences (late fees, credit impact, financial security)
+    - Work tasks: Consider professional impact, deadlines, and career implications
+    - Errands: Consider convenience, routine importance, and daily life impact
+  - For conflicting indicators, consider context and category importance
+  - Emotional language (${emotionalLanguage.INCREASE.join(
+    ", "
+  )}) increases priority
+  - Vague language (${emotionalLanguage.DECREASE.join(", ")}) decreases priority
+- Include a short natural-language reason explaining the priority, including category context when relevant
 - Category: infer from context or explicit mentions, otherwise default based on task title keywords
 - Recurrence:
   - "every Monday" → weekly, "daily" → daily, "monthly" → monthly
   - Use \`dayOfWeek\` for weekly recurrence (0 = Sunday to 6 = Saturday), otherwise null
   - Use \`dayOfMonth\` for monthly recurrence (1–31), otherwise null
 - Subtasks: suggest logical steps if the task is complex or multi-step
-- Default priorityLevel: If no urgency or importance is detected, default to priorityLevel: "medium" and priorityScore: 50.
+- Default priorityLevel: "medium", priorityScore: 50
 - Default category: infer based on task title if not specified
 
 ## Examples
@@ -282,6 +289,74 @@ Output:
   "category": "work",
   "recurrence": null,
   "subtasks": ["Review project scope", "Create timeline", "Allocate resources", "Execute plan"]
+}
+
+### Example 13 (Health Task - Higher Score)
+Input:
+"""
+Book dentist appointment
+"""
+Output:
+{
+  "title": "Book dentist appointment",
+  "dueDate": null,
+  "priorityLevel": "medium",
+  "priorityScore": 65,
+  "priorityReason": "Health-related task with importance for preventive care and long-term well-being.",
+  "category": "health",
+  "recurrence": null,
+  "subtasks": ["Find a dentist", "Check availability", "Schedule appointment"]
+}
+
+### Example 14 (Relationship Task - Higher Score)
+Input:
+"""
+Buy birthday gift for mom
+"""
+Output:
+{
+  "title": "Buy birthday gift for mom",
+  "dueDate": null,
+  "priorityLevel": "medium",
+  "priorityScore": 60,
+  "priorityReason": "Personal relationship task with emotional significance and family importance.",
+  "category": "personal",
+  "recurrence": null,
+  "subtasks": ["Decide on a gift", "Check budget", "Purchase gift"]
+}
+
+### Example 15 (Financial Task - Higher Score)
+Input:
+"""
+Pay credit card bill by 15th
+"""
+Output:
+{
+  "title": "Pay credit card bill",
+  "dueDate": "2025-08-15T23:59:59Z",
+  "priorityLevel": "critical",
+  "priorityScore": 92,
+  "priorityReason": "Financial deadline with potential late fees and credit impact if missed.",
+  "category": "finance",
+  "recurrence": null,
+  "subtasks": ["Check bill amount", "Review charges", "Log into payment portal", "Confirm payment"]
+}
+
+### Example 16 (Routine Errand - Lower Score)
+Input:
+"""
+Pick up dry cleaning
+"""
+Output:
+{
+  "title": "Pick up dry cleaning",
+  "dueDate": null,
+  "priorityLevel": "low",
+  "priorityScore": 45,
+  "priorityReason": "Routine errand with no specific urgency or deadline.",
+  "category": "errand",
+  "recurrence": null,
+  "subtasks": ["Check if ready", "Go to dry cleaner", "Pay and collect", "Hang clothes"]
 }
 
 ## Input to Parse
