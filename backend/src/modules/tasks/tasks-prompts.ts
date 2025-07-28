@@ -1,3 +1,5 @@
+import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
+
 import {
   CATEGORY,
   EMOTIONAL_LANGUAGE,
@@ -6,7 +8,9 @@ import {
   PRIORITY_SCORE,
 } from "@modules/tasks/tasks-constants";
 
-export const parseTaskPrompt = (naturalLanguage: string) => {
+export const parseTaskPrompt = (
+  naturalLanguage: string
+): ResponseCreateParamsNonStreaming => {
   const prompt = `
 ## Instructions
 Parse the natural language task description into structured JSON data.
