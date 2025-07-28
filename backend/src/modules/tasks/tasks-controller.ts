@@ -10,7 +10,7 @@ export const createTask = async (
   next: NextFunction
 ) => {
   try {
-    const parsedTask = createTaskHandler(req.body.naturalLanguage);
+    const parsedTask = await createTaskHandler(req.body.naturalLanguage);
 
     res.status(StatusCodes.OK).json(parsedTask);
   } catch (error) {
