@@ -1,21 +1,19 @@
 import {
+  CATEGORY,
   EMOTIONAL_LANGUAGE,
+  FREQUENCY,
+  PRIORITY_LEVEL,
   PRIORITY_SCORE,
 } from "@modules/tasks/tasks-constants";
 
-export const parseTaskPrompt = (
-  priorities: readonly string[],
-  prioritiesScores: typeof PRIORITY_SCORE,
-  categories: readonly string[],
-  frequencies: readonly string[],
-  emotionalLanguage: typeof EMOTIONAL_LANGUAGE
-) => `
+export const parseTaskPrompt = (naturalLanguage: string) => {
+  const prompt = `
 ## Instructions
 Parse the natural language task description into structured JSON data.
 
 **Current Date Context**: Today is ${
-  new Date().toISOString().split("T")[0]
-} (YYYY-MM-DD). Use this context to parse relative dates like "tomorrow", "next Thursday", "this weekend", etc.
+    new Date().toISOString().split("T")[0]
+  } (YYYY-MM-DD). Use this context to parse relative dates like "tomorrow", "next Thursday", "this weekend", etc.
 
 Respond with only a valid JSON object. Do not include explanations or any other text. Do not wrap the response in markdown or code block markers (\`\`\`). Do not include comments.
 
@@ -27,12 +25,12 @@ Return only a single JSON object with the following structure:
 {
   "title": "Task title",
   "dueDate": "ISO datetime string or null",
-  "priorityLevel": "${priorities.join(" | ")}",
+  "priorityLevel": "${PRIORITY_LEVEL.join(" | ")}",
   "priorityScore": number (0–100),
   "priorityReason": "Explanation of the priority score and level",
-  "category": "${categories.join(" | ")}",
+  "category": "${CATEGORY.join(" | ")}",
   "recurrence": {
-    "frequency": "${frequencies.join(" | ")}",
+    "frequency": "${FREQUENCY.join(" | ")}",
     "interval": 1,
     "dayOfWeek": number (0 = Sunday, 6 = Saturday) or null,
     "dayOfMonth": number (1–31) or null,
@@ -44,20 +42,20 @@ Return only a single JSON object with the following structure:
 ## Parsing Rules
 - Parse dates: Use current date context to interpret "tomorrow", "next Friday", "this weekend", etc.
 - Priority:
-  - Map urgency/importance cues to a level: "${priorities.join(", ")}"
+  - Map urgency/importance cues to a level: "${PRIORITY_LEVEL.join(", ")}"
   - Score priority from 0–100 based on urgency, deadlines, language, AND category context:
-    - ${prioritiesScores.CRITICAL.keywords.join(", ")} → ${
-  prioritiesScores.CRITICAL.min
-}–${prioritiesScores.CRITICAL.max}
-    - ${prioritiesScores.HIGH.keywords.join(", ")} → ${
-  prioritiesScores.HIGH.min
-}–${prioritiesScores.HIGH.max}
-    - ${prioritiesScores.MEDIUM.keywords.join(", ")} → ${
-  prioritiesScores.MEDIUM.min
-}–${prioritiesScores.MEDIUM.max}
-    - ${prioritiesScores.LOW.keywords.join(", ")} → ${
-  prioritiesScores.LOW.min
-}–${prioritiesScores.LOW.max}
+    - ${PRIORITY_SCORE.CRITICAL.keywords.join(", ")} → ${
+    PRIORITY_SCORE.CRITICAL.min
+  }–${PRIORITY_SCORE.CRITICAL.max}
+    - ${PRIORITY_SCORE.HIGH.keywords.join(", ")} → ${PRIORITY_SCORE.HIGH.min}–${
+    PRIORITY_SCORE.HIGH.max
+  }
+    - ${PRIORITY_SCORE.MEDIUM.keywords.join(", ")} → ${
+    PRIORITY_SCORE.MEDIUM.min
+  }–${PRIORITY_SCORE.MEDIUM.max}
+    - ${PRIORITY_SCORE.LOW.keywords.join(", ")} → ${PRIORITY_SCORE.LOW.min}–${
+    PRIORITY_SCORE.LOW.max
+  }
   - Consider category importance in scoring:
     - Health tasks: Consider preventive care importance and long-term well-being impact
     - Personal tasks: Consider emotional significance and relationship impact
@@ -65,10 +63,12 @@ Return only a single JSON object with the following structure:
     - Work tasks: Consider professional impact, deadlines, and career implications
     - Errands: Consider convenience, routine importance, and daily life impact
   - For conflicting indicators, consider context and category importance
-  - Emotional language (${emotionalLanguage.INCREASE.join(
+  - Emotional language (${EMOTIONAL_LANGUAGE.INCREASE.join(
     ", "
   )}) increases priority
-  - Vague language (${emotionalLanguage.DECREASE.join(", ")}) decreases priority
+  - Vague language (${EMOTIONAL_LANGUAGE.DECREASE.join(
+    ", "
+  )}) decreases priority
 - Include a short natural-language reason explaining the priority, including category context when relevant
 - Category: infer from context or explicit mentions, otherwise default based on task title keywords
 - Recurrence:
@@ -228,3 +228,11 @@ Output:
 {naturalLanguage}
 """
 `;
+
+  return {
+    model: "gpt-4o-mini",
+    instructions: prompt,
+    input: naturalLanguage,
+    temperature: 0,
+  };
+};
