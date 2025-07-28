@@ -16,7 +16,7 @@ export const createTaskInputSchema = z.object({
   }),
 });
 
-export const parsedTaskSchema = z.object({
+export const parseTaskOutputSchema = z.object({
   title: z.string().transform(trimString).refine(isNonEmptyString),
 
   dueDate: z.union([z.iso.datetime(), z.literal(null)]),
