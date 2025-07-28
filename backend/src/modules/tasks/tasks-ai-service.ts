@@ -1,5 +1,4 @@
 import { openai } from "@clients/openai";
-import { createLogger } from "@config/logger";
 import {
   CATEGORY,
   EMOTIONAL_LANGUAGE,
@@ -8,9 +7,7 @@ import {
   PRIORITY_SCORE,
 } from "@modules/tasks/tasks-constants";
 import { parseTaskPrompt } from "@modules/tasks/tasks-prompts";
-import { createTaskAiResponseSchema } from "@modules/tasks/tasks-schemas";
-
-const logger = createLogger("tasksAiService");
+import { parsedTaskSchema } from "@modules/tasks/tasks-schemas";
 
 export const parseTask = async (naturalLanguage: string) => {
   const prompt = parseTaskPrompt(
@@ -28,8 +25,7 @@ export const parseTask = async (naturalLanguage: string) => {
     temperature: 0,
   });
   const parsedAiResponse = JSON.parse(aiResponse.output_text);
-  const validatedAiResponse =
-    createTaskAiResponseSchema.parse(parsedAiResponse);
+  const parsedTask = parsedTaskSchema.parse(parsedAiResponse);
 
-  return validatedAiResponse;
+  return parsedTask;
 };
