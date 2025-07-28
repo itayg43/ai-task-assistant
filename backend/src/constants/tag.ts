@@ -9,4 +9,5 @@ export const TAG = {
   TOKEN_BUCKET_RATE_LIMITER: "tokenBucketRateLimiter",
   PROCESS_TOKEN_BUCKET: "processTokenBucket",
   VALIDATE_SCHEMA: "validateSchema",
+  TASKS_AI_SERVICE: "tasksAiService",
 } as const;
