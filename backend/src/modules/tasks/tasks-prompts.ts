@@ -81,7 +81,7 @@ Return only a single JSON object with the following structure:
 
 ## Examples
 
-### Example 1
+### Example 1 (Basic Task with Deadline)
 Input:
 """
 Submit Q2 report by next Friday and mark it high priority under Work
@@ -98,7 +98,7 @@ Output:
   "subtasks": ["Gather Q2 data", "Create report draft", "Review with team", "Submit final report"]
 }
 
-### Example 2
+### Example 2 (Recurring Task)
 Input:
 """
 Schedule team sync every Monday at 9am
@@ -121,7 +121,7 @@ Output:
   "subtasks": ["Send calendar invite", "Prepare agenda", "Send reminder"]
 }
 
-### Example 3
+### Example 3 (Financial Deadline)
 Input:
 """
 Pay electricity bill tomorrow
@@ -138,160 +138,7 @@ Output:
   "subtasks": ["Check bill amount", "Log into payment portal", "Confirm payment"]
 }
 
-### Example 4 (Ambiguous Input)
-Input:
-"""
-Plan something soon
-"""
-Output:
-{
-  "title": "Plan something",
-  "dueDate": null,
-  "priorityLevel": "low",
-  "priorityScore": 25,
-  "priorityReason": "Vague and no specific timeframe; not urgent or important.",
-  "category": "personal",
-  "recurrence": null,
-  "subtasks": null
-}
-
-### Example 5 (No Date)
-Input:
-"""
-Check project progress
-"""
-Output:
-{
-  "title": "Check project progress",
-  "dueDate": null,
-  "priorityLevel": "medium",
-  "priorityScore": 55,
-  "priorityReason": "Important to maintain awareness, but no explicit urgency.",
-  "category": "work",
-  "recurrence": null,
-  "subtasks": ["Review current status", "Update stakeholders", "Document findings"]
-}
-
-### Example 6 (Conflicting Priority Indicators)
-Input:
-"""
-Low priority task but it's due tomorrow
-"""
-Output:
-{
-  "title": "Low priority task",
-  "dueDate": "2024-01-16T23:59:59Z",
-  "priorityLevel": "high",
-  "priorityScore": 85,
-  "priorityReason": "Despite being marked as low priority, the tomorrow deadline makes it urgent.",
-  "category": "personal",
-  "recurrence": null,
-  "subtasks": null
-}
-
-### Example 7 (Emotional Language)
-Input:
-"""
-I really need to call my mom this week
-"""
-Output:
-{
-  "title": "Call mom",
-  "dueDate": "2024-01-21T23:59:59Z",
-  "priorityLevel": "high",
-  "priorityScore": 75,
-  "priorityReason": "Emotional urgency indicated by 'really need' with a weekly timeframe.",
-  "category": "personal",
-  "recurrence": null,
-  "subtasks": null
-}
-
-### Example 8 (Multiple Deadlines)
-Input:
-"""
-Submit proposal by Friday, final version by Monday
-"""
-Output:
-{
-  "title": "Submit proposal",
-  "dueDate": "2024-01-19T23:59:59Z",
-  "priorityLevel": "critical",
-  "priorityScore": 92,
-  "priorityReason": "Multiple deadlines indicate high importance, with Friday being the primary deadline.",
-  "category": "work",
-  "recurrence": null,
-  "subtasks": ["Create initial draft", "Review and revise", "Submit by Friday", "Prepare final version for Monday"]
-}
-
-### Example 9 (URGENT with Exclamation)
-Input:
-"""
-URGENT: Server down, fix immediately!
-"""
-Output:
-{
-  "title": "Fix server",
-  "dueDate": null,
-  "priorityLevel": "critical",
-  "priorityScore": 98,
-  "priorityReason": "URGENT keyword with exclamation and immediate timeframe indicates critical priority.",
-  "category": "work",
-  "recurrence": null,
-  "subtasks": ["Identify the issue", "Implement fix", "Test functionality", "Monitor system"]
-}
-
-### Example 10 (Vague with Emotional Language)
-Input:
-"""
-I should probably organize my desk when I have time
-"""
-Output:
-{
-  "title": "Organize desk",
-  "dueDate": null,
-  "priorityLevel": "low",
-  "priorityScore": 20,
-  "priorityReason": "Vague timeframe ('when I have time') and optional language ('should probably') indicates low priority.",
-  "category": "personal",
-  "recurrence": null,
-  "subtasks": null
-}
-
-### Example 11 (High Priority Without Deadline)
-Input:
-"""
-High priority: Review security protocols
-"""
-Output:
-{
-  "title": "Review security protocols",
-  "dueDate": null,
-  "priorityLevel": "high",
-  "priorityScore": 80,
-  "priorityReason": "Explicitly marked as high priority despite no specific deadline.",
-  "category": "work",
-  "recurrence": null,
-  "subtasks": ["Audit current protocols", "Identify vulnerabilities", "Update documentation", "Train team"]
-}
-
-### Example 12 (Emotional + Deadline Conflict)
-Input:
-"""
-I desperately need to finish this project by next month
-"""
-Output:
-{
-  "title": "Finish project",
-  "dueDate": "2024-02-15T23:59:59Z",
-  "priorityLevel": "high",
-  "priorityScore": 85,
-  "priorityReason": "Emotional urgency ('desperately') combined with specific deadline increases priority.",
-  "category": "work",
-  "recurrence": null,
-  "subtasks": ["Review project scope", "Create timeline", "Allocate resources", "Execute plan"]
-}
-
-### Example 13 (Health Task - Higher Score)
+### Example 4 (Health Task - Higher Score)
 Input:
 """
 Book dentist appointment
@@ -308,7 +155,7 @@ Output:
   "subtasks": ["Find a dentist", "Check availability", "Schedule appointment"]
 }
 
-### Example 14 (Relationship Task - Higher Score)
+### Example 5 (Relationship Task - Higher Score)
 Input:
 """
 Buy birthday gift for mom
@@ -325,38 +172,55 @@ Output:
   "subtasks": ["Decide on a gift", "Check budget", "Purchase gift"]
 }
 
-### Example 15 (Financial Task - Higher Score)
+### Example 6 (Career Development - High Priority)
 Input:
 """
-Pay credit card bill by 15th
+Update resume and apply for jobs
 """
 Output:
 {
-  "title": "Pay credit card bill",
-  "dueDate": "2025-08-15T23:59:59Z",
-  "priorityLevel": "critical",
-  "priorityScore": 92,
-  "priorityReason": "Financial deadline with potential late fees and credit impact if missed.",
-  "category": "finance",
+  "title": "Update resume and apply for jobs",
+  "dueDate": null,
+  "priorityLevel": "high",
+  "priorityScore": 82,
+  "priorityReason": "Career development task with high importance for professional advancement and future opportunities.",
+  "category": "work",
   "recurrence": null,
-  "subtasks": ["Check bill amount", "Review charges", "Log into payment portal", "Confirm payment"]
+  "subtasks": ["Revise resume content", "Tailor resume for specific jobs", "Research job openings", "Submit applications"]
 }
 
-### Example 16 (Routine Errand - Lower Score)
+### Example 7 (Equipment Failure - High Priority)
 Input:
 """
-Pick up dry cleaning
+Fix broken laptop screen
 """
 Output:
 {
-  "title": "Pick up dry cleaning",
+  "title": "Fix broken laptop screen",
+  "dueDate": null,
+  "priorityLevel": "high",
+  "priorityScore": 85,
+  "priorityReason": "Critical equipment failure affecting work productivity and daily functionality.",
+  "category": "work",
+  "recurrence": null,
+  "subtasks": ["Assess damage", "Research repair options", "Schedule repair appointment", "Backup data"]
+}
+
+### Example 8 (Vague Task - Low Priority)
+Input:
+"""
+Plan something soon
+"""
+Output:
+{
+  "title": "Plan something",
   "dueDate": null,
   "priorityLevel": "low",
-  "priorityScore": 45,
-  "priorityReason": "Routine errand with no specific urgency or deadline.",
-  "category": "errand",
+  "priorityScore": 25,
+  "priorityReason": "Vague and no specific timeframe; not urgent or important.",
+  "category": "personal",
   "recurrence": null,
-  "subtasks": ["Check if ready", "Go to dry cleaner", "Pay and collect", "Hang clothes"]
+  "subtasks": null
 }
 
 ## Input to Parse
