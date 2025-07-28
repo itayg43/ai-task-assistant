@@ -10,9 +10,9 @@ export const createTask = async (
   next: NextFunction
 ) => {
   try {
-    const parsedTask = await createTaskHandler(req.body.naturalLanguage);
+    const createdTask = await createTaskHandler(req.body.naturalLanguage);
 
-    res.status(StatusCodes.OK).json(parsedTask);
+    res.status(StatusCodes.CREATED).json(createdTask);
   } catch (error) {
     next(error);
   }
