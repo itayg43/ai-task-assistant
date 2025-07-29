@@ -1,14 +1,15 @@
 services:
-  backend:
+  tasks:
     build:
+      context: ./backend/services/tasks
       dockerfile: Dockerfile.dev
     ports:
       - "3001:3001"
       - "51204:51204"
     env_file:
-      - ./backend/.env.dev
+      - ./backend/services/tasks/.env.dev
     volumes:
-      - ./backend:/app
+      - ./backend/services/tasks:/app
       - /app/node_modules
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health/readyz"]
@@ -18,8 +19,8 @@ services:
     develop:
       watch:
         - action: rebuild
-          path: ./backend/package.json
+          path: ./backend/services/tasks/package.json
         - action: rebuild
-          path: ./backend/package-lock.json
+          path: ./backend/services/tasks/package-lock.json
         - action: rebuild
-          path: ./backend/Dockerfile.dev
+          path: ./backend/services/tasks/Dockerfile.dev
