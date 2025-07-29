@@ -10,9 +10,13 @@ import { isNonEmptyString, trimString } from "@utils/schema-helpers";
 
 export const createTaskInputSchema = z.object({
   body: z.object({
-    naturalLanguage: z.string().transform(trimString).refine(isNonEmptyString, {
-      message: "Can't be empty",
-    }),
+    naturalLanguage: z
+      .string()
+      .max(255)
+      .transform(trimString)
+      .refine(isNonEmptyString, {
+        message: "Can't be empty",
+      }),
   }),
 });
 
