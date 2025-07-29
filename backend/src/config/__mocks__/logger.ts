@@ -6,7 +6,6 @@ const logger = {
   info: vi.fn(),
   error: vi.fn(),
   warn: vi.fn(),
-  debug: vi.fn(),
 };
 
 export const createLogger = vi.fn((_tag: Tag) => logger);
