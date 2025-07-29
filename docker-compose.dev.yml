@@ -13,7 +13,7 @@ services:
       - /app/node_modules
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health/readyz"]
-      interval: 3m
+      interval: 5m
       timeout: 1m
       retries: 3
     develop:
