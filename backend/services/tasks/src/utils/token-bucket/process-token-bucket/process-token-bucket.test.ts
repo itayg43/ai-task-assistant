@@ -9,6 +9,7 @@ import {
   getTokenBucketState,
   setTokenBucketState,
 } from "@utils/token-bucket/token-bucket-state-utils";
+import { createRedisClientMock } from "../../../test-utils/redis-mock";
 
 vi.mock("@utils/token-bucket/key-utils");
 vi.mock("@utils/token-bucket/token-bucket-state-utils");
@@ -114,11 +115,7 @@ describe("processTokenBucket", () => {
     mockedGetTokenBucketState = vi.mocked(getTokenBucketState);
     mockedSetTokenBucketState = vi.mocked(setTokenBucketState);
 
-    mockRedisClient = {
-      hgetall: vi.fn(),
-      hmset: vi.fn(),
-      expire: vi.fn(),
-    };
+    mockRedisClient = createRedisClientMock();
   });
 
   afterEach(() => {

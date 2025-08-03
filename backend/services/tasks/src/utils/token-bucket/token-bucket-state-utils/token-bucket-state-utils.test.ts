@@ -6,6 +6,7 @@ import {
   getTokenBucketState,
   setTokenBucketState,
 } from "@utils/token-bucket/token-bucket-state-utils";
+import { createRedisClientMock } from "../../../test-utils/redis-mock";
 
 describe("bucketStateUtils", () => {
   let mockRedisClient: Partial<Redis>;
@@ -23,11 +24,7 @@ describe("bucketStateUtils", () => {
   let mockTimestamp = 0;
 
   beforeEach(() => {
-    mockRedisClient = {
-      hgetall: vi.fn(),
-      hmset: vi.fn(),
-      expire: vi.fn(),
-    };
+    mockRedisClient = createRedisClientMock();
   });
 
   afterEach(() => {
