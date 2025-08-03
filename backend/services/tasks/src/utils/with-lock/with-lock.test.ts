@@ -1,10 +1,11 @@
-import { ResourceLockedError } from "redlock";
-import { afterEach, describe, expect, it, Mock, vi } from "vitest";
+import Redlock, { ResourceLockedError } from "redlock";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { redlock } from "@clients/redlock";
 import { withLock } from "@utils/with-lock";
-
-vi.mock("@clients/redlock");
+import {
+  createRedlockClientMock,
+  setupAcquireMock,
+} from "../../test-utils/redlock-mock";
 
 /**
  * - Separate test for lock acquisition failure.
@@ -12,6 +13,8 @@ vi.mock("@clients/redlock");
  */
 
 describe("withLock", () => {
+  let mockRedlockClient: Redlock;
+
   const mockLockKey = "mockLockKey";
   const mockLockDuration = 500;
 
@@ -68,25 +71,21 @@ describe("withLock", () => {
     },
   ] as const;
 
-  const setupMockAcquire = (value: unknown, shouldResolve: boolean = true) => {
-    if (shouldResolve) {
-      (redlock.acquire as Mock).mockResolvedValue(value);
-    } else {
-      (redlock.acquire as Mock).mockRejectedValue(value);
-    }
-  };
+  beforeEach(() => {
+    mockRedlockClient = createRedlockClientMock();
+  });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it("should fail to acquire lock, not execute fn and not release lock", async () => {
-    setupMockAcquire(mockFailAcquireLockError, false);
+    setupAcquireMock(mockRedlockClient, mockFailAcquireLockError, false);
 
     await expect(
-      withLock(mockLockKey, mockLockDuration, mockFn)
+      withLock(mockRedlockClient, mockLockKey, mockLockDuration, mockFn)
     ).rejects.toThrow(mockFailAcquireLockError);
-    expect(redlock.acquire).toHaveBeenCalledWith(
+    expect(mockRedlockClient.acquire).toHaveBeenCalledWith(
       [mockLockKey],
       mockLockDuration
     );
@@ -100,17 +99,22 @@ describe("withLock", () => {
     async ({ mockAcquire, _mockFn, expectedResult, expectedError }) => {
       let result;
 
-      setupMockAcquire(mockAcquire);
+      setupAcquireMock(mockRedlockClient, mockAcquire);
 
       if (expectedError) {
         await expect(
-          withLock(mockLockKey, mockLockDuration, _mockFn)
+          withLock(mockRedlockClient, mockLockKey, mockLockDuration, _mockFn)
         ).rejects.toThrow(expectedError);
       } else {
-        result = await withLock(mockLockKey, mockLockDuration, _mockFn);
+        result = await withLock(
+          mockRedlockClient,
+          mockLockKey,
+          mockLockDuration,
+          _mockFn
+        );
       }
 
-      expect(redlock.acquire).toHaveBeenCalledWith(
+      expect(mockRedlockClient.acquire).toHaveBeenCalledWith(
         [mockLockKey],
         mockLockDuration
       );

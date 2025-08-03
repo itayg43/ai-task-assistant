@@ -1,7 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
+import Redis from "ioredis";
+import Redlock from "redlock";
 
 import { createLogger } from "@config/logger";
+import { TokenBucketRateLimiterServiceError } from "@errors";
 import { TokenBucketRateLimiterConfig } from "@types";
 import { getAuthenticationContext } from "@utils/authentication-context";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
@@ -10,15 +13,19 @@ import { withLock } from "@utils/with-lock";
 
 const logger = createLogger("tokenBucketRateLimiter");
 
-export const createTokenBucketLimiter =
-  (config: TokenBucketRateLimiterConfig) =>
+export const createTokenBucketRateLimiter =
+  (
+    redisClient: Redis,
+    redlockClient: Redlock,
+    config: TokenBucketRateLimiterConfig
+  ) =>
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // May throw AuthenticationError
       const { userId } = getAuthenticationContext(res);
 
       const lockKey = getTokenBucketLockKey(
-        `${config.serviceName}:${config.rateLimiterName}`,
+        config.serviceName,
+        config.rateLimiterName,
         userId
       );
 
@@ -29,9 +36,14 @@ export const createTokenBucketLimiter =
       };
 
       try {
-        const result = await withLock(lockKey, config.lockTtlMs, async () => {
-          return await processTokenBucket(userId, config);
-        });
+        const result = await withLock(
+          redlockClient,
+          lockKey,
+          config.lockTtlMs,
+          async () => {
+            return await processTokenBucket(redisClient, config, userId);
+          }
+        );
 
         if (!result.allowed) {
           logger.warn(
@@ -53,18 +65,9 @@ export const createTokenBucketLimiter =
 
         next();
       } catch (error) {
-        logger.error(
-          `Error during rate limiting for user ${userId}`,
-          error,
-          logContext
-        );
-
-        res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
-          message: "Unexpected error occurred, please try again later.",
-        });
+        next(new TokenBucketRateLimiterServiceError());
       }
     } catch (error) {
-      // Pass AuthenticationError to error handler
       next(error);
     }
   };

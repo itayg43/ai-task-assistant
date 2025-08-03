@@ -1,3 +1,4 @@
+import Redis from "ioredis";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MS_PER_SECOND } from "@constants";
@@ -8,6 +9,7 @@ import {
   getTokenBucketState,
   setTokenBucketState,
 } from "@utils/token-bucket/token-bucket-state-utils";
+import { createRedisClientMock } from "../../../test-utils/redis-mock";
 
 vi.mock("@utils/token-bucket/key-utils");
 vi.mock("@utils/token-bucket/token-bucket-state-utils");
@@ -22,7 +24,8 @@ describe("processTokenBucket", () => {
   let mockedGetTokenBucketState: Mocked<typeof getTokenBucketState>;
   let mockedSetTokenBucketState: Mocked<typeof setTokenBucketState>;
 
-  const mockUserId = 1;
+  let mockRedisClient: Redis;
+
   const mockConfig: TokenBucketRateLimiterConfig = {
     serviceName: "service",
     rateLimiterName: "test",
@@ -31,6 +34,7 @@ describe("processTokenBucket", () => {
     bucketTtlSeconds: 100,
     lockTtlMs: 500,
   };
+  const mockUserId = 1;
   const mockKey = "process:token:bucket";
 
   const cases = [
@@ -110,6 +114,8 @@ describe("processTokenBucket", () => {
     mockedGetTokenBucketKey = vi.mocked(getTokenBucketKey);
     mockedGetTokenBucketState = vi.mocked(getTokenBucketState);
     mockedSetTokenBucketState = vi.mocked(setTokenBucketState);
+
+    mockRedisClient = createRedisClientMock();
   });
 
   afterEach(() => {
@@ -134,7 +140,11 @@ describe("processTokenBucket", () => {
     });
 
     // First request: allowed, tokens = 1
-    let result = await processTokenBucket(mockUserId, mockConfig);
+    let result = await processTokenBucket(
+      mockRedisClient,
+      mockConfig,
+      mockUserId
+    );
     expect(result.allowed).toBe(true);
     expect(result.tokensLeft).toBeCloseTo(1);
 
@@ -143,7 +153,7 @@ describe("processTokenBucket", () => {
       tokens: 1,
       last: mockNow,
     });
-    result = await processTokenBucket(mockUserId, mockConfig);
+    result = await processTokenBucket(mockRedisClient, mockConfig, mockUserId);
     expect(result.allowed).toBe(true);
     expect(result.tokensLeft).toBeCloseTo(0);
 
@@ -152,7 +162,7 @@ describe("processTokenBucket", () => {
       tokens: 0,
       last: mockNow,
     });
-    result = await processTokenBucket(mockUserId, mockConfig);
+    result = await processTokenBucket(mockRedisClient, mockConfig, mockUserId);
     expect(result.allowed).toBe(false);
     expect(result.tokensLeft).toBeCloseTo(0);
   });
@@ -176,10 +186,15 @@ describe("processTokenBucket", () => {
         last: mockLast,
       });
 
-      const result = await processTokenBucket(mockUserId, mockConfig);
+      const result = await processTokenBucket(
+        mockRedisClient,
+        mockConfig,
+        mockUserId
+      );
 
       expectedAllowed
         ? expect(mockedSetTokenBucketState).toHaveBeenCalledWith(
+            mockRedisClient,
             mockKey,
             mockConfig,
             expectedTokensLeft,

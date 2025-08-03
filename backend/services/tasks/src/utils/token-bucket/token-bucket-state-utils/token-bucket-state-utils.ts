@@ -1,12 +1,14 @@
-import { redis } from "@clients/redis";
+import Redis from "ioredis";
+
 import { TokenBucketRateLimiterConfig } from "@types";
 
 export const getTokenBucketState = async (
+  redisClient: Redis,
   key: string,
   config: TokenBucketRateLimiterConfig,
   timestamp: number
 ) => {
-  const bucket = await redis.hgetall(key);
+  const bucket = await redisClient.hgetall(key);
 
   return {
     tokens: bucket?.tokens ? parseFloat(bucket.tokens) : config.bucketSize,
@@ -15,13 +17,14 @@ export const getTokenBucketState = async (
 };
 
 export const setTokenBucketState = async (
+  redisClient: Redis,
   key: string,
   config: TokenBucketRateLimiterConfig,
   tokens: number,
   timestamp: number
 ) => {
   await Promise.all([
-    redis.hmset(key, "tokens", tokens, "last", timestamp),
-    redis.expire(key, config.bucketTtlSeconds),
+    redisClient.hmset(key, "tokens", tokens, "last", timestamp),
+    redisClient.expire(key, config.bucketTtlSeconds),
   ]);
 };
