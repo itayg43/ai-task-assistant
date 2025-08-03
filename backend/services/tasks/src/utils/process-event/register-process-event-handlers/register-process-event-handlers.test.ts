@@ -1,7 +1,11 @@
 import http from "http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ExitCallback, Mocked } from "@types";
+import {
+  CloseServerCleanupCallbacks,
+  Mocked,
+  ProcessExitCallback,
+} from "@types";
 import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
 import { registerProcessEventHandlers } from "@utils/process-event/register-process-event-handlers";
 
@@ -11,7 +15,8 @@ describe("registerProcessEventHandlers", () => {
   let mockedShutdownHandler: Mocked<typeof shutdownHandler>;
 
   let mockServer: Partial<http.Server>;
-  let mockExitCallback: ExitCallback;
+  let mockProcessExitCallback: ProcessExitCallback;
+  let mockCloseServerCleanupCallbacks: CloseServerCleanupCallbacks;
 
   let processOnSpy: any;
 
@@ -44,7 +49,11 @@ describe("registerProcessEventHandlers", () => {
     mockServer = {
       close: vi.fn(),
     };
-    mockExitCallback = vi.fn() as unknown as ExitCallback;
+    mockProcessExitCallback = vi.fn() as unknown as ProcessExitCallback;
+    mockCloseServerCleanupCallbacks = {
+      afterSuccess: vi.fn(),
+      afterFailure: vi.fn(),
+    };
 
     processOnSpy = vi.spyOn(process, "on");
   });
@@ -56,7 +65,11 @@ describe("registerProcessEventHandlers", () => {
   it.each(events)(
     "should register handler for $name event that calls $expectedHandler",
     ({ name, errorOrReason, expectedHandler }) => {
-      registerProcessEventHandlers(mockServer as http.Server, mockExitCallback);
+      registerProcessEventHandlers(
+        mockServer as http.Server,
+        mockProcessExitCallback,
+        mockCloseServerCleanupCallbacks
+      );
 
       // verify that process.on was called with the correct event and a function
       expect(processOnSpy).toHaveBeenCalledWith(name, expect.any(Function));
@@ -77,7 +90,8 @@ describe("registerProcessEventHandlers", () => {
           name,
           errorOrReason,
           expect.any(Uint8Array),
-          mockExitCallback
+          mockProcessExitCallback,
+          mockCloseServerCleanupCallbacks
         );
       }
     }

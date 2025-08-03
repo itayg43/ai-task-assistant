@@ -1,9 +1,13 @@
 import http from "http";
 
-import { connectRedisClient } from "@clients/redis";
+import {
+  closeRedisClient,
+  connectRedisClient,
+  destroyRedisClient,
+} from "@clients/redis";
 import { env } from "@config/env";
 import { createLogger } from "@config/logger";
-import { EXIT_CODE } from "@constants";
+import { PROCESS_EXIT_CODE } from "@constants";
 import { registerProcessEventHandlers } from "@utils/process-event/register-process-event-handlers";
 import { startServer } from "@utils/start-server";
 import { app } from "./app";
@@ -17,13 +21,22 @@ const server = http.createServer(app);
     logger.info("###### Initialize server ######");
 
     await connectRedisClient();
-    registerProcessEventHandlers(server);
+
+    registerProcessEventHandlers(server, process.exit, {
+      afterSuccess: async () => {
+        await closeRedisClient();
+      },
+      afterFailure: () => {
+        destroyRedisClient();
+      },
+    });
+
     await startServer(server, env.PORT);
 
     logger.info("###### Initialize server completed ######");
   } catch (error) {
     logger.error("###### Initialize server failed ######", error);
 
-    process.exit(EXIT_CODE.ERROR);
+    process.exit(PROCESS_EXIT_CODE.ERROR);
   }
 })();

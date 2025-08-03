@@ -1,4 +1,4 @@
-export const SHUTDOWN_STATE = {
+export const SERVER_SHUTDOWN_STATE = {
   NOT_SHUTTING_DOWN: 0,
   SHUTTING_DOWN: 1,
 } as const;
