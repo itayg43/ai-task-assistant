@@ -13,7 +13,7 @@ import {
  */
 
 describe("withLock", () => {
-  let mockRedlockClient: Partial<Redlock>;
+  let mockRedlockClient: Redlock;
 
   const mockLockKey = "mockLockKey";
   const mockLockDuration = 500;
@@ -83,12 +83,7 @@ describe("withLock", () => {
     setupAcquireMock(mockRedlockClient, mockFailAcquireLockError, false);
 
     await expect(
-      withLock(
-        mockRedlockClient as Redlock,
-        mockLockKey,
-        mockLockDuration,
-        mockFn
-      )
+      withLock(mockRedlockClient, mockLockKey, mockLockDuration, mockFn)
     ).rejects.toThrow(mockFailAcquireLockError);
     expect(mockRedlockClient.acquire).toHaveBeenCalledWith(
       [mockLockKey],
@@ -108,16 +103,11 @@ describe("withLock", () => {
 
       if (expectedError) {
         await expect(
-          withLock(
-            mockRedlockClient as Redlock,
-            mockLockKey,
-            mockLockDuration,
-            _mockFn
-          )
+          withLock(mockRedlockClient, mockLockKey, mockLockDuration, _mockFn)
         ).rejects.toThrow(expectedError);
       } else {
         result = await withLock(
-          mockRedlockClient as Redlock,
+          mockRedlockClient,
           mockLockKey,
           mockLockDuration,
           _mockFn

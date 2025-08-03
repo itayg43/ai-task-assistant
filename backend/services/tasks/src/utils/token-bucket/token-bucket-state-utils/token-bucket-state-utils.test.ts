@@ -9,7 +9,7 @@ import {
 import { createRedisClientMock } from "../../../test-utils/redis-mock";
 
 describe("bucketStateUtils", () => {
-  let mockRedisClient: Partial<Redis>;
+  let mockRedisClient: Redis;
 
   const mockKey = "token:bucket:state";
   const mockConfig: TokenBucketRateLimiterConfig = {
@@ -36,7 +36,7 @@ describe("bucketStateUtils", () => {
       (mockRedisClient.hgetall as Mock).mockResolvedValue(undefined);
 
       const result = await getTokenBucketState(
-        mockRedisClient as Redis,
+        mockRedisClient,
         mockKey,
         mockConfig,
         mockTimestamp
@@ -53,7 +53,7 @@ describe("bucketStateUtils", () => {
       });
 
       const result = await getTokenBucketState(
-        mockRedisClient as Redis,
+        mockRedisClient,
         mockKey,
         mockConfig,
         mockTimestamp
@@ -67,7 +67,7 @@ describe("bucketStateUtils", () => {
   describe("setTokenBucketState", () => {
     it("should set the updated state and set the expire correctly", async () => {
       await setTokenBucketState(
-        mockRedisClient as Redis,
+        mockRedisClient,
         mockKey,
         mockConfig,
         mockTokens,

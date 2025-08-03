@@ -32,8 +32,8 @@ describe("createTokenBucketRateLimiter", () => {
   let mockResponse: Partial<Response>;
   let mockNextFunction: NextFunction;
 
-  let mockRedisClient: Partial<Redis>;
-  let mockRedlockClient: Partial<Redlock>;
+  let mockRedisClient: Redis;
+  let mockRedlockClient: Redlock;
 
   const mockLockKey = "process:token:bucket:lock";
   const mockConfig: TokenBucketRateLimiterConfig = {
@@ -49,8 +49,8 @@ describe("createTokenBucketRateLimiter", () => {
     config: TokenBucketRateLimiterConfig = mockConfig
   ) => {
     const testRateLimiter = createTokenBucketRateLimiter(
-      mockRedisClient as Redis,
-      mockRedlockClient as Redlock,
+      mockRedisClient,
+      mockRedlockClient,
       config
     );
 

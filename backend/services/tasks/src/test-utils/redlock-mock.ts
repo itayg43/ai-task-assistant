@@ -1,12 +1,13 @@
 import Redlock from "redlock";
 import { Mock, vi } from "vitest";
 
-export const createRedlockClientMock = (): Partial<Redlock> => ({
-  acquire: vi.fn(),
-});
+export const createRedlockClientMock = (): Redlock =>
+  ({
+    acquire: vi.fn(),
+  } as unknown as Redlock);
 
 export const setupAcquireMock = (
-  mockRedlockClient: Partial<Redlock>,
+  mockRedlockClient: Redlock,
   value: unknown,
   shouldResolve: boolean = true
 ) => {

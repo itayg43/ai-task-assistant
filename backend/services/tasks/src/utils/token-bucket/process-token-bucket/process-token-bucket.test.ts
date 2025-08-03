@@ -24,7 +24,7 @@ describe("processTokenBucket", () => {
   let mockedGetTokenBucketState: Mocked<typeof getTokenBucketState>;
   let mockedSetTokenBucketState: Mocked<typeof setTokenBucketState>;
 
-  let mockRedisClient: Partial<Redis>;
+  let mockRedisClient: Redis;
 
   const mockConfig: TokenBucketRateLimiterConfig = {
     serviceName: "service",
@@ -141,7 +141,7 @@ describe("processTokenBucket", () => {
 
     // First request: allowed, tokens = 1
     let result = await processTokenBucket(
-      mockRedisClient as Redis,
+      mockRedisClient,
       mockConfig,
       mockUserId
     );
@@ -153,11 +153,7 @@ describe("processTokenBucket", () => {
       tokens: 1,
       last: mockNow,
     });
-    result = await processTokenBucket(
-      mockRedisClient as Redis,
-      mockConfig,
-      mockUserId
-    );
+    result = await processTokenBucket(mockRedisClient, mockConfig, mockUserId);
     expect(result.allowed).toBe(true);
     expect(result.tokensLeft).toBeCloseTo(0);
 
@@ -166,11 +162,7 @@ describe("processTokenBucket", () => {
       tokens: 0,
       last: mockNow,
     });
-    result = await processTokenBucket(
-      mockRedisClient as Redis,
-      mockConfig,
-      mockUserId
-    );
+    result = await processTokenBucket(mockRedisClient, mockConfig, mockUserId);
     expect(result.allowed).toBe(false);
     expect(result.tokensLeft).toBeCloseTo(0);
   });
@@ -195,7 +187,7 @@ describe("processTokenBucket", () => {
       });
 
       const result = await processTokenBucket(
-        mockRedisClient as Redis,
+        mockRedisClient,
         mockConfig,
         mockUserId
       );
