@@ -31,7 +31,7 @@ const server = http.createServer(app);
       },
     });
 
-    await startServer(server, env.PORT);
+    await startServer(server, env.SERVICE_PORT);
 
     logger.info("###### Initialize server completed ######");
   } catch (error) {
