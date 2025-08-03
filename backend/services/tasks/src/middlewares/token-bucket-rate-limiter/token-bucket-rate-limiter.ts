@@ -3,6 +3,7 @@ import { createTokenBucketLimiter } from "@middlewares/token-bucket-rate-limiter
 
 export const tokenBucketRateLimiter = {
   global: createTokenBucketLimiter({
+    serviceName: env.SERVICE_NAME,
     rateLimiterName: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_NAME,
     bucketSize: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_BUCKET_SIZE,
     refillRate: env.GLOBAL_TOKEN_BUCKET_RATE_LIMITER_REFILL_RATE,

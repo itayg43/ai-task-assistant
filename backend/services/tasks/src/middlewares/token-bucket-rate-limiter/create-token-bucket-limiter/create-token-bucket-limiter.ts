@@ -17,7 +17,10 @@ export const createTokenBucketLimiter =
       // May throw AuthenticationError
       const { userId } = getAuthenticationContext(res);
 
-      const lockKey = getTokenBucketLockKey(config.rateLimiterName, userId);
+      const lockKey = getTokenBucketLockKey(
+        `${config.serviceName}:${config.rateLimiterName}`,
+        userId
+      );
 
       const logContext = {
         rateLimiterName: config.rateLimiterName,
