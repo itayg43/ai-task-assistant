@@ -5,9 +5,9 @@ import {
   getCurrentTime,
   getDateISO,
   getElapsedTime,
-} from "@utils/time-date";
+} from "@utils/date-time";
 
-describe("time", () => {
+describe("dateTime", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });

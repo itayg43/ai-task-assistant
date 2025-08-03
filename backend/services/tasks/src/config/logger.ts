@@ -1,6 +1,6 @@
 import { LogContext, LogLevel } from "@types";
 import { exhaustiveSwitch } from "@utils/exhaustive-switch";
-import { getDateISO } from "@utils/time-date";
+import { getDateISO } from "@utils/date-time";
 
 export const createLogger = (tag: string) => ({
   info: (message: string, context?: LogContext) =>

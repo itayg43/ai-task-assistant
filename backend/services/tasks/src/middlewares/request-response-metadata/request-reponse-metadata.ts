@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 
 import { createLogger } from "@config/logger";
 import { getAuthenticationContext } from "@utils/authentication-context";
-import { getCurrentTime, getElapsedTime } from "@utils/time-date";
+import { getCurrentTime, getElapsedTime } from "@utils/date-time";
 
 const logger = createLogger("requestResponseMetadata");
 
