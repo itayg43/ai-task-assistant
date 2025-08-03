@@ -1,15 +1,15 @@
-import { afterEach, describe, expect, it, Mock, vi } from "vitest";
+import Redis from "ioredis";
+import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 
-import { redis } from "@clients/redis";
 import { TokenBucketRateLimiterConfig } from "@types";
 import {
   getTokenBucketState,
   setTokenBucketState,
 } from "@utils/token-bucket/token-bucket-state-utils";
 
-vi.mock("@clients/redis");
-
 describe("bucketStateUtils", () => {
+  let mockRedisClient: Partial<Redis>;
+
   const mockKey = "token:bucket:state";
   const mockConfig: TokenBucketRateLimiterConfig = {
     serviceName: "service",
@@ -22,15 +22,24 @@ describe("bucketStateUtils", () => {
   let mockTokens = 50;
   let mockTimestamp = 0;
 
+  beforeEach(() => {
+    mockRedisClient = {
+      hgetall: vi.fn(),
+      hmset: vi.fn(),
+      expire: vi.fn(),
+    };
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   describe("getTokenBucketState", () => {
     it("should return the default state when no data in redis", async () => {
-      (redis.hgetall as Mock).mockResolvedValue(undefined);
+      (mockRedisClient.hgetall as Mock).mockResolvedValue(undefined);
 
       const result = await getTokenBucketState(
+        mockRedisClient as Redis,
         mockKey,
         mockConfig,
         mockTimestamp
@@ -41,12 +50,13 @@ describe("bucketStateUtils", () => {
     });
 
     it("should return the data stored in redis", async () => {
-      (redis.hgetall as Mock).mockResolvedValue({
+      (mockRedisClient.hgetall as Mock).mockResolvedValue({
         tokens: mockTokens,
         last: mockTimestamp,
       });
 
       const result = await getTokenBucketState(
+        mockRedisClient as Redis,
         mockKey,
         mockConfig,
         mockTimestamp
@@ -59,16 +69,22 @@ describe("bucketStateUtils", () => {
 
   describe("setTokenBucketState", () => {
     it("should set the updated state and set the expire correctly", async () => {
-      await setTokenBucketState(mockKey, mockConfig, mockTokens, mockTimestamp);
+      await setTokenBucketState(
+        mockRedisClient as Redis,
+        mockKey,
+        mockConfig,
+        mockTokens,
+        mockTimestamp
+      );
 
-      expect(redis.hmset).toHaveBeenCalledWith(
+      expect(mockRedisClient.hmset).toHaveBeenCalledWith(
         mockKey,
         "tokens",
         mockTokens,
         "last",
         mockTimestamp
       );
-      expect(redis.expire).toHaveBeenCalledWith(
+      expect(mockRedisClient.expire).toHaveBeenCalledWith(
         mockKey,
         mockConfig.bucketTtlSeconds
       );

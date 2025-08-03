@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
+import Redis from "ioredis";
+import Redlock from "redlock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthenticationError } from "@errors";
@@ -25,6 +27,9 @@ describe("createTokenBucketLimiter", () => {
   let mockResponse: Partial<Response>;
   let mockNextFunction: NextFunction;
 
+  let mockRedisClient: Partial<Redis>;
+  let mockRedlockClient: Partial<Redlock>;
+
   const mockLockKey = "process:token:bucket:lock";
   const mockConfig: TokenBucketRateLimiterConfig = {
     serviceName: "service",
@@ -38,7 +43,11 @@ describe("createTokenBucketLimiter", () => {
   const executeMiddleware = async (
     config: TokenBucketRateLimiterConfig = mockConfig
   ) => {
-    const testRateLimiter = createTokenBucketLimiter(config);
+    const testRateLimiter = createTokenBucketLimiter(
+      mockRedisClient as Redis,
+      mockRedlockClient as Redlock,
+      config
+    );
 
     await testRateLimiter(
       mockRequest as Request,
@@ -56,9 +65,11 @@ describe("createTokenBucketLimiter", () => {
     mockedGetTokenBucketLockKey.mockReturnValue(mockLockKey);
     mockedProcessTokenBucket = vi.mocked(processTokenBucket);
     mockedWithLock = vi.mocked(withLock);
-    mockedWithLock.mockImplementation(async (_lockKey, _lockTtl, callback) => {
-      return await callback();
-    });
+    mockedWithLock.mockImplementation(
+      async (_redlockClient, _lockKey, _lockTtl, callback) => {
+        return await callback();
+      }
+    );
 
     mockRequest = {
       method: "GET",
@@ -69,6 +80,15 @@ describe("createTokenBucketLimiter", () => {
       json: vi.fn(),
     };
     mockNextFunction = vi.fn();
+
+    mockRedisClient = {
+      hgetall: vi.fn(),
+      hmset: vi.fn(),
+      expire: vi.fn(),
+    };
+    mockRedlockClient = {
+      acquire: vi.fn(),
+    };
   });
 
   afterEach(() => {
