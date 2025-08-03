@@ -14,6 +14,7 @@ import { getAuthenticationContext } from "@utils/authentication-context";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
 import { processTokenBucket } from "@utils/token-bucket/process-token-bucket";
 import { withLock } from "@utils/with-lock";
+import { createRedlockClientMock } from "../../../test-utils/redlock-mock";
 
 vi.mock("@utils/authentication-context");
 vi.mock("@utils/token-bucket/key-utils");
@@ -89,9 +90,7 @@ describe("createTokenBucketRateLimiter", () => {
       hmset: vi.fn(),
       expire: vi.fn(),
     };
-    mockRedlockClient = {
-      acquire: vi.fn(),
-    };
+    mockRedlockClient = createRedlockClientMock();
   });
 
   afterEach(() => {

@@ -1,7 +1,11 @@
 import Redlock, { ResourceLockedError } from "redlock";
-import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { withLock } from "@utils/with-lock";
+import {
+  createRedlockClientMock,
+  setupAcquireMock,
+} from "../../test-utils/redlock-mock";
 
 /**
  * - Separate test for lock acquisition failure.
@@ -67,18 +71,8 @@ describe("withLock", () => {
     },
   ] as const;
 
-  const setupMockAcquire = (value: unknown, shouldResolve: boolean = true) => {
-    if (shouldResolve) {
-      (mockRedlockClient.acquire as Mock).mockResolvedValue(value);
-    } else {
-      (mockRedlockClient.acquire as Mock).mockRejectedValue(value);
-    }
-  };
-
   beforeEach(() => {
-    mockRedlockClient = {
-      acquire: vi.fn(),
-    };
+    mockRedlockClient = createRedlockClientMock();
   });
 
   afterEach(() => {
@@ -86,7 +80,7 @@ describe("withLock", () => {
   });
 
   it("should fail to acquire lock, not execute fn and not release lock", async () => {
-    setupMockAcquire(mockFailAcquireLockError, false);
+    setupAcquireMock(mockRedlockClient, mockFailAcquireLockError, false);
 
     await expect(
       withLock(
@@ -110,7 +104,7 @@ describe("withLock", () => {
     async ({ mockAcquire, _mockFn, expectedResult, expectedError }) => {
       let result;
 
-      setupMockAcquire(mockAcquire);
+      setupAcquireMock(mockRedlockClient, mockAcquire);
 
       if (expectedError) {
         await expect(
