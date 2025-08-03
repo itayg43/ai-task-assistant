@@ -4,8 +4,11 @@ import Redis from "ioredis";
 import Redlock from "redlock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AuthenticationError } from "@errors";
-import { createTokenBucketLimiter } from "@middlewares/token-bucket-rate-limiter/create-token-bucket-limiter";
+import {
+  AuthenticationError,
+  TokenBucketRateLimiterServiceError,
+} from "@errors";
+import { createTokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter/create-token-bucket-rate-limiter";
 import { Mocked, TokenBucketRateLimiterConfig } from "@types";
 import { getAuthenticationContext } from "@utils/authentication-context";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
@@ -17,7 +20,7 @@ vi.mock("@utils/token-bucket/key-utils");
 vi.mock("@utils/token-bucket/process-token-bucket");
 vi.mock("@utils/with-lock");
 
-describe("createTokenBucketLimiter", () => {
+describe("createTokenBucketRateLimiter", () => {
   let mockedGetAuthenticationContext: Mocked<typeof getAuthenticationContext>;
   let mockedGetTokenBucketLockKey: Mocked<typeof getTokenBucketLockKey>;
   let mockedProcessTokenBucket: Mocked<typeof processTokenBucket>;
@@ -43,7 +46,7 @@ describe("createTokenBucketLimiter", () => {
   const executeMiddleware = async (
     config: TokenBucketRateLimiterConfig = mockConfig
   ) => {
-    const testRateLimiter = createTokenBucketLimiter(
+    const testRateLimiter = createTokenBucketRateLimiter(
       mockRedisClient as Redis,
       mockRedlockClient as Redlock,
       config
@@ -110,7 +113,6 @@ describe("createTokenBucketLimiter", () => {
 
   it("should handle AuthenticationError thrown by getAuthenticationContext", async () => {
     const mockAuthenticationError = new AuthenticationError("");
-
     mockedGetAuthenticationContext.mockImplementationOnce(() => {
       throw mockAuthenticationError;
     });
@@ -120,6 +122,18 @@ describe("createTokenBucketLimiter", () => {
     expect(mockResponse.status).not.toHaveBeenCalled();
     expect(mockResponse.json).not.toHaveBeenCalled();
     expect(mockNextFunction).toHaveBeenCalledWith(mockAuthenticationError);
+  });
+
+  it("should handle TokenBucketRateLimiterError thrown by withLock/processTokenBucket", async () => {
+    mockedProcessTokenBucket.mockRejectedValue(new Error(""));
+
+    await executeMiddleware();
+
+    expect(mockResponse.status).not.toHaveBeenCalled();
+    expect(mockResponse.json).not.toHaveBeenCalled();
+    expect(mockNextFunction).toHaveBeenCalledWith(
+      expect.any(TokenBucketRateLimiterServiceError)
+    );
   });
 
   it(`should return response with ${StatusCodes.TOO_MANY_REQUESTS} status when request is not allowed`, async () => {
@@ -132,19 +146,6 @@ describe("createTokenBucketLimiter", () => {
 
     expect(mockResponse.status).toHaveBeenCalledWith(
       StatusCodes.TOO_MANY_REQUESTS
-    );
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      message: expect.any(String),
-    });
-  });
-
-  it(`should return response with ${StatusCodes.SERVICE_UNAVAILABLE} status when error occurred`, async () => {
-    mockedProcessTokenBucket.mockRejectedValue(undefined);
-
-    await executeMiddleware();
-
-    expect(mockResponse.status).toHaveBeenCalledWith(
-      StatusCodes.SERVICE_UNAVAILABLE
     );
     expect(mockResponse.json).toHaveBeenCalledWith({
       message: expect.any(String),

@@ -4,6 +4,7 @@ import Redis from "ioredis";
 import Redlock from "redlock";
 
 import { createLogger } from "@config/logger";
+import { TokenBucketRateLimiterServiceError } from "@errors";
 import { TokenBucketRateLimiterConfig } from "@types";
 import { getAuthenticationContext } from "@utils/authentication-context";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
@@ -12,7 +13,7 @@ import { withLock } from "@utils/with-lock";
 
 const logger = createLogger("tokenBucketRateLimiter");
 
-export const createTokenBucketLimiter =
+export const createTokenBucketRateLimiter =
   (
     redisClient: Redis,
     redlockClient: Redlock,
@@ -20,7 +21,6 @@ export const createTokenBucketLimiter =
   ) =>
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // May throw AuthenticationError
       const { userId } = getAuthenticationContext(res);
 
       const lockKey = getTokenBucketLockKey(
@@ -65,20 +65,13 @@ export const createTokenBucketLimiter =
 
         next();
       } catch (error) {
-        // TODO: use next(error) for both? maybe create a specific error and pass it too?
-
-        logger.error(
-          `Error during rate limiting for user ${userId}`,
-          error,
-          logContext
+        const rateLimiterError = new TokenBucketRateLimiterServiceError(
+          "Unexpected error occurred, please try again later."
         );
 
-        res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
-          message: "Unexpected error occurred, please try again later.",
-        });
+        next(rateLimiterError);
       }
     } catch (error) {
-      // Pass AuthenticationError to error handler
       next(error);
     }
   };
