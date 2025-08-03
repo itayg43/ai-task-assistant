@@ -1,7 +1,7 @@
 import http from "http";
 
 import { createLogger } from "@config/logger";
-import { PROCESS_EXIT_CODE, SHUTDOWN_STATE } from "@constants";
+import { PROCESS_EXIT_CODE, SERVER_SHUTDOWN_STATE } from "@constants";
 import { CloseServerCleanupCallbacks, ProcessExitCallback } from "@types";
 
 const logger = createLogger("shutdownHandler");
@@ -38,8 +38,8 @@ export const shutdownHandler = async (
 
 function checkIfShutdownAlreadyInProgress(shutdownView: Uint8Array) {
   // use atomic compare-and-exchange to ensure only one handler proceeds
-  const expected = SHUTDOWN_STATE.NOT_SHUTTING_DOWN;
-  const replacement = SHUTDOWN_STATE.SHUTTING_DOWN;
+  const expected = SERVER_SHUTDOWN_STATE.NOT_SHUTTING_DOWN;
+  const replacement = SERVER_SHUTDOWN_STATE.SHUTTING_DOWN;
 
   return (
     Atomics.compareExchange(shutdownView, 0, expected, replacement) !== expected
