@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
+import { StatusCodes, getReasonPhrase } from "http-status-codes";
+import * as z from "zod";
 
 import { createLogger } from "@config/logger";
 import { BaseError } from "@errors";
@@ -8,19 +9,46 @@ import { ErrorResponse } from "@types";
 const logger = createLogger("errorHandler");
 
 export const errorHandler = (
-  error: Error,
+  error: unknown,
   _req: Request,
   res: Response<ErrorResponse>,
   _next: NextFunction
 ) => {
-  logger.error(error.message, error);
+  const { status, message } = extractErrorInfo(error);
 
-  const status =
-    error instanceof BaseError
-      ? error.statusCode
-      : StatusCodes.INTERNAL_SERVER_ERROR;
+  logger.error(message, error);
 
   res.status(status).json({
-    message: error.message,
+    message,
   });
 };
+
+function extractErrorInfo(error: unknown) {
+  if (error instanceof BaseError) {
+    return {
+      status: error.statusCode,
+      message: error.message,
+    };
+  }
+
+  if (error instanceof z.ZodError) {
+    return {
+      status: StatusCodes.BAD_REQUEST,
+      message: formatZodErrors(error),
+    };
+  }
+
+  return {
+    status: StatusCodes.INTERNAL_SERVER_ERROR,
+    message:
+      error instanceof Error
+        ? error.message
+        : getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
+  };
+}
+
+function formatZodErrors(error: z.ZodError) {
+  return error.issues
+    .map((issue) => `${issue.path.join(".")} - ${issue.message}`)
+    .join("; ");
+}
