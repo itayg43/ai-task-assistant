@@ -24,6 +24,7 @@ describe("processTokenBucket", () => {
 
   const mockUserId = 1;
   const mockConfig: TokenBucketRateLimiterConfig = {
+    serviceName: "service",
     rateLimiterName: "test",
     bucketSize: 100,
     refillRate: 1,

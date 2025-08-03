@@ -27,6 +27,7 @@ describe("createTokenBucketLimiter", () => {
 
   const mockLockKey = "process:token:bucket:lock";
   const mockConfig: TokenBucketRateLimiterConfig = {
+    serviceName: "service",
     rateLimiterName: "test",
     bucketSize: 100,
     refillRate: 1,

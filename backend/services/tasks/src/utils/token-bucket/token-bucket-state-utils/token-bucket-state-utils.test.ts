@@ -12,6 +12,7 @@ vi.mock("@clients/redis");
 describe("bucketStateUtils", () => {
   const mockKey = "token:bucket:state";
   const mockConfig: TokenBucketRateLimiterConfig = {
+    serviceName: "service",
     rateLimiterName: "test",
     bucketSize: 100,
     refillRate: 1,
