@@ -5,9 +5,5 @@ export class BaseError extends Error {
     super(message);
 
     this.statusCode = statusCode;
-
-    // Ensures the prototype chain is set correctly when extending built-in classes.
-    // Allows instanceof checks and inheritance to work as expected.
-    Object.setPrototypeOf(this, BaseError.prototype);
   }
 }

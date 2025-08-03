@@ -124,7 +124,7 @@ describe("createTokenBucketRateLimiter", () => {
     expect(mockNextFunction).toHaveBeenCalledWith(mockAuthenticationError);
   });
 
-  it("should handle TokenBucketRateLimiterError thrown by withLock/processTokenBucket", async () => {
+  it("should handle TokenBucketRateLimiterServiceError thrown by withLock/processTokenBucket", async () => {
     mockedProcessTokenBucket.mockRejectedValue(new Error(""));
 
     await executeMiddleware();

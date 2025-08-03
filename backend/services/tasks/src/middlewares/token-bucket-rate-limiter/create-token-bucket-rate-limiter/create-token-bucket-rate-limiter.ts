@@ -65,11 +65,7 @@ export const createTokenBucketRateLimiter =
 
         next();
       } catch (error) {
-        const rateLimiterError = new TokenBucketRateLimiterServiceError(
-          "Unexpected error occurred, please try again later."
-        );
-
-        next(rateLimiterError);
+        next(new TokenBucketRateLimiterServiceError());
       }
     } catch (error) {
       next(error);
