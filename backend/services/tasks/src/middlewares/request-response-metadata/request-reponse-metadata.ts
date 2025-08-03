@@ -19,8 +19,7 @@ export const requestResponseMetadata = (
       originalUrl: req.originalUrl,
       userAgent: req.get("User-Agent"),
       authenticationContext: !req.originalUrl.includes("/health")
-        ? // May throw AuthenticationError
-          getAuthenticationContext(res)
+        ? getAuthenticationContext(res)
         : undefined,
     };
 
@@ -44,7 +43,6 @@ export const requestResponseMetadata = (
 
     next();
   } catch (error) {
-    // Pass AuthenticationError to error handler
     next(error);
   }
 };
