@@ -1,3 +1,5 @@
+import Redis from "ioredis";
+
 import { createLogger } from "@config/logger";
 import { MS_PER_SECOND } from "@constants";
 import { TokenBucketRateLimiterConfig, TokenBucketState } from "@types";
@@ -11,14 +13,24 @@ import {
 const logger = createLogger("processTokenBucket");
 
 export const processTokenBucket = async (
-  userId: number,
-  config: TokenBucketRateLimiterConfig
+  redisClient: Redis,
+  config: TokenBucketRateLimiterConfig,
+  userId: number
 ): Promise<TokenBucketState> => {
-  const key = getTokenBucketKey(config.rateLimiterName, userId);
+  const key = getTokenBucketKey(
+    config.serviceName,
+    config.rateLimiterName,
+    userId
+  );
 
   const now = getCurrentTime();
 
-  let { tokens, last } = await getTokenBucketState(key, config, now);
+  let { tokens, last } = await getTokenBucketState(
+    redisClient,
+    key,
+    config,
+    now
+  );
 
   // Calculate how much time has passed since the last update (in seconds)
   const elapsed = (now - last) / MS_PER_SECOND;
@@ -49,7 +61,7 @@ export const processTokenBucket = async (
 
   tokens -= 1;
 
-  await setTokenBucketState(key, config, tokens, now);
+  await setTokenBucketState(redisClient, key, config, tokens, now);
 
   logger.info(`Token bucket allowed request for user ${userId}`, {
     tokensLeft: tokens.toFixed(2),

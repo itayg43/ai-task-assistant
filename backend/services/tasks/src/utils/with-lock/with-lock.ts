@@ -1,12 +1,12 @@
-import { Lock, ResourceLockedError } from "redlock";
+import Redlock, { Lock, ResourceLockedError } from "redlock";
 
-import { redlock } from "@clients/redlock";
 import { createLogger } from "@config/logger";
 import { getCurrentTime, getElapsedTime } from "@utils/date-time";
 
 const logger = createLogger("withLock");
 
 export const withLock = async <T>(
+  redlockClient: Redlock,
   lockKey: string,
   lockDuration: number,
   fn: () => Promise<T>
@@ -16,7 +16,7 @@ export const withLock = async <T>(
   let lock: Lock | undefined;
 
   try {
-    lock = await redlock.acquire([lockKey], lockDuration);
+    lock = await redlockClient.acquire([lockKey], lockDuration);
 
     const lockAcquisitionTime = getElapsedTime(startTime);
     logger.info(`Lock acquired for ${lockKey} in ${lockAcquisitionTime}ms`);
