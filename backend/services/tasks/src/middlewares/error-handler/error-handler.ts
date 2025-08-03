@@ -4,14 +4,13 @@ import * as z from "zod";
 
 import { createLogger } from "@config/logger";
 import { BaseError } from "@errors";
-import { ErrorResponse } from "@types";
 
 const logger = createLogger("errorHandler");
 
 export const errorHandler = (
   error: unknown,
   _req: Request,
-  res: Response<ErrorResponse>,
+  res: Response,
   _next: NextFunction
 ) => {
   const { status, message } = extractErrorInfo(error);

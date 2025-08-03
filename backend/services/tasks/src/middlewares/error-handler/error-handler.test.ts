@@ -5,11 +5,10 @@ import * as z from "zod";
 
 import { BaseError } from "@errors";
 import { errorHandler } from "@middlewares/error-handler";
-import { ErrorResponse } from "@types";
 
 describe("errorHandler", () => {
   let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response<ErrorResponse>>;
+  let mockResponse: Partial<Response>;
   let mockNextFunction: NextFunction;
 
   beforeEach(() => {
