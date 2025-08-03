@@ -1,7 +1,7 @@
 import http from "http";
 
 import { createLogger } from "@config/logger";
-import { ExitCallback } from "@types";
+import { CloseServerCleanupCallbacks, ProcessExitCallback } from "@types";
 import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
 
 const logger = createLogger("processEventHandler");
@@ -17,15 +17,30 @@ const shutdownView = new Uint8Array(shutdownBuffer);
 // This guards against race conditions regardless of whether 'on' or 'once' is used.
 export const registerProcessEventHandlers = (
   server: http.Server,
-  exitCallback: ExitCallback = process.exit
+  processExitCallback: ProcessExitCallback,
+  closeServerCleanupCallbacks: CloseServerCleanupCallbacks
 ) => {
   // IMPORTANT: Do not use async/await in these process.on handlers.
   // Node.js does NOT wait for async signal handlers to complete before continue.
   process.on("SIGINT", () =>
-    shutdownHandler(server, "SIGINT", undefined, shutdownView, exitCallback)
+    shutdownHandler(
+      server,
+      "SIGINT",
+      undefined,
+      shutdownView,
+      processExitCallback,
+      closeServerCleanupCallbacks
+    )
   );
   process.on("SIGTERM", () =>
-    shutdownHandler(server, "SIGTERM", undefined, shutdownView, exitCallback)
+    shutdownHandler(
+      server,
+      "SIGTERM",
+      undefined,
+      shutdownView,
+      processExitCallback,
+      closeServerCleanupCallbacks
+    )
   );
   process.on("uncaughtException", (error) =>
     shutdownHandler(
@@ -33,7 +48,8 @@ export const registerProcessEventHandlers = (
       "uncaughtException",
       error,
       shutdownView,
-      exitCallback
+      processExitCallback,
+      closeServerCleanupCallbacks
     )
   );
   process.on("unhandledRejection", (reason) =>
@@ -42,7 +58,8 @@ export const registerProcessEventHandlers = (
       "unhandledRejection",
       reason,
       shutdownView,
-      exitCallback
+      processExitCallback,
+      closeServerCleanupCallbacks
     )
   );
 

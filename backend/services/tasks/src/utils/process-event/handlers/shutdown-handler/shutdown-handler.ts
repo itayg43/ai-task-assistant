@@ -1,9 +1,8 @@
 import http from "http";
 
-import { closeRedisClient, destroyRedisClient } from "@clients/redis";
 import { createLogger } from "@config/logger";
-import { EXIT_CODE, SHUTDOWN_STATE } from "@constants";
-import { ExitCallback } from "@types";
+import { PROCESS_EXIT_CODE, SHUTDOWN_STATE } from "@constants";
+import { CloseServerCleanupCallbacks, ProcessExitCallback } from "@types";
 
 const logger = createLogger("shutdownHandler");
 
@@ -12,7 +11,8 @@ export const shutdownHandler = async (
   event: string,
   errorOrReason: unknown,
   shutdownView: Uint8Array,
-  exitCallback: ExitCallback = process.exit
+  processExitCallback: ProcessExitCallback,
+  closeServerCleanupCallbacks: CloseServerCleanupCallbacks
 ) => {
   logger.info(`Invoked by event: ${event}`);
 
@@ -28,7 +28,12 @@ export const shutdownHandler = async (
     logger.info(`Received ${event}. Shutting down...`);
   }
 
-  await processShutdown(server, errorOrReason, exitCallback);
+  await processShutdown(
+    server,
+    errorOrReason,
+    processExitCallback,
+    closeServerCleanupCallbacks
+  );
 };
 
 function checkIfShutdownAlreadyInProgress(shutdownView: Uint8Array) {
@@ -44,25 +49,28 @@ function checkIfShutdownAlreadyInProgress(shutdownView: Uint8Array) {
 async function processShutdown(
   server: http.Server,
   errorOrReason: unknown,
-  exitCallback: ExitCallback
+  processExitCallback: ProcessExitCallback,
+  closeServerCleanupCallbacks: CloseServerCleanupCallbacks
 ) {
   logger.info("Closing HTTP server...");
 
   try {
     await closeServer(server);
 
-    await closeRedisClient();
+    await closeServerCleanupCallbacks.afterSuccess();
 
-    const exitCode = errorOrReason ? EXIT_CODE.ERROR : EXIT_CODE.REGULAR;
+    const exitCode = errorOrReason
+      ? PROCESS_EXIT_CODE.ERROR
+      : PROCESS_EXIT_CODE.REGULAR;
     logger.info(`HTTP server closed. Exiting process. Exit code: ${exitCode}`);
 
-    exitCallback(exitCode);
+    processExitCallback(exitCode);
   } catch (error) {
     logger.error(`Error while closing the server:`, error);
 
-    destroyRedisClient();
+    closeServerCleanupCallbacks.afterFailure();
 
-    exitCallback(EXIT_CODE.ERROR);
+    processExitCallback(PROCESS_EXIT_CODE.ERROR);
   }
 }
 
