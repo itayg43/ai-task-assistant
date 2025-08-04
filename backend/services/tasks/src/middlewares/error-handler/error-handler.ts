@@ -3,7 +3,7 @@ import { StatusCodes, getReasonPhrase } from "http-status-codes";
 import * as z from "zod";
 
 import { createLogger } from "@config/logger";
-import { BaseError } from "@errors";
+import { BaseError } from "@shared/errors";
 
 const logger = createLogger("errorHandler");
 

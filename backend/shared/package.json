@@ -1,18 +1,12 @@
 {
-  "name": "tasks",
+  "name": "@ai-task-assistant/shared",
   "version": "1.0.0",
-  "description": "",
-  "main": "dist/server.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc && tsc-alias",
-    "start": "node dist/server.js",
-    "start:dev": "ts-node-dev -r tsconfig-paths/register --respawn src/server.ts",
-    "start:dev:type-check": "tsc --noEmit --watch",
     "test": "vitest"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
     "@types/express": "^5.0.3",
@@ -25,7 +19,6 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@ai-task-assistant/shared": "file:../../shared",
     "dotenv": "^16.5.0",
     "envalid": "^8.0.0",
     "express": "^5.1.0",

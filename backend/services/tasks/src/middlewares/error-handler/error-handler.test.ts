@@ -3,8 +3,8 @@ import { StatusCodes, getReasonPhrase } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as z from "zod";
 
-import { BaseError } from "@errors";
 import { errorHandler } from "@middlewares/error-handler";
+import { BaseError } from "@shared/errors";
 
 describe("errorHandler", () => {
   let mockRequest: Partial<Request>;

@@ -4,11 +4,11 @@ import Redis from "ioredis";
 import Redlock from "redlock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createTokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter/create-token-bucket-rate-limiter";
 import {
   AuthenticationError,
   TokenBucketRateLimiterServiceError,
-} from "@errors";
-import { createTokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter/create-token-bucket-rate-limiter";
+} from "@shared/errors";
 import { Mocked, TokenBucketRateLimiterConfig } from "@types";
 import { getAuthenticationContext } from "@utils/authentication-context";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";

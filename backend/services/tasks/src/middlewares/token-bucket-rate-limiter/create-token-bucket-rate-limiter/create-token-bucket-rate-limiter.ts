@@ -4,7 +4,7 @@ import Redis from "ioredis";
 import Redlock from "redlock";
 
 import { createLogger } from "@config/logger";
-import { TokenBucketRateLimiterServiceError } from "@errors";
+import { TokenBucketRateLimiterServiceError } from "@shared/errors";
 import { TokenBucketRateLimiterConfig } from "@types";
 import { getAuthenticationContext } from "@utils/authentication-context";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";

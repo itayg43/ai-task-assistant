@@ -1,6 +1,6 @@
 import { Response } from "express";
 
-import { AuthenticationError } from "@errors";
+import { AuthenticationError } from "@shared/errors";
 
 export const getAuthenticationContext = (res: Response) => {
   const context = res.locals.authenticationContext;

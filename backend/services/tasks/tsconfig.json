@@ -10,12 +10,12 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@shared/*": ["../../shared/dist/*"],
       "@types": ["src/types"],
       "@constants": ["src/constants"],
       "@config/*": ["src/config/*"],
       "@utils/*": ["src/utils/*"],
       "@middlewares/*": ["src/middlewares/*"],
-      "@errors": ["src/errors"],
       "@clients/*": ["src/clients/*"],
       "@modules/*": ["src/modules/*"],
       "@routers/*": ["src/routers/*"]

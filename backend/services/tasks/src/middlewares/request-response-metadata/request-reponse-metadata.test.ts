@@ -2,8 +2,8 @@ import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createLogger } from "@config/logger";
-import { AuthenticationError } from "@errors";
 import { requestResponseMetadata } from "@middlewares/request-response-metadata";
+import { AuthenticationError } from "@shared/errors";
 import { AuthenticationContext, Mocked } from "@types";
 import { getAuthenticationContext } from "@utils/authentication-context";
 
