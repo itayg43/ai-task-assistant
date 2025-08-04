@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 
-import { TokenBucketRateLimiterConfig } from "@types";
+import { TokenBucketRateLimiterConfig } from "@shared/types";
 
 export const getTokenBucketState = async (
   redisClient: Redis,

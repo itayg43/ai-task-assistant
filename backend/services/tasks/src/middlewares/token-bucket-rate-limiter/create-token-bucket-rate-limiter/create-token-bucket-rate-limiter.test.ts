@@ -9,7 +9,7 @@ import {
   AuthenticationError,
   TokenBucketRateLimiterServiceError,
 } from "@shared/errors";
-import { Mocked, TokenBucketRateLimiterConfig } from "@types";
+import { Mocked, TokenBucketRateLimiterConfig } from "@shared/types";
 import { getAuthenticationContext } from "@utils/authentication-context";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
 import { processTokenBucket } from "@utils/token-bucket/process-token-bucket";

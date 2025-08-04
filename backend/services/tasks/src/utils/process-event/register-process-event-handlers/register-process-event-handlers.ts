@@ -1,7 +1,10 @@
 import http from "http";
 
 import { createLogger } from "@config/logger";
-import { CloseServerCleanupCallbacks, ProcessExitCallback } from "@types";
+import {
+  CloseServerCleanupCallbacks,
+  ProcessExitCallback,
+} from "@shared/types";
 import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
 
 const logger = createLogger("processEventHandler");

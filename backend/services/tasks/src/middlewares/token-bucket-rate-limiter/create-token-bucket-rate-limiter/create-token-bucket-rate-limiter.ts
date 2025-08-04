@@ -5,7 +5,7 @@ import Redlock from "redlock";
 
 import { createLogger } from "@config/logger";
 import { TokenBucketRateLimiterServiceError } from "@shared/errors";
-import { TokenBucketRateLimiterConfig } from "@types";
+import { TokenBucketRateLimiterConfig } from "@shared/types";
 import { getAuthenticationContext } from "@utils/authentication-context";
 import { getTokenBucketLockKey } from "@utils/token-bucket/key-utils";
 import { processTokenBucket } from "@utils/token-bucket/process-token-bucket";

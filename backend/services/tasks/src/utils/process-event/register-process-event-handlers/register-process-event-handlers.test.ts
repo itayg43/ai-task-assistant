@@ -5,7 +5,7 @@ import {
   CloseServerCleanupCallbacks,
   Mocked,
   ProcessExitCallback,
-} from "@types";
+} from "@shared/types";
 import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
 import { registerProcessEventHandlers } from "@utils/process-event/register-process-event-handlers";
 

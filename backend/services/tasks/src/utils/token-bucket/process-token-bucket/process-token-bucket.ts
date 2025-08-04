@@ -2,7 +2,7 @@ import Redis from "ioredis";
 
 import { createLogger } from "@config/logger";
 import { MS_PER_SECOND } from "@shared/constants";
-import { TokenBucketRateLimiterConfig, TokenBucketState } from "@types";
+import { TokenBucketRateLimiterConfig, TokenBucketState } from "@shared/types";
 import { getCurrentTime } from "@utils/date-time";
 import { getTokenBucketKey } from "@utils/token-bucket/key-utils";
 import {

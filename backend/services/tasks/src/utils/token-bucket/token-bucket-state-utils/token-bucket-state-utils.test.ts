@@ -1,7 +1,7 @@
 import Redis from "ioredis";
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 
-import { TokenBucketRateLimiterConfig } from "@types";
+import { TokenBucketRateLimiterConfig } from "@shared/types";
 import {
   getTokenBucketState,
   setTokenBucketState,

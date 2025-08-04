@@ -2,7 +2,10 @@ import http from "http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PROCESS_EXIT_CODE } from "@shared/constants";
-import { CloseServerCleanupCallbacks, ProcessExitCallback } from "@types";
+import {
+  CloseServerCleanupCallbacks,
+  ProcessExitCallback,
+} from "@shared/types";
 import { shutdownHandler } from "@utils/process-event/handlers/shutdown-handler";
 
 describe("shutdownHandler", () => {

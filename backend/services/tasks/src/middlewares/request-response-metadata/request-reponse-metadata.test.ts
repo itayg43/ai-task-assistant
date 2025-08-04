@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLogger } from "@config/logger";
 import { requestResponseMetadata } from "@middlewares/request-response-metadata";
 import { AuthenticationError } from "@shared/errors";
-import { AuthenticationContext, Mocked } from "@types";
+import { AuthenticationContext, Mocked } from "@shared/types";
 import { getAuthenticationContext } from "@utils/authentication-context";
 
 vi.mock("@config/logger");

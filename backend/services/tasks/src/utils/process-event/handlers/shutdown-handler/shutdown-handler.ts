@@ -2,7 +2,10 @@ import http from "http";
 
 import { createLogger } from "@config/logger";
 import { PROCESS_EXIT_CODE, SERVER_SHUTDOWN_STATE } from "@shared/constants";
-import { CloseServerCleanupCallbacks, ProcessExitCallback } from "@types";
+import {
+  CloseServerCleanupCallbacks,
+  ProcessExitCallback,
+} from "@shared/types";
 
 const logger = createLogger("shutdownHandler");
 
