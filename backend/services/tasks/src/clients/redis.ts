@@ -1,7 +1,7 @@
 import { Redis } from "ioredis";
 
 import { env } from "@config/env";
-import { createLogger } from "@config/logger";
+import { createLogger } from "@shared/config/create-logger";
 
 const logger = createLogger("redis");
 

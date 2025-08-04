@@ -6,18 +6,18 @@ import {
   destroyRedisClient,
 } from "@clients/redis";
 import { env } from "@config/env";
-import { createLogger } from "@config/logger";
+import { createLogger } from "@shared/config/create-logger";
 import { PROCESS_EXIT_CODE } from "@shared/constants";
-import { registerProcessEventHandlers } from "@utils/process-event/register-process-event-handlers";
-import { startServer } from "@utils/start-server";
+import { registerProcessEventHandlers } from "@shared/utils/process-event/register-process-event-handlers";
+import { startServer } from "@shared/utils/start-server";
 import { app } from "./app";
 
 const logger = createLogger("server");
 
-const server = http.createServer(app);
-
 (async () => {
   try {
+    const server = http.createServer(app);
+
     logger.info("###### Initialize server ######");
 
     await connectRedisClient();

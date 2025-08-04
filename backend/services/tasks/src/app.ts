@@ -1,11 +1,11 @@
 import express from "express";
 import helmet from "helmet";
 
-import { authentication } from "@middlewares/authentication";
-import { errorHandler } from "@middlewares/error-handler";
-import { requestResponseMetadata } from "@middlewares/request-response-metadata";
 import { healthRouter } from "@modules/health/health-router";
 import { apiV1Router } from "@routers/api";
+import { authentication } from "@shared/middlewares/authentication";
+import { errorHandler } from "@shared/middlewares/error-handler";
+import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
 
 export const app = express();
 

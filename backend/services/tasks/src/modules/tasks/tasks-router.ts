@@ -1,8 +1,8 @@
 import { Router } from "express";
 
-import { validateSchema } from "@middlewares/validate-schema";
 import { createTask } from "@modules/tasks/tasks-controller";
 import { createTaskSchema } from "@modules/tasks/tasks-schemas";
+import { validateSchema } from "@shared/middlewares/validate-schema";
 
 export const tasksRouter = Router();
 
