@@ -1,21 +1,21 @@
-import { LogContext, LogLevel } from "../types";
+import { LoggerLogContext, LoggerLogLevel } from "../types";
 import { getDateISO } from "../utils/date-time";
 import { exhaustiveSwitch } from "../utils/exhaustive-switch";
 
 export const createLogger = (tag: string) => ({
-  info: (message: string, context?: LogContext) =>
+  info: (message: string, context?: LoggerLogContext) =>
     log("info", tag, message, context),
-  error: (message: string, error: unknown, context?: LogContext) =>
+  error: (message: string, error: unknown, context?: LoggerLogContext) =>
     log("error", tag, message, context, error),
-  warn: (message: string, context?: LogContext) =>
+  warn: (message: string, context?: LoggerLogContext) =>
     log("warn", tag, message, context),
 });
 
 function log(
-  level: LogLevel,
+  level: LoggerLogLevel,
   tag: string,
   message: string,
-  context?: LogContext,
+  context?: LoggerLogContext,
   error?: unknown
 ) {
   const base = `[${getDateISO()}] [${level.toUpperCase()}] [${tag}]: ${message}`;
