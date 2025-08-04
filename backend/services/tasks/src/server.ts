@@ -7,7 +7,7 @@ import {
 } from "@clients/redis";
 import { env } from "@config/env";
 import { createLogger } from "@config/logger";
-import { PROCESS_EXIT_CODE } from "@constants";
+import { PROCESS_EXIT_CODE } from "@shared/constants";
 import { registerProcessEventHandlers } from "@utils/process-event/register-process-event-handlers";
 import { startServer } from "@utils/start-server";
 import { app } from "./app";

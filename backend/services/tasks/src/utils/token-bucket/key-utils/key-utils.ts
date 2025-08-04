@@ -1,4 +1,4 @@
-import { PROCESS_TOKEN_BUCKET_REDIS_KEY_PREFIX } from "@constants";
+import { PROCESS_TOKEN_BUCKET_REDIS_KEY_PREFIX } from "@shared/constants";
 
 export const getTokenBucketKey = (
   serviceName: string,

@@ -1,7 +1,7 @@
 import Redis from "ioredis";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MS_PER_SECOND } from "@constants";
+import { MS_PER_SECOND } from "@shared/constants";
 import { Mocked, TokenBucketRateLimiterConfig } from "@types";
 import { getTokenBucketKey } from "@utils/token-bucket/key-utils";
 import { processTokenBucket } from "@utils/token-bucket/process-token-bucket";
