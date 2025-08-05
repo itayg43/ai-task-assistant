@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "commonjs",
+    "outDir": "dist/",
+    "rootDir": "src/",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../../shared/dist/*"],
+      "@routers/*": ["src/routers/*"]
+    }
+  },
+  "include": ["src/"],
+  "exclude": ["node_modules/", "dist/"]
+}

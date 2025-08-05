@@ -1,10 +1,5 @@
 import http from "http";
 
-import {
-  closeRedisClient,
-  connectRedisClient,
-  destroyRedisClient,
-} from "@clients/redis";
 import { createLogger } from "@shared/config/create-logger";
 import { PROCESS_EXIT_CODE } from "@shared/constants";
 import { registerProcessEventHandlers } from "@shared/utils/process-event/register-process-event-handlers";
@@ -20,15 +15,9 @@ const logger = createLogger("server");
 
     const server = http.createServer(app);
 
-    await connectRedisClient();
-
     registerProcessEventHandlers(server, process.exit, {
-      afterSuccess: async () => {
-        await closeRedisClient();
-      },
-      afterFailure: () => {
-        destroyRedisClient();
-      },
+      afterSuccess: async () => {},
+      afterFailure: () => {},
     });
 
     await startServer(server, env.SERVICE_PORT);

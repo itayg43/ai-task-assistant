@@ -1,4 +1,30 @@
 services:
+  ai:
+    build:
+      dockerfile: services/ai/Dockerfile.dev
+    ports:
+      - "3002:3002"
+      - "51205:51204"
+    env_file:
+      - ./backend/services/ai/.env.dev
+    volumes:
+      - ./backend/services/ai:/app
+      - ./backend/shared:/shared
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health/healthz"]
+      interval: 5m
+      timeout: 1m
+      retries: 3
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend/services/ai/package.json
+        - action: rebuild
+          path: ./backend/services/ai/package-lock.json
+        - action: rebuild
+          path: ./backend/services/ai/Dockerfile.dev
+
   tasks:
     build:
       dockerfile: services/tasks/Dockerfile.dev
