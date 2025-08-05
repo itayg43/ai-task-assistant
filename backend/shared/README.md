@@ -1,41 +1,6 @@
-# AI Task Assistant - Shared Package
+## Available Modules
 
-This package contains shared utilities, middleware, and types used across the AI Task Assistant microservices.
-
-## 📦 Package Structure
-
-```
-src/
-├── clients/          # Redis and Redlock client configurations
-├── config/           # Logger and configuration utilities
-├── constants/        # Application constants and enums
-├── errors/           # Custom error classes
-├── middlewares/      # Express middleware functions
-├── mocks/            # Test mocks for external dependencies
-├── types/            # TypeScript type definitions
-└── utils/            # Utility functions
-```
-
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# From a service directory
-npm install @ai-task-assistant/shared
-```
-
-### Usage
-
-```typescript
-import { createLogger } from "@shared/config/create-logger";
-import { PROCESS_EXIT_CODE } from "@shared/constants";
-import { BaseError } from "@shared/errors";
-```
-
-## 📚 Available Modules
-
-### 🔧 Clients
+### Clients
 
 #### Redis Client
 
@@ -69,7 +34,7 @@ import {
 - Automatic cleanup
 - Connection pooling
 
-### ⚙️ Configuration
+### Config
 
 #### Logger
 
@@ -88,7 +53,7 @@ logger.error("An error occurred", { error });
 - Request context tracking
 - JSON formatting
 
-### 📋 Constants
+### Constants
 
 ```typescript
 import {
@@ -108,7 +73,7 @@ import {
 - `PROCESS_TOKEN_BUCKET`: Token bucket configuration
 - `SERVER_SHUTDOWN_STATE`: Server shutdown states
 
-### ❌ Error Handling
+### Error Handling
 
 #### Base Error
 
@@ -138,7 +103,7 @@ import { TokenBucketRateLimiterServiceError } from "@shared/errors";
 throw new TokenBucketRateLimiterServiceError("Rate limit exceeded");
 ```
 
-### 🔌 Middleware
+### Middleware
 
 #### Error Handler
 
@@ -218,7 +183,7 @@ app.use("/api", rateLimiter);
 - Redis-based storage
 - Automatic token refill
 
-### 🛠️ Utilities
+### Utils
 
 #### Date/Time Utilities
 
@@ -327,7 +292,7 @@ function handleStatus(status: Status) {
 - Compile-time exhaustiveness checking
 - Better error messages
 
-## 🧪 Testing
+## Testing
 
 ### Running Tests
 
