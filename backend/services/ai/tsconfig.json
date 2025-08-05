@@ -11,6 +11,7 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../../shared/dist/*"],
+      "@clients/*": ["src/clients/*"],
       "@routers/*": ["src/routers/*"]
     }
   },
