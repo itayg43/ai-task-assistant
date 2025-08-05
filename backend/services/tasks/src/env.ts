@@ -9,6 +9,7 @@ export const env = cleanEnv(process.env, {
 
   REDIS_URL: str(),
   REDIS_CONNECT_TIMEOUT_MS: num(),
+  REDIS_READY_TIMEOUT_MS: num(),
 
   REDLOCK_RETRY_COUNT: num(),
   REDLOCK_RETRY_DELAY_MS: num(),
