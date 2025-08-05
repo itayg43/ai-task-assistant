@@ -1,8 +1,7 @@
 services:
   tasks:
     build:
-      context: ./backend/services/tasks
-      dockerfile: Dockerfile.dev
+      dockerfile: services/tasks/Dockerfile.dev
     ports:
       - "3001:3001"
       - "51204:51204"
@@ -10,6 +9,7 @@ services:
       - ./backend/services/tasks/.env.dev
     volumes:
       - ./backend/services/tasks:/app
+      - ./backend/shared:/shared
       - /app/node_modules
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health/readyz"]

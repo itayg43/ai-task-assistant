@@ -1,7 +1,7 @@
 services:
   tasks:
     build:
-      context: ./backend/services/tasks
+      context: ./backend
     depends_on:
       - redis
     healthcheck:

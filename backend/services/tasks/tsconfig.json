@@ -10,15 +10,12 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@types": ["src/types"],
-      "@constants": ["src/constants"],
-      "@config/*": ["src/config/*"],
-      "@utils/*": ["src/utils/*"],
-      "@middlewares/*": ["src/middlewares/*"],
-      "@errors": ["src/errors"],
+      "@shared/*": ["../../shared/dist/*"],
       "@clients/*": ["src/clients/*"],
-      "@modules/*": ["src/modules/*"],
-      "@routers/*": ["src/routers/*"]
+      "@routers/*": ["src/routers/*"],
+      "@middlewares/*": ["src/middlewares/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@schemas/*": ["src/schemas/*"]
     }
   },
   "include": ["src/"],

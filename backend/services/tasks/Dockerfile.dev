@@ -4,13 +4,17 @@ ENV NODE_ENV=development
 
 WORKDIR /app
 
-# For using in healthcheck
 RUN apk add --no-cache curl
 
-COPY package.json package-lock.json ./
+COPY shared /app/shared
+WORKDIR /app/shared
+RUN npm install && npm run build
+
+WORKDIR /app
+COPY services/tasks/package.json services/tasks/package-lock.json ./
 RUN npm install
 
-COPY . .
+COPY services/tasks/ .
 
 EXPOSE 3001
 EXPOSE 51204

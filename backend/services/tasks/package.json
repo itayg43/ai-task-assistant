@@ -25,6 +25,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@ai-task-assistant/shared": "file:../../shared",
     "dotenv": "^16.5.0",
     "envalid": "^8.0.0",
     "express": "^5.1.0",
