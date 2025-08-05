@@ -16,9 +16,9 @@ const logger = createLogger("server");
 
 (async () => {
   try {
-    const server = http.createServer(app);
+    logger.info(`###### Initialize ${env.SERVICE_NAME} ######`);
 
-    logger.info("###### Initialize server ######");
+    const server = http.createServer(app);
 
     await connectRedisClient();
 
@@ -33,9 +33,9 @@ const logger = createLogger("server");
 
     await startServer(server, env.SERVICE_PORT);
 
-    logger.info("###### Initialize server completed ######");
+    logger.info(`###### Initialize ${env.SERVICE_NAME} completed ######`);
   } catch (error) {
-    logger.error("###### Initialize server failed ######", error);
+    logger.error(`###### Initialize ${env.SERVICE_NAME} failed ######`, error);
 
     process.exit(PROCESS_EXIT_CODE.ERROR);
   }
