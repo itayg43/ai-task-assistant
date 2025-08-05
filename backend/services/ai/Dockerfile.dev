@@ -1,0 +1,22 @@
+FROM node:20-alpine
+
+ENV NODE_ENV=development
+
+WORKDIR /app
+
+RUN apk add --no-cache curl
+
+COPY shared /app/shared
+WORKDIR /app/shared
+RUN npm install && npm run build
+
+WORKDIR /app
+COPY services/ai/package.json services/ai/package-lock.json ./
+RUN npm install
+
+COPY services/ai/ .
+
+EXPOSE 3002
+EXPOSE 51204
+
+CMD ["npm", "run", "start:dev"]
