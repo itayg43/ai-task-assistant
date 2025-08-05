@@ -131,18 +131,31 @@ app.use("/api", rateLimiter);
 ```typescript
 import { registerProcessEventHandlers } from "@shared/utils/process-event/register-process-event-handlers";
 
-registerProcessEventHandlers(server, {
-  onShutdown: () => console.log("Shutting down gracefully"),
-  onError: (error) => console.error("Unhandled error:", error),
-});
+const processExitCallback = (code: number) => {
+  console.log(`Process exiting with code: ${code}`);
+  process.exit(code);
+};
+
+const cleanupCallbacks = {
+  afterSuccess: async () => {
+    console.log("Server closed successfully");
+  },
+  afterFailure: () => {
+    console.error("Failed to close server gracefully");
+  },
+};
+
+registerProcessEventHandlers(server, processExitCallback, cleanupCallbacks);
 ```
 
 **Features:**
 
-- Graceful shutdown handling
-- SIGTERM/SIGINT support
+- Graceful shutdown handling for SIGTERM/SIGINT
 - Uncaught exception handling
 - Unhandled rejection handling
+- Atomic shutdown protection (prevents race conditions)
+- Configurable cleanup callbacks for success/failure scenarios
+- Automatic process exit with appropriate exit codes
 
 #### With Lock
 
