@@ -1,4 +1,4 @@
-## Available Modules
+## Modules
 
 ### Clients
 
@@ -6,33 +6,31 @@
 
 ```typescript
 import {
+  createRedisClient,
   connectRedisClient,
+  closeRedisClient,
   destroyRedisClient,
-  getRedisClient,
 } from "@shared/clients/redis";
 ```
 
 **Features:**
 
-- Connection management
+- Connection management with timeout handling
 - Graceful shutdown
-- Error handling
+- Error handling and logging
+- Ready state detection
 
 #### Redlock Client
 
 ```typescript
-import {
-  connectRedlockClient,
-  destroyRedlockClient,
-  getRedlockClient,
-} from "@shared/clients/redlock";
+import { createRedlockClient } from "@shared/clients/redlock";
 ```
 
 **Features:**
 
-- Distributed locking
-- Automatic cleanup
-- Connection pooling
+- Distributed locking setup
+- Configurable retry settings
+- Connection pooling support
 
 ### Config
 
@@ -43,67 +41,18 @@ import { createLogger } from "@shared/config/create-logger";
 
 const logger = createLogger("service-name");
 logger.info("Application started");
-logger.error("An error occurred", { error });
+logger.error("An error occurred", error);
+logger.warn("Warning message");
 ```
 
 **Features:**
 
-- Structured logging
-- Log levels (DEBUG, INFO, WARN, ERROR)
-- Request context tracking
-- JSON formatting
+- Structured logging with timestamps
+- Log levels (INFO, ERROR, WARN)
+- Context support for additional data
+- JSON formatting for objects
 
-### Constants
-
-```typescript
-import {
-  PROCESS_EXIT_CODE,
-  LOGGER_LOG_LEVEL,
-  DATE_TIME_FORMAT,
-  PROCESS_TOKEN_BUCKET,
-  SERVER_SHUTDOWN_STATE,
-} from "@shared/constants";
-```
-
-**Available Constants:**
-
-- `PROCESS_EXIT_CODE`: Exit codes for different scenarios
-- `LOGGER_LOG_LEVEL`: Log level enums
-- `DATE_TIME_FORMAT`: Standard date/time formats
-- `PROCESS_TOKEN_BUCKET`: Token bucket configuration
-- `SERVER_SHUTDOWN_STATE`: Server shutdown states
-
-### Error Handling
-
-#### Base Error
-
-```typescript
-import { BaseError } from "@shared/errors";
-
-class CustomError extends BaseError {
-  constructor(message: string, statusCode: number = 500) {
-    super(message, statusCode);
-  }
-}
-```
-
-#### Authentication Error
-
-```typescript
-import { AuthenticationError } from "@shared/errors";
-
-throw new AuthenticationError("Invalid token");
-```
-
-#### Token Bucket Rate Limiter Error
-
-```typescript
-import { TokenBucketRateLimiterServiceError } from "@shared/errors";
-
-throw new TokenBucketRateLimiterServiceError("Rate limit exceeded");
-```
-
-### Middleware
+### Middlewares
 
 #### Error Handler
 
@@ -119,20 +68,6 @@ app.use(errorHandler);
 - Zod validation error handling
 - Custom error class support
 - Proper HTTP status codes
-
-#### Authentication
-
-```typescript
-import { authentication } from "@shared/middlewares/authentication";
-
-app.use("/protected", authentication);
-```
-
-**Features:**
-
-- Token validation
-- User context injection
-- Automatic error responses
 
 #### Request/Response Metadata
 
@@ -167,10 +102,13 @@ app.post("/users", validateSchema(userSchema), createUser);
 ```typescript
 import { createTokenBucketRateLimiter } from "@shared/middlewares/token-bucket-rate-limiter";
 
-const rateLimiter = createTokenBucketRateLimiter({
-  tokensPerSecond: 10,
+const rateLimiter = createTokenBucketRateLimiter(redisClient, redlockClient, {
+  serviceName: "my-service",
+  rateLimiterName: "api-limiter",
   bucketSize: 100,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  refillRate: 10,
+  bucketTtlSeconds: 3600,
+  lockTtlMs: 5000,
 });
 
 app.use("/api", rateLimiter);
@@ -178,26 +116,15 @@ app.use("/api", rateLimiter);
 
 **Features:**
 
-- Configurable rate limits
-- Per-user/IP limiting
-- Redis-based storage
-- Automatic token refill
+- Configurable bucket size and refill rate
+- Per-user rate limiting (uses authentication context)
+- Redis-based storage with TTL
+- Distributed locking with Redlock
+- Automatic token refill over time
+- Configurable lock timeout
+- Comprehensive logging and error handling
 
 ### Utils
-
-#### Date/Time Utilities
-
-```typescript
-import {
-  formatDateTime,
-  parseDateTime,
-  isValidDateTime,
-} from "@shared/utils/date-time";
-
-const formatted = formatDateTime(new Date(), "YYYY-MM-DD HH:mm:ss");
-const parsed = parseDateTime("2023-12-01 10:30:00");
-const isValid = isValidDateTime("invalid-date");
-```
 
 #### Process Event Handlers
 
@@ -217,30 +144,7 @@ registerProcessEventHandlers(server, {
 - Uncaught exception handling
 - Unhandled rejection handling
 
-#### Token Bucket Utilities
-
-```typescript
-import {
-  processTokenBucket,
-  createTokenBucketKey,
-  getTokenBucketState,
-} from "@shared/utils/token-bucket";
-
-const result = await processTokenBucket({
-  userId: "user123",
-  tokensPerSecond: 10,
-  bucketSize: 100,
-});
-```
-
-**Features:**
-
-- Redis-based token bucket
-- Configurable rates and limits
-- Automatic token refill
-- Thread-safe operations
-
-#### Lock Utilities
+#### With Lock
 
 ```typescript
 import { withLock } from "@shared/utils/with-lock";
@@ -265,33 +169,6 @@ const result = await withLock(
 - Configurable timeouts
 - Error handling
 
-#### Exhaustive Switch
-
-```typescript
-import { exhaustiveSwitch } from "@shared/utils/exhaustive-switch";
-
-type Status = "pending" | "completed" | "failed";
-
-function handleStatus(status: Status) {
-  switch (status) {
-    case "pending":
-      return "Processing...";
-    case "completed":
-      return "Done!";
-    case "failed":
-      return "Error occurred";
-    default:
-      return exhaustiveSwitch(status); // TypeScript error if missing cases
-  }
-}
-```
-
-**Features:**
-
-- Type-safe switch statements
-- Compile-time exhaustiveness checking
-- Better error messages
-
 ## Testing
 
 ### Running Tests
@@ -303,9 +180,14 @@ npm test
 ### Mock Utilities
 
 ```typescript
-import { createRedisMock, createRedlockMock } from "@shared/mocks";
+import {
+  createRedisClientMock,
+  createRedlockClientMock,
+  setupAcquireMock,
+} from "@shared/mocks";
 
 // Use in tests
-const redisMock = createRedisMock();
-const redlockMock = createRedlockMock();
+const redisMock = createRedisClientMock();
+const redlockMock = createRedlockClientMock();
+setupAcquireMock(redlockMock, "lock-value", true);
 ```
