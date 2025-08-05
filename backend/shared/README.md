@@ -187,7 +187,7 @@ const result = await withLock(
 ### Running Tests
 
 ```bash
-npm test
+npm run test
 ```
 
 ### Mock Utilities
@@ -199,8 +199,15 @@ import {
   setupAcquireMock,
 } from "@shared/mocks";
 
-// Use in tests
+// Create Redis mock with common methods
 const redisMock = createRedisClientMock();
+// Returns mock with: hgetall, hmset, expire methods
+
+// Create Redlock mock
 const redlockMock = createRedlockClientMock();
-setupAcquireMock(redlockMock, "lock-value", true);
+// Returns mock with: acquire method
+
+// Configure Redlock acquire behavior
+setupAcquireMock(redlockMock, "lock-value", true); // Resolves with value
+setupAcquireMock(redlockMock, new Error("Lock failed"), false); // Rejects with error
 ```
