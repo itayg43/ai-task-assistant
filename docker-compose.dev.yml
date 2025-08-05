@@ -24,6 +24,10 @@ services:
           path: ./backend/services/ai/package-lock.json
         - action: rebuild
           path: ./backend/services/ai/Dockerfile.dev
+        - action: rebuild
+          path: ./backend/shared/package.json
+        - action: rebuild
+          path: ./backend/shared/package-lock.json
 
   tasks:
     build:
@@ -50,3 +54,7 @@ services:
           path: ./backend/services/tasks/package-lock.json
         - action: rebuild
           path: ./backend/services/tasks/Dockerfile.dev
+        - action: rebuild
+          path: ./backend/shared/package.json
+        - action: rebuild
+          path: ./backend/shared/package-lock.json
