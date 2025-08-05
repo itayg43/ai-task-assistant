@@ -1,8 +1,9 @@
 import express from "express";
 import helmet from "helmet";
 
-import { healthRouter } from "@modules/health/health-router";
-import { apiV1Router } from "@routers/api";
+import { tokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter";
+import { healthRouter } from "@routers/health-router";
+import { tasksRouter } from "@routers/tasks-router";
 import { authentication } from "@shared/middlewares/authentication";
 import { errorHandler } from "@shared/middlewares/error-handler";
 import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
@@ -17,5 +18,9 @@ app.use(
   })
 );
 app.use("/health", [requestResponseMetadata], healthRouter);
-app.use("/api/v1", [authentication, requestResponseMetadata], apiV1Router);
+app.use(
+  "/api/v1/tasks",
+  [authentication, requestResponseMetadata, tokenBucketRateLimiter.global],
+  tasksRouter
+);
 app.use(errorHandler);

@@ -11,11 +11,11 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../../shared/dist/*"],
-      "@config/*": ["src/config/*"],
-      "@middlewares/*": ["src/middlewares/*"],
       "@clients/*": ["src/clients/*"],
-      "@modules/*": ["src/modules/*"],
-      "@routers/*": ["src/routers/*"]
+      "@routers/*": ["src/routers/*"],
+      "@middlewares/*": ["src/middlewares/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@schemas/*": ["src/schemas/*"]
     }
   },
   "include": ["src/"],

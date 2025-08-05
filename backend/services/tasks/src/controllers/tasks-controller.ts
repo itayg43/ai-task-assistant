@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { CreateTaskInput } from "@modules/tasks/tasks-schemas";
+import { CreateTaskInput } from "@schemas/tasks-schemas";
 import { createLogger } from "@shared/config/create-logger";
 
 const logger = createLogger("tasksController");
