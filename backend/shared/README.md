@@ -335,10 +335,6 @@ function handleStatus(status: Status) {
 npm test
 ```
 
-### Test Coverage
-
-The shared package includes comprehensive tests for all utilities and middleware functions.
-
 ### Mock Utilities
 
 ```typescript
@@ -348,64 +344,3 @@ import { createRedisMock, createRedlockMock } from "@shared/mocks";
 const redisMock = createRedisMock();
 const redlockMock = createRedlockMock();
 ```
-
-## 🔧 Development
-
-### Building
-
-```bash
-npm run build
-```
-
-### Type Checking
-
-```bash
-npx tsc --noEmit
-```
-
-### Adding New Utilities
-
-1. Create your utility in the appropriate `src/` subdirectory
-2. Export it from the module's `index.ts` file
-3. Add comprehensive tests
-4. Update this README with usage examples
-
-## 📝 Best Practices
-
-### Error Handling
-
-- Always use custom error classes for domain-specific errors
-- Include appropriate HTTP status codes
-- Provide meaningful error messages
-
-### Logging
-
-- Use structured logging with context
-- Include relevant metadata in log entries
-- Use appropriate log levels
-
-### Type Safety
-
-- Leverage TypeScript's type system
-- Use exhaustive switch for enum handling
-- Provide proper type definitions
-
-### Testing
-
-- Write unit tests for all utilities
-- Use mocks for external dependencies
-- Test error scenarios
-
-## 🤝 Contributing
-
-When adding new utilities to the shared package:
-
-1. **Follow the existing patterns** - Maintain consistency with current code
-2. **Add comprehensive tests** - Ensure good test coverage
-3. **Update documentation** - Keep this README current
-4. **Consider backward compatibility** - Don't break existing APIs
-5. **Use TypeScript** - Leverage the type system for better developer experience
-
-## 📄 License
-
-This package is part of the AI Task Assistant project.
