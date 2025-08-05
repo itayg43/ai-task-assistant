@@ -12,7 +12,9 @@
     "paths": {
       "@shared/*": ["../../shared/dist/*"],
       "@clients/*": ["src/clients/*"],
-      "@routers/*": ["src/routers/*"]
+      "@routers/*": ["src/routers/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@capabilities/*": ["src/capabilities/*"]
     }
   },
   "include": ["src/"],
