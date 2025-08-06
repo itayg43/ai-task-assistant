@@ -6,26 +6,34 @@ import {
   FREQUENCY,
   PRIORITY_LEVEL,
   PRIORITY_SCORE,
+  VALIDATION_LIMITS,
 } from "@capabilities/parse-task/parse-task-constants";
+import { getDateISO } from "@shared/utils/date-time";
 
-export const parseTaskPrompt = (
-  naturalLanguage: string
-): ResponseCreateParamsNonStreaming => {
-  const prompt = `
+const BASE_INSTRUCTIONS = `
 ## Instructions
 Parse the natural language task description into structured JSON data.
-**Current Date Context**: Today is ${
-    new Date().toISOString().split("T")[0]
-  } (YYYY-MM-DD). Use this context to parse relative dates like "tomorrow", "next Thursday", "this weekend", etc.
 Respond with only a valid JSON object. Do not include explanations or any other text. Do not wrap the response in markdown or code block markers (\`\`\`). Do not include comments.
+`;
+
+const OPENAI_TEMPERATURE_CLARIFICATION = `
 ⚠️ This prompt is designed to be used with OpenAI's API using temperature = 0 to ensure deterministic and consistent output.
+`;
+
+const DATE_CONTEXT = `
+**Current Date Context**: Today is ${getDateISO()} (YYYY-MM-DD). Use this context to parse relative dates like "tomorrow", "next Thursday", "this weekend", etc.
+`;
+
+const OUTPUT_FORMAT = `
 ## Output Format
 Return only a single JSON object with the following structure:
 {
   "title": "Task title",
   "dueDate": "ISO datetime string or null",
   "priorityLevel": "${PRIORITY_LEVEL.join(" | ")}",
-  "priorityScore": number (0–100),
+  "priorityScore": number (${VALIDATION_LIMITS.MIN_PRIORITY_SCORE}–${
+  VALIDATION_LIMITS.MAX_PRIORITY_SCORE
+}),
   "priorityReason": "Explanation of the priority score and level",
   "category": "${CATEGORY.join(" | ")}",
   "recurrence": {
@@ -37,23 +45,28 @@ Return only a single JSON object with the following structure:
   } or null,
   "subtasks": ["subtask1", "subtask2"] or null
 }
+`;
+
+const PARSING_RULES = `
 ## Parsing Rules
 - Parse dates: Use current date context to interpret "tomorrow", "next Friday", "this weekend", etc.
 - Priority:
   - Map urgency/importance cues to a level: "${PRIORITY_LEVEL.join(", ")}"
-  - Score priority from 0–100 based on urgency, deadlines, language, AND category context:
+  - Score priority from ${VALIDATION_LIMITS.MIN_PRIORITY_SCORE}–${
+  VALIDATION_LIMITS.MAX_PRIORITY_SCORE
+} based on urgency, deadlines, language, AND category context:
     - ${PRIORITY_SCORE.CRITICAL.keywords.join(", ")} → ${
-    PRIORITY_SCORE.CRITICAL.min
-  }–${PRIORITY_SCORE.CRITICAL.max}
+  PRIORITY_SCORE.CRITICAL.min
+}–${PRIORITY_SCORE.CRITICAL.max}
     - ${PRIORITY_SCORE.HIGH.keywords.join(", ")} → ${PRIORITY_SCORE.HIGH.min}–${
-    PRIORITY_SCORE.HIGH.max
-  }
+  PRIORITY_SCORE.HIGH.max
+}
     - ${PRIORITY_SCORE.MEDIUM.keywords.join(", ")} → ${
-    PRIORITY_SCORE.MEDIUM.min
-  }–${PRIORITY_SCORE.MEDIUM.max}
+  PRIORITY_SCORE.MEDIUM.min
+}–${PRIORITY_SCORE.MEDIUM.max}
     - ${PRIORITY_SCORE.LOW.keywords.join(", ")} → ${PRIORITY_SCORE.LOW.min}–${
-    PRIORITY_SCORE.LOW.max
-  }
+  PRIORITY_SCORE.LOW.max
+}
   - Consider category importance in scoring:
     - Health tasks: Consider preventive care importance and long-term well-being impact
     - Personal tasks: Consider emotional significance and relationship impact
@@ -76,6 +89,9 @@ Return only a single JSON object with the following structure:
 - Subtasks: suggest logical steps if the task is complex or multi-step
 - Default priorityLevel: "medium", priorityScore: 50
 - Default category: infer based on task title if not specified
+`;
+
+const EXAMPLES = `
 ## Examples
 ### Example 1 (Basic Task with Deadline)
 Input:
@@ -211,11 +227,25 @@ Output:
   "recurrence": null,
   "subtasks": null
 }
+`;
+
+const INPUT = `
 ## Input to Parse
 """
 {naturalLanguage}
 """
 `;
+
+export const parseTaskPrompt = (
+  naturalLanguage: string
+): ResponseCreateParamsNonStreaming => {
+  const prompt = `${BASE_INSTRUCTIONS}
+                  ${DATE_CONTEXT}
+                  ${OPENAI_TEMPERATURE_CLARIFICATION}
+                  ${OUTPUT_FORMAT}
+                  ${PARSING_RULES}
+                  ${EXAMPLES}
+                  ${INPUT}`;
 
   return {
     model: "gpt-4o-mini",

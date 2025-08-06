@@ -36,3 +36,9 @@ export const EMOTIONAL_LANGUAGE = {
   INCREASE: ["i really need", "desperately", "urgently", "must"],
   DECREASE: ["should probably", "when i have time", "maybe", "if possible"],
 } as const;
+
+export const VALIDATION_LIMITS = {
+  MAX_NATURAL_LANGUAGE_LENGTH: 255,
+  MAX_PRIORITY_SCORE: 100,
+  MIN_PRIORITY_SCORE: 0,
+} as const;

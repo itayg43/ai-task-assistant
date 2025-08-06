@@ -4,7 +4,7 @@ import {
   CATEGORY,
   FREQUENCY,
   PRIORITY_LEVEL,
-  PRIORITY_SCORE,
+  VALIDATION_LIMITS,
 } from "@capabilities/parse-task/parse-task-constants";
 import { isNonEmptyString, trimString } from "@shared/utils/zod-schema-helpers";
 
@@ -12,11 +12,9 @@ export const parseTaskInputSchema = z.object({
   body: z.object({
     naturalLanguage: z
       .string()
-      .max(255)
+      .max(VALIDATION_LIMITS.MAX_NATURAL_LANGUAGE_LENGTH)
       .transform(trimString)
-      .refine(isNonEmptyString, {
-        message: "Can't be empty",
-      }),
+      .refine(isNonEmptyString, "Required"),
   }),
 });
 
@@ -28,8 +26,8 @@ export const parseTaskOutputSchema = z.object({
   priorityLevel: z.enum(PRIORITY_LEVEL),
   priorityScore: z
     .number()
-    .min(PRIORITY_SCORE.LOW.min)
-    .max(PRIORITY_SCORE.CRITICAL.max),
+    .min(VALIDATION_LIMITS.MIN_PRIORITY_SCORE)
+    .max(VALIDATION_LIMITS.MAX_PRIORITY_SCORE),
   priorityReason: z.string().transform(trimString).refine(isNonEmptyString),
 
   category: z.enum(CATEGORY),
