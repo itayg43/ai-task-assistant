@@ -50,8 +50,8 @@ describe("capabilitiesController", () => {
       });
 
       expect(mockedParseTaskHandler).toHaveBeenCalledWith(mockNaturalLanguage);
-      expect(response.body).toEqual(mockParsedTask);
       expect(response.status).toBe(StatusCodes.OK);
+      expect(response.body).toEqual(mockParsedTask);
     });
 
     it("should return 400 for invalid input", async () => {
@@ -59,6 +59,7 @@ describe("capabilitiesController", () => {
         naturalLanguage: "",
       });
 
+      expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toContain("Required");
     });
 
@@ -71,6 +72,7 @@ describe("capabilitiesController", () => {
         naturalLanguage: mockNaturalLanguage,
       });
 
+      expect(response.status).toBe(StatusCodes.INTERNAL_SERVER_ERROR);
       expect(response.body.message).toContain("Unexpected");
     });
   });
