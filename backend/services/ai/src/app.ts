@@ -1,7 +1,9 @@
 import express from "express";
 import helmet from "helmet";
 
+import { capabilitiesRouter } from "@routers/capabilities-router";
 import { healthRouter } from "@routers/health-router";
+import { authentication } from "@shared/middlewares/authentication";
 import { errorHandler } from "@shared/middlewares/error-handler";
 import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
 
@@ -15,4 +17,9 @@ app.use(
   })
 );
 app.use("/health", [requestResponseMetadata], healthRouter);
+app.use(
+  "/api/v1/ai/capabilities",
+  [authentication, requestResponseMetadata],
+  capabilitiesRouter
+);
 app.use(errorHandler);

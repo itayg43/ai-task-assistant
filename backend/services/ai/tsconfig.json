@@ -11,7 +11,10 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../../shared/dist/*"],
-      "@routers/*": ["src/routers/*"]
+      "@clients/*": ["src/clients/*"],
+      "@routers/*": ["src/routers/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@capabilities/*": ["src/capabilities/*"]
     }
   },
   "include": ["src/"],
