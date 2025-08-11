@@ -59,11 +59,7 @@ logger.warn("Warning message");
 ```typescript
 import { createCors } from "@shared/middlewares/cors/create-cors";
 
-const cors = createCors([
-  "http://localhost:3001",
-  "http://tasks:3001",
-  process.env.TASKS_SERVICE_URL,
-]);
+const cors = createCors(["http://localhost:3001", "http://tasks:3001"]);
 
 app.use(cors);
 ```
