@@ -12,48 +12,67 @@ export const createCors =
     const origin = req.headers.origin;
 
     if (!origin) {
-      if (req.path.includes(HEALTH_ROUTE)) {
-        logger.info("Allowing no-origin request to health endpoint:", {
-          path: req.path,
-          method: req.method,
-        });
-
-        next();
-
-        return;
-      } else {
-        logger.warn("Blocking no-origin request to non-health endpoint:", {
-          path: req.path,
-          method: req.method,
-        });
-
-        next(
-          new ForbiddenError(
-            "No-origin requests only allowed to health endpoints"
-          )
-        );
-
-        return;
-      }
-    }
-
-    if (allowedOrigins.includes(origin)) {
-      logger.info("Allowing request from allowed origin:", {
-        origin,
-        path: req.path,
-        method: req.method,
-      });
-
-      next();
+      handleNoOrigin(req, next);
 
       return;
     }
 
-    logger.warn("Blocking request from unauthorized origin:", {
+    handleWithOrigin(origin, allowedOrigins, req, next);
+  };
+
+function handleNoOrigin(req: Request, next: NextFunction) {
+  if (isHealthEndpoint(req.path)) {
+    logger.info("Allowing no-origin request to health endpoint:", {
+      path: req.path,
+      method: req.method,
+    });
+
+    next();
+
+    return;
+  }
+
+  logger.warn("Blocking no-origin request to non-health endpoint:", {
+    path: req.path,
+    method: req.method,
+  });
+
+  next(
+    new ForbiddenError("No-origin requests only allowed to health endpoints")
+  );
+}
+
+function handleWithOrigin(
+  origin: string,
+  allowedOrigins: string[],
+  req: Request,
+  next: NextFunction
+) {
+  if (isAllowedOrigin(allowedOrigins, origin)) {
+    logger.info("Allowing request from allowed origin:", {
       origin,
       path: req.path,
       method: req.method,
     });
 
-    next(new ForbiddenError(`Origin ${origin} not allowed by CORS policy`));
-  };
+    next();
+
+    return;
+  }
+
+  logger.warn("Blocking request from unauthorized origin:", {
+    origin,
+    path: req.path,
+    method: req.method,
+  });
+
+  next(new ForbiddenError(`Origin ${origin} not allowed by CORS policy`));
+}
+
+function isHealthEndpoint(path: string) {
+  return path.includes(HEALTH_ROUTE);
+}
+
+function isAllowedOrigin(allowedOrigins: string[], origin: string) {
+  return allowedOrigins.includes(origin);
+}
