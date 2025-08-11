@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { tokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter";
 import { healthRouter } from "@routers/health-router";
 import { tasksRouter } from "@routers/tasks-router";
+import { HEALTH_ROUTE } from "@shared/constants";
 import { authentication } from "@shared/middlewares/authentication";
 import { errorHandler } from "@shared/middlewares/error-handler";
 import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
@@ -17,7 +18,7 @@ app.use(
     extended: true,
   })
 );
-app.use("/health", [requestResponseMetadata], healthRouter);
+app.use(HEALTH_ROUTE, [requestResponseMetadata], healthRouter);
 app.use(
   "/api/v1/tasks",
   [authentication, requestResponseMetadata, tokenBucketRateLimiter.global],

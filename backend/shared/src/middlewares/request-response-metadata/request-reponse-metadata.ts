@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 
 import { createLogger } from "../../config/create-logger";
+import { HEALTH_ROUTE } from "../../constants";
 import { getAuthenticationContext } from "../../utils/authentication-context";
 import { getCurrentTime, getElapsedTime } from "../../utils/date-time";
 
@@ -18,7 +19,7 @@ export const requestResponseMetadata = (
       method: req.method,
       originalUrl: req.originalUrl,
       userAgent: req.get("User-Agent"),
-      authenticationContext: !req.originalUrl.includes("/health")
+      authenticationContext: !req.originalUrl.includes(HEALTH_ROUTE)
         ? getAuthenticationContext(res)
         : undefined,
     };
