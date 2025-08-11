@@ -3,6 +3,7 @@ import helmet from "helmet";
 
 import { capabilitiesRouter } from "@routers/capabilities-router";
 import { healthRouter } from "@routers/health-router";
+import { HEALTH_ROUTE } from "@shared/constants";
 import { authentication } from "@shared/middlewares/authentication";
 import { errorHandler } from "@shared/middlewares/error-handler";
 import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
@@ -16,7 +17,7 @@ app.use(
     extended: true,
   })
 );
-app.use("/health", [requestResponseMetadata], healthRouter);
+app.use(HEALTH_ROUTE, [requestResponseMetadata], healthRouter);
 app.use(
   "/api/v1/ai/capabilities",
   [authentication, requestResponseMetadata],
