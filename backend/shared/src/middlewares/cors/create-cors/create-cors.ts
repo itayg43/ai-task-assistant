@@ -48,7 +48,7 @@ function handleWithOrigin(
   req: Request,
   next: NextFunction
 ) {
-  if (isAllowedOrigin(allowedOrigins, origin)) {
+  if (isAllowedOrigin(origin, allowedOrigins)) {
     logger.info("Allowing request from allowed origin:", {
       origin,
       path: req.path,
@@ -73,6 +73,6 @@ function isHealthEndpoint(path: string) {
   return path.includes(HEALTH_ROUTE);
 }
 
-function isAllowedOrigin(allowedOrigins: string[], origin: string) {
+function isAllowedOrigin(origin: string, allowedOrigins: string[]) {
   return allowedOrigins.includes(origin);
 }
