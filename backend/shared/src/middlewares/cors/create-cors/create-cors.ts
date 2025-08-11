@@ -37,9 +37,8 @@ function handleNoOrigin(req: Request, next: NextFunction) {
     method: req.method,
   });
 
-  next(
-    new ForbiddenError("No-origin requests only allowed to health endpoints")
-  );
+  const errorMessage = "No-origin requests only allowed to health endpoints";
+  next(new ForbiddenError(errorMessage));
 }
 
 function handleWithOrigin(
@@ -66,7 +65,8 @@ function handleWithOrigin(
     method: req.method,
   });
 
-  next(new ForbiddenError(`Origin ${origin} not allowed by CORS policy`));
+  const errorMessage = `Origin ${origin} not allowed by CORS policy`;
+  next(new ForbiddenError(errorMessage));
 }
 
 function isHealthEndpoint(path: string) {
