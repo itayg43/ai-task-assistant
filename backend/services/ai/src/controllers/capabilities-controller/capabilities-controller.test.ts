@@ -6,6 +6,11 @@ import { parseTaskHandler } from "@capabilities/parse-task/parse-task-handler";
 import { Mocked } from "@shared/types";
 import { app } from "../../app";
 
+// Mock CORS middleware using __mocks__ directory with explicit import path
+// Simple vi.mock() doesn't resolve the @middlewares/cors alias correctly
+vi.mock("@middlewares/cors", () => {
+  return import("../../middlewares/cors/__mocks__/cors");
+});
 vi.mock("@capabilities/parse-task/parse-task-handler");
 
 describe("capabilitiesController", () => {
