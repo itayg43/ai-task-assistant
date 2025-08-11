@@ -13,6 +13,7 @@
       "@shared/*": ["../../shared/dist/*"],
       "@clients/*": ["src/clients/*"],
       "@routers/*": ["src/routers/*"],
+      "@middlewares/*": ["src/middlewares/*"],
       "@controllers/*": ["src/controllers/*"],
       "@capabilities/*": ["src/capabilities/*"]
     }
