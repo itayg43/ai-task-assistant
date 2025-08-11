@@ -12,14 +12,14 @@ export const withRetry = async <T>(
 
   while (attempt <= maxAttempts) {
     try {
-      logger.info(`Attempt ${attempt}/${maxAttempts} `);
+      logger.info(`Attempt ${attempt}/${maxAttempts}`);
 
       return await fn();
     } catch (error) {
       lastError = error;
 
       if (attempt === maxAttempts) {
-        logger.error(`Retry failed after ${maxAttempts} attempts `, {
+        logger.error(`Retry failed after ${maxAttempts} attempts`, {
           error,
         });
 
