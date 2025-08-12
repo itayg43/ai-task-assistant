@@ -1,13 +1,12 @@
 import { Router } from "express";
 
-import { parseTaskInputSchema } from "@capabilities/parse-task/parse-task-schemas";
-import { parseTask } from "@controllers/capabilities-controller";
-import { validateSchema } from "@shared/middlewares/validate-schema";
+import { executeCapability } from "@controllers/capabilities-controller";
+import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
 
 export const capabilitiesRouter = Router();
 
 capabilitiesRouter.post(
-  "/parse-task",
-  [validateSchema(parseTaskInputSchema)],
-  parseTask
+  "/:capability",
+  validateExecutableCapability,
+  executeCapability
 );
