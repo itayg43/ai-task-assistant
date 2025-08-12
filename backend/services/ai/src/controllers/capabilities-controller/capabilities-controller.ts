@@ -5,12 +5,21 @@ import { parseTaskHandler } from "@capabilities/parse-task/parse-task-handler";
 import { ParseTaskInput } from "@capabilities/parse-task/parse-task-types";
 
 export const parseTask = async (
-  req: Request<{}, unknown, ParseTaskInput["body"]>,
+  req: Request<
+    ParseTaskInput["params"],
+    unknown,
+    ParseTaskInput["body"],
+    ParseTaskInput["query"]
+  >,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const parsedTask = await parseTaskHandler(req.body.naturalLanguage);
+    const parsedTask = await parseTaskHandler({
+      body: req.body,
+      params: req.params,
+      query: req.query,
+    });
 
     res.status(StatusCodes.OK).json(parsedTask);
   } catch (error) {

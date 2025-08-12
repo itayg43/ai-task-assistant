@@ -3,10 +3,13 @@ import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schem
 import { openai } from "@clients/openai";
 import { createLogger } from "@shared/config/create-logger";
 import { getCurrentTime } from "@shared/utils/date-time";
+import { ParseTaskInput } from "../parse-task-types";
 
 const logger = createLogger("parseTaskHandler");
 
-export const parseTaskHandler = async (naturalLanguage: string) => {
+export const parseTaskHandler = async (input: ParseTaskInput) => {
+  const { naturalLanguage } = input.body;
+
   logger.info("parseTask - starting", {
     naturalLanguage,
   });

@@ -54,7 +54,13 @@ describe("capabilitiesController", () => {
         naturalLanguage: mockNaturalLanguage,
       });
 
-      expect(mockedParseTaskHandler).toHaveBeenCalledWith(mockNaturalLanguage);
+      expect(mockedParseTaskHandler).toHaveBeenCalledWith({
+        body: {
+          naturalLanguage: mockNaturalLanguage,
+        },
+        query: {},
+        params: {},
+      });
       expect(response.status).toBe(StatusCodes.OK);
       expect(response.body).toEqual(mockParsedTask);
     });

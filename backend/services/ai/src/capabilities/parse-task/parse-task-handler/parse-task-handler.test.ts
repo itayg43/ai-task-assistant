@@ -12,6 +12,16 @@ describe("parseTaskHandler", () => {
   let mockedParseTaskPrompt: Mocked<typeof parseTaskPrompt>;
   let mockedOpenaiCreate: Mocked<typeof openai.responses.create>;
 
+  const executeHandler = async (naturalLanguage: string) => {
+    return await parseTaskHandler({
+      body: {
+        naturalLanguage,
+      },
+      params: {},
+      query: {},
+    });
+  };
+
   beforeEach(() => {
     mockedParseTaskPrompt = vi.mocked(parseTaskPrompt);
     mockedOpenaiCreate = vi.mocked(openai.responses.create);
@@ -47,7 +57,7 @@ describe("parseTaskHandler", () => {
     mockedParseTaskPrompt.mockReturnValue(mockParseTaskPrompt);
     mockedOpenaiCreate.mockResolvedValue(mockAiResponse as any);
 
-    const result = await parseTaskHandler(mockNaturalLanguage);
+    const result = await executeHandler(mockNaturalLanguage);
 
     expect(mockedParseTaskPrompt).toHaveBeenCalledWith(mockNaturalLanguage);
     expect(mockedOpenaiCreate).toHaveBeenCalledWith(mockParseTaskPrompt);
@@ -57,7 +67,7 @@ describe("parseTaskHandler", () => {
   it("should handle openai api errors", async () => {
     mockedOpenaiCreate.mockRejectedValue(new Error("API Error"));
 
-    await expect(parseTaskHandler("test task")).rejects.toThrow();
+    await expect(executeHandler("test task")).rejects.toThrow();
   });
 
   it("should handle ai returning valid json but invalid schema", async () => {
@@ -68,7 +78,7 @@ describe("parseTaskHandler", () => {
       }),
     } as any);
 
-    await expect(parseTaskHandler("test task")).rejects.toThrow();
+    await expect(executeHandler("test task")).rejects.toThrow();
   });
 
   it("should handle ai returning invalid json", async () => {
@@ -76,6 +86,6 @@ describe("parseTaskHandler", () => {
       output_text: "This is not valid JSON",
     } as any);
 
-    await expect(parseTaskHandler("test task")).rejects.toThrow();
+    await expect(executeHandler("test task")).rejects.toThrow();
   });
 });
