@@ -6,7 +6,7 @@ import {
 import { CAPABILITY } from "@constants";
 import { CapabilityConfig } from "@types";
 
-export const capability = {
+export const capabilities = {
   [CAPABILITY.PARSE_TASK]: defineCapability({
     name: "parse-task",
     pattern: "sync",
