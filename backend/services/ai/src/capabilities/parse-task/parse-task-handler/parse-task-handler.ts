@@ -1,9 +1,9 @@
 import { parseTaskPrompt } from "@capabilities/parse-task/parse-task-prompt";
 import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schemas";
+import { ParseTaskInput } from "@capabilities/parse-task/parse-task-types";
 import { openai } from "@clients/openai";
 import { createLogger } from "@shared/config/create-logger";
 import { getCurrentTime } from "@shared/utils/date-time";
-import { ParseTaskInput } from "../parse-task-types";
 
 const logger = createLogger("parseTaskHandler");
 
