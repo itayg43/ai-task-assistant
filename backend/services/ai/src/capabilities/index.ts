@@ -9,7 +9,6 @@ import { CapabilityConfig } from "@types";
 export const capabilities = {
   [CAPABILITY.PARSE_TASK]: defineCapability({
     name: "parse-task",
-    pattern: "sync",
     handler: parseTaskHandler,
     inputSchema: parseTaskInputSchema,
     outputSchema: parseTaskOutputSchema,
