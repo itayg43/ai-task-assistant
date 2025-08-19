@@ -4,6 +4,7 @@ import {
   parseTaskOutputSchema,
 } from "@capabilities/parse-task/parse-task-schemas";
 import { CAPABILITY } from "@constants";
+import { createCapabilityResponseSchema } from "@schemas";
 import { CapabilityConfig } from "@types";
 
 export const capabilities = {
@@ -11,7 +12,7 @@ export const capabilities = {
     name: "parse-task",
     handler: parseTaskHandler,
     inputSchema: parseTaskInputSchema,
-    outputSchema: parseTaskOutputSchema,
+    outputSchema: createCapabilityResponseSchema(parseTaskOutputSchema),
   }),
 } as const;
 

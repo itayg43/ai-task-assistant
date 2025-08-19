@@ -1,13 +1,19 @@
 import { parseTaskPrompt } from "@capabilities/parse-task/parse-task-prompt";
 import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schemas";
-import { ParseTaskInput } from "@capabilities/parse-task/parse-task-types";
+import {
+  ParseTaskInput,
+  ParseTaskOutput,
+} from "@capabilities/parse-task/parse-task-types";
 import { openai } from "@clients/openai";
 import { createLogger } from "@shared/config/create-logger";
 import { getCurrentTime, getElapsedTime } from "@shared/utils/date-time";
+import { CapabilityResponse } from "@types";
 
 const logger = createLogger("parseTaskHandler");
 
-export const parseTaskHandler = async (input: ParseTaskInput) => {
+export const parseTaskHandler = async (
+  input: ParseTaskInput
+): Promise<CapabilityResponse<ParseTaskOutput>> => {
   const { naturalLanguage } = input.body;
 
   const prompt = parseTaskPrompt(naturalLanguage);
@@ -29,7 +35,7 @@ export const parseTaskHandler = async (input: ParseTaskInput) => {
 
     return {
       metadata,
-      parsedTask,
+      result: parsedTask,
     };
   } catch (error) {
     logger.error("Parsing error - json / output schema", error, {
