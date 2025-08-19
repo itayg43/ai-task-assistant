@@ -3,7 +3,7 @@ import { StatusCodes } from "http-status-codes";
 
 import { capabilities } from "@capabilities";
 import { createLogger } from "@shared/config/create-logger";
-import { getCurrentTime } from "@shared/utils/date-time";
+import { getCurrentTime, getElapsedTime } from "@shared/utils/date-time";
 import { withRetry } from "@shared/utils/with-retry";
 
 const logger = createLogger("capabilitiesController");
@@ -13,17 +13,17 @@ export const executeCapability = async (
   res: Response,
   next: NextFunction
 ) => {
+  const startTimestamp = getCurrentTime();
+
+  const { capability } = req.params;
+  const config = capabilities[capability as keyof typeof capabilities];
+
   try {
-    const { capability } = req.params;
-    const config = capabilities[capability as keyof typeof capabilities];
-
-    const startTimestamp = getCurrentTime();
-
-    logger.info(`${capability} - starting`, {
+    logger.info("executeCapability - starting", {
       capability,
       input: {
-        ...req.body,
-        ...req.query,
+        body: req.body,
+        query: req.query,
       },
     });
 
@@ -37,16 +37,24 @@ export const executeCapability = async (
         })
     );
 
-    const duration = getCurrentTime() - startTimestamp;
+    const totalDuration = getElapsedTime(startTimestamp);
 
-    logger.info(`${capability} - completed successfully`, {
+    logger.info("executeCapability - completed", {
       capability,
-      duration: `${duration.toFixed(2)}ms`,
       result,
+      totalDuration: `${totalDuration}ms`,
     });
 
     res.status(StatusCodes.OK).json(result);
   } catch (error) {
+    logger.error("executeCapability - failed", error, {
+      capability,
+      input: {
+        body: req.body,
+        query: req.query,
+      },
+    });
+
     next(error);
   }
 };
