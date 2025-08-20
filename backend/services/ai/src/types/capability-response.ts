@@ -1,10 +1,7 @@
-export type CapabilityResponse<T> = {
-  metadata: {
-    tokens: {
-      input?: number;
-      output?: number;
-    };
-    duration: number;
-  };
-  result: T;
-};
+import z from "zod";
+
+import { createCapabilityResponseSchema } from "@schemas";
+
+export type CapabilityResponse<T extends z.ZodTypeAny> = z.infer<
+  ReturnType<typeof createCapabilityResponseSchema<T>>
+>;
