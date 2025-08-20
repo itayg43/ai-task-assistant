@@ -2,9 +2,10 @@ import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { capabilities } from "@capabilities";
+import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
 import { executeCapabilityInputSchema } from "@schemas";
 import { NotFoundError } from "@shared/errors";
-import { validateExecutableCapability } from "./validate-executable-capability";
 
 vi.mock("@capabilities", () => ({
   capabilities: {
@@ -41,18 +42,29 @@ describe("validateExecutableCapability", () => {
 
   beforeEach(() => {
     mockReq = {
-      params: {
-        capability: "parse-task",
-      },
       body: {
         naturalLanguage: "test task",
       },
+      params: {
+        capability: CAPABILITY.PARSE_TASK,
+      },
       query: {
-        pattern: "sync",
+        pattern: CAPABILITY_PATTERN.SYNC,
       },
     };
     mockRes = {};
     mockNext = vi.fn();
+
+    // Mock the input schema validation to succeed
+    vi.mocked(executeCapabilityInputSchema.parse).mockReturnValue({
+      body: {},
+      params: {
+        capability: CAPABILITY.PARSE_TASK,
+      },
+      query: {
+        pattern: CAPABILITY_PATTERN.SYNC,
+      },
+    });
   });
 
   afterEach(() => {
@@ -74,19 +86,6 @@ describe("validateExecutableCapability", () => {
       },
     };
 
-    // Mock the input schema validation to succeed
-    vi.mocked(executeCapabilityInputSchema.parse).mockReturnValue({
-      body: {
-        naturalLanguage: "test task",
-      },
-      params: {
-        capability: "parse-task",
-      },
-      query: {
-        pattern: "sync",
-      },
-    });
-
     // Replace the mocked capability with our test configuration
     (capabilities as any)["parse-task"] = mockCapabilityConfig;
 
@@ -98,7 +97,6 @@ describe("validateExecutableCapability", () => {
       params: mockReq.params,
       query: mockReq.query,
     });
-
     expect(mockNext).toHaveBeenCalledWith();
   });
 
@@ -113,17 +111,6 @@ describe("validateExecutableCapability", () => {
 
   it("should call next() with validation error when capability input validation fails", async () => {
     const mockError = new Error("Validation failed");
-
-    // Mock the input schema validation to succeed (so we can test capability validation)
-    vi.mocked(executeCapabilityInputSchema.parse).mockReturnValue({
-      body: {},
-      params: {
-        capability: "parse-task",
-      },
-      query: {
-        pattern: "sync",
-      },
-    });
 
     // Replace with a capability that throws an error during input validation
     (capabilities as any)["parse-task"] = {
