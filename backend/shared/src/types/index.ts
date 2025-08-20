@@ -7,3 +7,4 @@ export type { ProcessExitCallback } from "./process-exit-callback";
 export type { RetryConfig } from "./retry-config";
 export type { TokenBucketRateLimiterConfig } from "./token-bucket-rate-limiter-config";
 export type { TokenBucketState } from "./token-bucket-state";
+export type { WithDurationResult } from "./with-duration-result";
