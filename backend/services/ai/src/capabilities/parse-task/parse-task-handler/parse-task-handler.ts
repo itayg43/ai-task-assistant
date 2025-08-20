@@ -38,10 +38,14 @@ export const parseTaskHandler = async (
       result: parsedTask,
     };
   } catch (error) {
-    logger.error("Unexpected error", error, {
-      input,
-      aiResponse: response.output_text,
-    });
+    logger.error(
+      "Error while parse json/validation schema or count input tokens",
+      error,
+      {
+        input,
+        aiResponse: response.output_text,
+      }
+    );
 
     throw error;
   }
