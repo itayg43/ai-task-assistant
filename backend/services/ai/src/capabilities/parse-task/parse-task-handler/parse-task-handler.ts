@@ -1,48 +1,45 @@
 import { parseTaskPrompt } from "@capabilities/parse-task/parse-task-prompt";
 import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schemas";
-import {
-  ParseTaskInput,
-  ParseTaskOutput,
-} from "@capabilities/parse-task/parse-task-types";
+import { ParseTaskInput } from "@capabilities/parse-task/parse-task-types";
 import { openai } from "@clients/openai";
 import { createLogger } from "@shared/config/create-logger";
-import { getCurrentTime, getElapsedTime } from "@shared/utils/date-time";
+import { predefinedTokenCounters } from "@shared/utils/count-tokens";
+import { withDurationAsync } from "@shared/utils/with-duration";
 import { CapabilityResponse } from "@types";
 
 const logger = createLogger("parseTaskHandler");
 
 export const parseTaskHandler = async (
   input: ParseTaskInput
-): Promise<CapabilityResponse<ParseTaskOutput>> => {
+): Promise<CapabilityResponse<typeof parseTaskOutputSchema>> => {
   const { naturalLanguage } = input.body;
 
   const prompt = parseTaskPrompt(naturalLanguage);
 
-  const startTimestamp = getCurrentTime();
-  const response = await openai.responses.create(prompt);
-  const duration = getElapsedTime(startTimestamp);
-
-  const metadata = {
-    tokens: {
-      output: response.usage?.output_tokens,
-    },
-    duration,
-  };
+  const { result: response, duration } = await withDurationAsync(() =>
+    openai.responses.create(prompt)
+  );
 
   try {
     const parsedResponse = JSON.parse(response.output_text);
     const parsedTask = parseTaskOutputSchema.parse(parsedResponse);
 
+    const { count: inputTokens } =
+      predefinedTokenCounters["gpt-4o-mini"](naturalLanguage);
+
     return {
-      metadata,
+      metadata: {
+        tokens: {
+          input: inputTokens,
+          output: response.usage?.output_tokens || 0,
+        },
+        duration: `${duration}ms`,
+      },
       result: parsedTask,
     };
   } catch (error) {
-    logger.error("Parsing error - json / output schema", error, {
-      input: {
-        naturalLanguage,
-      },
-      metadata,
+    logger.error("Unexpected error", error, {
+      input,
       aiResponse: response.output_text,
     });
 
