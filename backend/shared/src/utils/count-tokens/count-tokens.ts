@@ -1,14 +1,23 @@
 import { encodingForModel, TiktokenModel } from "js-tiktoken";
 
-import { getCurrentTime, getElapsedTime } from "../date-time";
+import { createLogger } from "../../config/create-logger";
+import { withDurationSync } from "../with-duration";
+
+const logger = createLogger("countTokens");
 
 export const countTokens = (model: TiktokenModel, text: string) => {
-  const startTimestamp = getCurrentTime();
+  const { result: count, duration } = withDurationSync(() => {
+    const encoder = encodingForModel(model);
 
-  const encoder = encodingForModel(model);
-  const count = encoder.encode(text).length;
+    return encoder.encode(text).length;
+  });
 
-  const duration = getElapsedTime(startTimestamp);
+  logger.info("Tokens counted", {
+    model,
+    text,
+    count,
+    duration: `${duration}ms`,
+  });
 
   return {
     count,
