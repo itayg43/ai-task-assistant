@@ -6,10 +6,10 @@ import {
   PRIORITY_LEVEL,
   VALIDATION_LIMITS,
 } from "@capabilities/parse-task/parse-task-constants";
-import { baseRequestSchema } from "@shared/schemas";
+import { executeCapabilityInputSchema } from "@schemas";
 import { isNonEmptyString, trimString } from "@shared/utils/zod-schema-helpers";
 
-export const parseTaskInputSchema = baseRequestSchema.extend({
+export const parseTaskInputSchema = executeCapabilityInputSchema.extend({
   body: z.object({
     naturalLanguage: z
       .string()
