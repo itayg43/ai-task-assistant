@@ -21,16 +21,6 @@ export const validateExecutableCapability = async (
       throw new NotFoundError(`Capability ${capability} not found`);
     }
 
-    const validatedCapabilityInput = capabilityConfig.inputSchema.parse({
-      body: req.body,
-      params: req.params,
-      query: req.query,
-    });
-
-    Object.assign(req.body, validatedCapabilityInput.body);
-    Object.assign(req.params, validatedCapabilityInput.params);
-    Object.assign(req.query, validatedCapabilityInput.query);
-
     next();
   } catch (error) {
     next(error);
