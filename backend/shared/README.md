@@ -147,6 +147,179 @@ app.use("/api", rateLimiter);
 
 ### Utils
 
+#### Count Tokens
+
+```typescript
+import {
+  countTokens,
+  predefinedTokenCounters,
+} from "@shared/utils/count-tokens";
+
+// Count tokens for any model
+const { count, duration } = countTokens("gpt-4o-mini", "Hello, world!");
+
+// Use predefined counter for common models
+const tokenCount = predefinedTokenCounters["gpt-4o-mini"]("Hello, world!");
+```
+
+**Features:**
+
+- Token counting for any Tiktoken model
+- Performance timing with duration tracking
+- Predefined counters for common models (gpt-4o-mini)
+- Comprehensive logging with model, text, count, and duration
+
+#### With Duration
+
+```typescript
+import {
+  withDurationAsync,
+  withDurationSync,
+} from "@shared/utils/with-duration";
+
+// Async operations with duration tracking
+const { result, duration } = await withDurationAsync(async () => {
+  return await someAsyncOperation();
+});
+
+// Sync operations with duration tracking
+const { result, duration } = withDurationSync(() => {
+  return someSyncOperation();
+});
+```
+
+**Features:**
+
+- Duration tracking for both async and sync operations
+- Returns result wrapped with execution time
+- Useful for performance monitoring and logging
+
+#### Date Time
+
+```typescript
+import {
+  getCurrentTime,
+  getElapsedTime,
+  getCurrentDate,
+  getDateISO,
+} from "@shared/utils/date-time";
+
+const start = getCurrentTime();
+// ... some operation
+const elapsed = getElapsedTime(start);
+const now = getCurrentDate();
+const isoString = getDateISO();
+```
+
+**Features:**
+
+- High-precision timestamp utilities
+- Elapsed time calculation
+- ISO date string generation
+- Consistent date/time handling across the application
+
+#### Exhaustive Switch
+
+```typescript
+import { exhaustiveSwitch } from "@shared/utils/exhaustive-switch";
+
+type Status = "pending" | "completed" | "failed";
+
+const getStatusMessage = (status: Status) => {
+  return exhaustiveSwitch(status, {
+    pending: () => "Operation is pending",
+    completed: () => "Operation completed successfully",
+    failed: () => "Operation failed",
+  });
+};
+```
+
+**Features:**
+
+- Type-safe exhaustive switch handling
+- Compile-time checking for missing cases
+- Runtime error if unhandled value is encountered
+- Perfect for union type handling
+
+#### Zod Schema Helpers
+
+```typescript
+import { trimString, isNonEmptyString } from "@shared/utils/zod-schema-helpers";
+import { z } from "zod";
+
+const userSchema = z
+  .string()
+  .transform(trimString)
+  .refine(isNonEmptyString, "String cannot be empty");
+```
+
+**Features:**
+
+- String trimming utility for Zod transforms
+- Non-empty string validation
+- Designed for Zod's transform + refine pattern
+- Ensures proper validation flow
+
+#### With Retry
+
+```typescript
+import { withRetry } from "@shared/utils/with-retry";
+
+const result = await withRetry(
+  { maxAttempts: 3, baseDelayMs: 1000, backoffMultiplier: 2 },
+  async () => {
+    return await unreliableOperation();
+  }
+);
+```
+
+**Features:**
+
+- Configurable retry attempts with exponential backoff
+- Comprehensive logging for each attempt
+- Configurable base delay and backoff multiplier
+- Automatic error handling and retry logic
+
+#### Start Server
+
+```typescript
+import { startServer } from "@shared/utils/start-server";
+
+await startServer(server, 3000);
+```
+
+**Features:**
+
+- Promise-based server startup
+- Automatic error handling
+- Logging of server status
+- Clean startup sequence
+
+#### With Lock
+
+```typescript
+import { withLock } from "@shared/utils/with-lock";
+
+const result = await withLock(
+  "resource-key",
+  async () => {
+    // Critical section code
+    return "operation result";
+  },
+  {
+    timeout: 5000,
+    retryDelay: 100,
+  }
+);
+```
+
+**Features:**
+
+- Distributed locking with Redlock
+- Automatic lock release
+- Configurable timeouts
+- Error handling
+
 #### Process Event Handlers
 
 ```typescript
@@ -177,31 +350,6 @@ registerProcessEventHandlers(server, processExitCallback, cleanupCallbacks);
 - Atomic shutdown protection (prevents race conditions)
 - Configurable cleanup callbacks for success/failure scenarios
 - Automatic process exit with appropriate exit codes
-
-#### With Lock
-
-```typescript
-import { withLock } from "@shared/utils/with-lock";
-
-const result = await withLock(
-  "resource-key",
-  async () => {
-    // Critical section code
-    return "operation result";
-  },
-  {
-    timeout: 5000,
-    retryDelay: 100,
-  }
-);
-```
-
-**Features:**
-
-- Distributed locking with Redlock
-- Automatic lock release
-- Configurable timeouts
-- Error handling
 
 ## Testing
 
