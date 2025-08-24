@@ -1,12 +1,12 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { capabilities } from "@capabilities";
 import { createLogger } from "@shared/config/create-logger";
 import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { withDurationAsync } from "@shared/utils/with-duration";
 import { withRetry } from "@shared/utils/with-retry";
 import { ExecuteCapabilityInput } from "@types";
+import { getCapabilityConfig } from "@utils/get-capability-config";
 
 const logger = createLogger("capabilitiesController");
 
@@ -21,38 +21,40 @@ export const executeCapability = async (
   next: NextFunction
 ) => {
   const { capability } = req.params;
-  const config = capabilities[capability as keyof typeof capabilities];
+  const { pattern } = req.query;
 
   try {
-    const validatedCapabilityInput = config.inputSchema.parse(req);
-
     logger.info("executeCapability - starting", {
-      input: validatedCapabilityInput,
+      capability,
+      pattern,
+      input: req.body,
     });
 
-    const {
-      result: { metadata, result },
-      duration,
-    } = await withDurationAsync(async () => {
+    const config = getCapabilityConfig(res);
+
+    const { result, duration } = await withDurationAsync(async () => {
       return await withRetry(DEFAULT_RETRY_CONFIG, () =>
-        config.handler(validatedCapabilityInput)
+        config.handler({
+          body: req.body,
+          params: req.params,
+          query: req.query,
+        })
       );
     });
 
     logger.info("executeCapability - completed", {
       capability,
-      metadata,
+      pattern,
       result,
       duration: `${duration}ms`,
     });
 
-    res.status(StatusCodes.OK).json({
-      metadata,
-      result,
-    });
+    res.status(StatusCodes.OK).json(result);
   } catch (error) {
     logger.error("executeCapability - failed", error, {
       capability,
+      pattern,
+      input: req.body,
     });
 
     next(error);

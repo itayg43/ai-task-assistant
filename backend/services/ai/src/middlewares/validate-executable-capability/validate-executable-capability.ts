@@ -6,7 +6,7 @@ import { NotFoundError } from "@shared/errors";
 
 export const validateExecutableCapability = async (
   req: Request,
-  _res: Response,
+  res: Response,
   next: NextFunction
 ) => {
   try {
@@ -20,6 +20,8 @@ export const validateExecutableCapability = async (
     if (!capabilityConfig) {
       throw new NotFoundError(`Capability ${capability} not found`);
     }
+
+    res.locals.capabilityConfig = capabilityConfig;
 
     next();
   } catch (error) {

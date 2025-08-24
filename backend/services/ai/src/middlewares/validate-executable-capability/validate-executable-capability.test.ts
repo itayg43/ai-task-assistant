@@ -6,21 +6,8 @@ import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
 import { executeCapabilityInputSchema } from "@schemas";
 import { NotFoundError } from "@shared/errors";
-import { Mocked } from "@shared/types";
 
-vi.mock("@capabilities", () => ({
-  capabilities: {
-    "parse-task": {
-      handler: vi.fn(),
-      inputSchema: {
-        parse: vi.fn(),
-      },
-      outputSchema: {
-        parse: vi.fn(),
-      },
-    },
-  },
-}));
+vi.mock("@capabilities");
 
 vi.mock("@schemas", () => ({
   executeCapabilityInputSchema: {
@@ -29,10 +16,6 @@ vi.mock("@schemas", () => ({
 }));
 
 describe("validateExecutableCapability", () => {
-  let mockedExecuteCapabilityInputSchemaParse: Mocked<
-    typeof executeCapabilityInputSchema.parse
-  >;
-
   let mockReq: Partial<Request>;
   let mockRes: Partial<Response>;
   let mockNext: NextFunction;
@@ -46,10 +29,7 @@ describe("validateExecutableCapability", () => {
   };
 
   beforeEach(() => {
-    mockedExecuteCapabilityInputSchemaParse = vi.mocked(
-      executeCapabilityInputSchema.parse
-    );
-    mockedExecuteCapabilityInputSchemaParse.mockReturnValue({
+    vi.mocked(executeCapabilityInputSchema.parse).mockReturnValue({
       body: {},
       params: {
         capability: CAPABILITY.PARSE_TASK,
@@ -60,17 +40,13 @@ describe("validateExecutableCapability", () => {
     });
 
     mockReq = {
-      body: {
-        naturalLanguage: "test task",
-      },
       params: {
         capability: CAPABILITY.PARSE_TASK,
       },
-      query: {
-        pattern: CAPABILITY_PATTERN.SYNC,
-      },
     };
-    mockRes = {};
+    mockRes = {
+      locals: {},
+    };
     mockNext = vi.fn();
   });
 
@@ -79,11 +55,10 @@ describe("validateExecutableCapability", () => {
   });
 
   it("should validate successfully and call next()", async () => {
-    (capabilities as any)["parse-task"] = {};
-
     await executeMiddleware();
 
     expect(executeCapabilityInputSchema.parse).toHaveBeenCalledWith(mockReq);
+    expect(mockRes.locals!.capabilityConfig).toBe(capabilities["parse-task"]);
     expect(mockNext).toHaveBeenCalledWith();
   });
 

@@ -19,7 +19,8 @@
       "@middlewares/*": ["src/middlewares/*"],
       "@controllers/*": ["src/controllers/*"],
       "@capabilities": ["src/capabilities"],
-      "@capabilities/*": ["src/capabilities/*"]
+      "@capabilities/*": ["src/capabilities/*"],
+      "@utils/*": ["src/utils/*"]
     }
   },
   "include": ["src/"],
