@@ -4,5 +4,7 @@ export type { LoggerLogContext } from "./logger-log-context";
 export type { LoggerLogLevel } from "./logger-log-level";
 export type { Mocked } from "./mocked";
 export type { ProcessExitCallback } from "./process-exit-callback";
+export type { RetryConfig } from "./retry-config";
 export type { TokenBucketRateLimiterConfig } from "./token-bucket-rate-limiter-config";
 export type { TokenBucketState } from "./token-bucket-state";
+export type { WithDurationResult } from "./with-duration-result";

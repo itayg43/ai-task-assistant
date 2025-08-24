@@ -54,6 +54,27 @@ logger.warn("Warning message");
 
 ### Middlewares
 
+#### CORS
+
+```typescript
+import { createCors } from "@shared/middlewares/cors/create-cors";
+
+const cors = createCors(["http://localhost:3001", "http://tasks:3001"]);
+
+app.use(cors);
+```
+
+**Features:**
+
+- Configurable allowed origins
+- Automatic health endpoint allowance (no-origin requests to `/health/*` are allowed)
+- Secure blocking of unauthorized origins
+- Comprehensive logging for debugging and audit trails
+- Express middleware compatible
+- No-origin requests only allowed to health endpoints for security
+- Strict origin validation against allowed origins list
+- Proper HTTP 403 Forbidden responses for unauthorized requests
+
 #### Error Handler
 
 ```typescript

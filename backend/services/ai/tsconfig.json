@@ -11,10 +11,16 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../../shared/dist/*"],
+      "@constants": ["src/constants"],
+      "@types": ["src/types"],
+      "@schemas": ["src/schemas"],
       "@clients/*": ["src/clients/*"],
       "@routers/*": ["src/routers/*"],
+      "@middlewares/*": ["src/middlewares/*"],
       "@controllers/*": ["src/controllers/*"],
-      "@capabilities/*": ["src/capabilities/*"]
+      "@capabilities": ["src/capabilities"],
+      "@capabilities/*": ["src/capabilities/*"],
+      "@utils/*": ["src/utils/*"]
     }
   },
   "include": ["src/"],

@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createLogger } from "../../config/create-logger";
+import { HEALTH_ROUTE } from "../../constants";
 import { AuthenticationError } from "../../errors";
 import { AuthenticationContext, Mocked } from "../../types";
 import { getAuthenticationContext } from "../../utils/authentication-context";
@@ -133,8 +134,8 @@ describe("requestResponseMetadata", () => {
     expect(mockNextFunction).toHaveBeenCalledWith(mockAuthenticationError);
   });
 
-  it("should log request meta data without auth context when original url includes /health", () => {
-    const originalUrl = "/health/test";
+  it(`should log request meta data without auth context when original url includes ${HEALTH_ROUTE}`, () => {
+    const originalUrl = `${HEALTH_ROUTE}/test`;
 
     mockRequest = createMockRequest(originalUrl);
 

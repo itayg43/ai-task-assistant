@@ -1,1 +1,1 @@
-export { parseTask } from "./capabilities-controller";
+export { executeCapability } from "./capabilities-controller";
