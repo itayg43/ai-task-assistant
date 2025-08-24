@@ -46,7 +46,7 @@ export const executeCapability = async (
       capability,
       pattern,
       result,
-      duration: `${duration}ms`,
+      totalDuration: `${duration}ms`,
     });
 
     res.status(StatusCodes.OK).json(result);
