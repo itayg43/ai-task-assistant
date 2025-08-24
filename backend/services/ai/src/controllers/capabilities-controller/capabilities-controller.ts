@@ -1,10 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
+import { getPatternExecutor } from "@controllers/capabilities-controller/executors/get-pattern-executor";
 import { createLogger } from "@shared/config/create-logger";
-import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
-import { withDurationAsync } from "@shared/utils/with-duration";
-import { withRetry } from "@shared/utils/with-retry";
 import { ExecuteCapabilityInput } from "@types";
 import { getCapabilityConfig } from "@utils/get-capability-config";
 
@@ -31,15 +29,12 @@ export const executeCapability = async (
     });
 
     const config = getCapabilityConfig(res);
+    const patternExecutor = getPatternExecutor(pattern);
 
-    const { result, duration } = await withDurationAsync(async () => {
-      return await withRetry(DEFAULT_RETRY_CONFIG, () =>
-        config.handler({
-          body: req.body,
-          params: req.params,
-          query: req.query,
-        })
-      );
+    const { result, duration } = await patternExecutor(config, {
+      body: req.body,
+      params: req.params,
+      query: req.query,
     });
 
     logger.info("executeCapability - completed", {
