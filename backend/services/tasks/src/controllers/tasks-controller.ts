@@ -1,16 +1,21 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
 import { CreateTaskInput } from "@schemas/tasks-schemas";
-import { createLogger } from "@shared/config/create-logger";
-
-const logger = createLogger("tasksController");
+import { createTaskHandler } from "@services/tasks-service";
 
 export const createTask = async (
   req: Request<{}, unknown, CreateTaskInput["body"]>,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
-  logger.info("Create task input", req.body);
+  const { naturalLanguage } = req.body;
 
-  res.sendStatus(StatusCodes.OK);
+  try {
+    const result = await createTaskHandler(naturalLanguage);
+
+    res.status(StatusCodes.CREATED).json(result);
+  } catch (error) {
+    next(error);
+  }
 };

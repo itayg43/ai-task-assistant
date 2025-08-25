@@ -1,13 +1,10 @@
 import * as z from "zod";
 
+import { isNonEmptyString, trimString } from "@shared/utils/zod-schema-helpers";
+
 export const createTaskSchema = z.object({
   body: z.object({
-    naturalLanguage: z
-      .string()
-      .transform((value) => value.trim())
-      .refine((value) => value.length, {
-        message: "Can't be empty",
-      }),
+    naturalLanguage: z.string().transform(trimString).refine(isNonEmptyString),
   }),
 });
 
