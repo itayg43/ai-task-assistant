@@ -7,7 +7,7 @@
     "build": "tsc && tsc-alias",
     "start": "node dist/server.js",
     "start:dev": "ts-node-dev -r tsconfig-paths/register --respawn src/server.ts",
-    "start:dev:type-check": "tsc --noEmit --watch",
+    "type-check": "tsc --noEmit --watch",
     "test": "vitest"
   },
   "keywords": [],
@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@ai-task-assistant/shared": "file:../../shared",
+    "axios": "^1.11.0",
     "dotenv": "^16.5.0",
     "envalid": "^8.0.0",
     "express": "^5.1.0",

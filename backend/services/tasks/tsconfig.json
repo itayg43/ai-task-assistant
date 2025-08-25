@@ -12,9 +12,13 @@
     "paths": {
       "@shared/*": ["../../shared/dist/*"],
       "@clients/*": ["src/clients/*"],
+      "@constants": ["src/constants"],
+      "@types": ["src/types"],
       "@routers/*": ["src/routers/*"],
+      "@config/*": ["src/config/*"],
       "@middlewares/*": ["src/middlewares/*"],
       "@controllers/*": ["src/controllers/*"],
+      "@services/*": ["src/services/*"],
       "@schemas/*": ["src/schemas/*"]
     }
   },
