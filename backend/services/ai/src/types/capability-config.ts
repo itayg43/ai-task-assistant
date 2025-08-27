@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { Capability } from "@types";
+import { Capability } from "@shared/types";
 
 export type CapabilityConfig<TInput, TOutput> = {
   name: Capability;
