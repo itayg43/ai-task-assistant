@@ -1,6 +1,7 @@
 export type { AuthenticationContext } from "./authentication-context";
 export type { Capability } from "./capability";
 export type { CapabilityPattern } from "./capability-pattern";
+export type { CapabilityResponse } from "./capability-response";
 export type { CloseServerCleanupCallbacks } from "./close-server-cleanup-callbacks";
 export type { LoggerLogContext } from "./logger-log-context";
 export type { LoggerLogLevel } from "./logger-log-level";

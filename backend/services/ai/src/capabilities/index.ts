@@ -3,8 +3,8 @@ import {
   parseTaskInputSchema,
   parseTaskOutputSchema,
 } from "@capabilities/parse-task/parse-task-schemas";
-import { createCapabilityResponseSchema } from "@schemas";
 import { CAPABILITY } from "@shared/constants";
+import { createCapabilityResponseSchema } from "@shared/schemas";
 import { CapabilityConfig } from "@types";
 
 export const capabilities = {
