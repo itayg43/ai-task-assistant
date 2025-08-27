@@ -2,8 +2,8 @@ import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import z from "zod";
 
-import { CAPABILITY } from "@constants";
 import { validateCapabilityInput } from "@middlewares/validate-capability-input";
+import { CAPABILITY } from "@shared/constants";
 import { CapabilityConfig } from "@types";
 
 describe("validateCapabilityInput", () => {

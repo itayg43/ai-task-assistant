@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import { CAPABILITY, CAPABILITY_PATTERN } from "@shared/constants";
 import { baseRequestSchema } from "@shared/schemas";
 
 export const executeCapabilityInputSchema = baseRequestSchema.extend({

@@ -7,7 +7,7 @@ import {
   PRIORITY_LEVEL,
 } from "@capabilities/parse-task/parse-task-constants";
 import { parseTaskHandler } from "@capabilities/parse-task/parse-task-handler";
-import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import { CAPABILITY, CAPABILITY_PATTERN } from "@shared/constants";
 import { Mocked } from "@shared/types";
 import { app } from "../../app";
 

@@ -2,9 +2,9 @@ import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { capabilities } from "@capabilities";
-import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
 import { executeCapabilityInputSchema } from "@schemas";
+import { CAPABILITY, CAPABILITY_PATTERN } from "@shared/constants";
 import { NotFoundError } from "@shared/errors";
 
 vi.mock("@capabilities");
