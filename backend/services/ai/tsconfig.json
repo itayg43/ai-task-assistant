@@ -15,6 +15,7 @@
       "@types": ["src/types"],
       "@schemas": ["src/schemas"],
       "@clients/*": ["src/clients/*"],
+      "@config/*": ["src/config/*"],
       "@routers/*": ["src/routers/*"],
       "@middlewares/*": ["src/middlewares/*"],
       "@controllers/*": ["src/controllers/*"],
