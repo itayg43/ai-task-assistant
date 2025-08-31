@@ -1,3 +1,4 @@
+import { AxiosError, AxiosResponse } from "axios";
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes, getReasonPhrase } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -26,81 +27,139 @@ describe("errorHandler", () => {
     vi.clearAllMocks();
   });
 
-  it("should handle base error", () => {
-    const mockBaseError = new BaseError(
-      "Test base error",
-      StatusCodes.BAD_REQUEST
-    );
-    errorHandler(
-      mockBaseError,
-      mockRequest as Request,
-      mockResponse as Response,
-      mockNextFunction
-    );
+  describe("BaseError", () => {
+    it("should return BaseError status code and message", () => {
+      const mockBaseError = new BaseError(
+        "Test base error",
+        StatusCodes.BAD_REQUEST
+      );
 
-    expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST);
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      message: mockBaseError.message,
+      errorHandler(
+        mockBaseError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNextFunction
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Test base error",
+      });
     });
   });
 
-  it("should handle zod error", () => {
-    const schema = z.object({
-      name: z.string().min(2),
-      age: z.number().min(18),
-    });
+  describe("ZodError", () => {
+    it("should return BAD_REQUEST status with formatted validation errors", () => {
+      const schema = z.object({
+        name: z.string().min(2),
+        age: z.number().min(18),
+      });
 
-    let mockZodError: z.ZodError;
-    try {
-      schema.parse({ name: "a", age: "invalid" });
-    } catch (error) {
-      mockZodError = error as z.ZodError;
-    }
+      let mockZodError: z.ZodError;
+      try {
+        schema.parse({ name: "a", age: "invalid" });
+      } catch (error) {
+        mockZodError = error as z.ZodError;
+      }
 
-    errorHandler(
-      mockZodError!,
-      mockRequest as Request,
-      mockResponse as Response,
-      mockNextFunction
-    );
+      errorHandler(
+        mockZodError!,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNextFunction
+      );
 
-    expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST);
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      message: expect.stringMatching(/name.*Too small.*age.*Invalid input/),
-    });
-  });
-
-  it("should handle error", () => {
-    const mockError = new Error("Test error");
-    errorHandler(
-      mockError,
-      mockRequest as Request,
-      mockResponse as Response,
-      mockNextFunction
-    );
-
-    expect(mockResponse.status).toHaveBeenCalledWith(
-      StatusCodes.INTERNAL_SERVER_ERROR
-    );
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      message: mockError.message,
+      expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: expect.stringMatching(/name.*Too small.*age.*Invalid input/),
+      });
     });
   });
 
-  it("should handle unknown error", () => {
-    const unknownError = "This is not an Error object";
-    errorHandler(
-      unknownError,
-      mockRequest as Request,
-      mockResponse as Response,
-      mockNextFunction
-    );
+  describe("AxiosError", () => {
+    it("should return response status and message when available", () => {
+      const mockAxiosError = new AxiosError(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          status: StatusCodes.NOT_FOUND,
+          data: {
+            message: "Resource not found",
+          },
+        } as AxiosResponse
+      );
 
-    expect(mockResponse.status).toHaveBeenCalledWith(
-      StatusCodes.INTERNAL_SERVER_ERROR
-    );
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      message: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
+      errorHandler(
+        mockAxiosError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNextFunction
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.NOT_FOUND);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Resource not found",
+      });
+    });
+
+    it("should fallback to default status and message when response is undefined", () => {
+      const mockAxiosError = new AxiosError("Network Error");
+
+      errorHandler(
+        mockAxiosError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNextFunction
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
+      });
+    });
+  });
+
+  describe("Error", () => {
+    it("should return INTERNAL_SERVER_ERROR status with error message", () => {
+      const mockError = new Error("Test error");
+
+      errorHandler(
+        mockError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNextFunction
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Test error",
+      });
+    });
+  });
+
+  describe("Unknown error", () => {
+    it("should return INTERNAL_SERVER_ERROR status with default message for non-Error objects", () => {
+      const unknownError = "This is not an Error object";
+
+      errorHandler(
+        unknownError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNextFunction
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
+      });
     });
   });
 });

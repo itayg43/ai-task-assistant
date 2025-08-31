@@ -1,7 +1,7 @@
 import { redis } from "@clients/redis";
 import { redlock } from "@clients/redlock";
+import { env } from "@config/env";
 import { createTokenBucketRateLimiter } from "@shared/middlewares/token-bucket-rate-limiter/create-token-bucket-rate-limiter";
-import { env } from "../env";
 
 export const tokenBucketRateLimiter = {
   global: createTokenBucketRateLimiter(redis, redlock, {

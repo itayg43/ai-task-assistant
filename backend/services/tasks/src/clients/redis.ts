@@ -1,10 +1,10 @@
+import { env } from "@config/env";
 import {
   closeRedisClient as close,
   connectRedisClient as connect,
   createRedisClient,
   destroyRedisClient as destroy,
 } from "@shared/clients/redis";
-import { env } from "../env";
 
 export const redis = createRedisClient(env.REDIS_URL, {
   connectTimeout: env.REDIS_CONNECT_TIMEOUT_MS,
