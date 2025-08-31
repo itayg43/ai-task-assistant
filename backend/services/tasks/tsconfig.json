@@ -12,7 +12,6 @@
     "paths": {
       "@shared/*": ["../../shared/dist/*"],
       "@clients/*": ["src/clients/*"],
-      "@constants": ["src/constants"],
       "@types": ["src/types"],
       "@routers/*": ["src/routers/*"],
       "@config/*": ["src/config/*"],
