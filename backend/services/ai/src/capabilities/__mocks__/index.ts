@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-import { CAPABILITY } from "@shared/constants";
+import { CAPABILITY } from "@constants";
 
 export const capabilities = {
   [CAPABILITY.PARSE_TASK]: {

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseTaskHandler } from "@capabilities/parse-task/parse-task-handler";
 import { parseTaskPrompt } from "@capabilities/parse-task/parse-task-prompt";
 import { openai } from "@clients/openai";
-import { CAPABILITY, CAPABILITY_PATTERN } from "@shared/constants";
+import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { Mocked } from "@shared/types";
 import { predefinedTokenCounters } from "@shared/utils/count-tokens";
 import { withDurationAsync } from "@shared/utils/with-duration";

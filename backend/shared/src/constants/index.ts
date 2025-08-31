@@ -1,5 +1,3 @@
-export { CAPABILITY } from "./capability";
-export { CAPABILITY_PATTERN } from "./capability-pattern";
 export { MS_PER_SECOND } from "./date-time";
 export { DEFAULT_RETRY_CONFIG } from "./default-retry-config";
 export { HEALTH_ROUTE } from "./health-route";

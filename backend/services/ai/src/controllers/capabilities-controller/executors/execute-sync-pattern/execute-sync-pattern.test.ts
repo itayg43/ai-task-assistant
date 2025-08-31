@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CAPABILITY } from "@constants";
 import { executeSyncPattern } from "@controllers/capabilities-controller/executors/execute-sync-pattern";
-import { CAPABILITY, DEFAULT_RETRY_CONFIG } from "@shared/constants";
+import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { Mocked } from "@shared/types";
 import { withDurationAsync } from "@shared/utils/with-duration";
 import { withRetry } from "@shared/utils/with-retry";
