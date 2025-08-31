@@ -1,3 +1,4 @@
+import { AxiosError } from "axios";
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes, getReasonPhrase } from "http-status-codes";
 import * as z from "zod";
@@ -6,6 +7,11 @@ import { createLogger } from "../../config/create-logger";
 import { BaseError } from "../../errors";
 
 const logger = createLogger("errorHandler");
+
+const DEFAULT_ERROR_STATUS = StatusCodes.INTERNAL_SERVER_ERROR;
+const DEFAULT_ERROR_MESSAGE = getReasonPhrase(
+  StatusCodes.INTERNAL_SERVER_ERROR
+);
 
 export const errorHandler = (
   error: unknown,
@@ -37,12 +43,16 @@ function extractErrorInfo(error: unknown) {
     };
   }
 
+  if (error instanceof AxiosError) {
+    return {
+      status: error.response?.status || DEFAULT_ERROR_STATUS,
+      message: error.response?.data?.message || DEFAULT_ERROR_MESSAGE,
+    };
+  }
+
   return {
-    status: StatusCodes.INTERNAL_SERVER_ERROR,
-    message:
-      error instanceof Error
-        ? error.message
-        : getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
+    status: DEFAULT_ERROR_STATUS,
+    message: error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE,
   };
 }
 
