@@ -3,9 +3,9 @@ import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schem
 import { ParseTaskInput } from "@capabilities/parse-task/parse-task-types";
 import { openai } from "@clients/openai";
 import { createLogger } from "@shared/config/create-logger";
-import { CapabilityResponse } from "@shared/types";
 import { predefinedTokenCounters } from "@shared/utils/count-tokens";
 import { withDurationAsync } from "@shared/utils/with-duration";
+import { CapabilityResponse } from "@types";
 
 const logger = createLogger("parseTaskHandler");
 
