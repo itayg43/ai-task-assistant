@@ -6,7 +6,7 @@ import {
   parseTaskOutputSchema,
 } from "@capabilities/parse-task/parse-task-schemas";
 
-export type ParsedTaskConfig = z.infer<typeof parseTaskConfigSchema>;
+export type ParseTaskConfig = z.infer<typeof parseTaskConfigSchema>;
 
 export type ParseTaskInput = z.infer<typeof parseTaskInputSchema>;
 

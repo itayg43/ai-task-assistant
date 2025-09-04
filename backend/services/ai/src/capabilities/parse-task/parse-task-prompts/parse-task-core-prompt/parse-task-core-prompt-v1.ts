@@ -1,6 +1,6 @@
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
-import { ParsedTaskConfig } from "@capabilities/parse-task/parse-task-types";
+import { ParseTaskConfig } from "@capabilities/parse-task/parse-task-types";
 import { getDateISO } from "@shared/utils/date-time";
 
 const ROLE = `
@@ -69,7 +69,7 @@ Parse this natural language task description:
 
 export const parseTaskCorePromptV1 = (
   naturalLanguage: string,
-  config: ParsedTaskConfig
+  config: ParseTaskConfig
 ): ResponseCreateParamsNonStreaming => {
   const { categories, priorityLevels } = config;
 
