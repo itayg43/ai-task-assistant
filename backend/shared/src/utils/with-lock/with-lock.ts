@@ -1,6 +1,7 @@
 import Redlock, { Lock, ResourceLockedError } from "redlock";
 
 import { createLogger } from "../../config/create-logger";
+import { getElapsedDuration } from "../performance";
 
 const logger = createLogger("withLock");
 
@@ -17,12 +18,12 @@ export const withLock = async <T>(
   try {
     lock = await redlockClient.acquire([lockKey], lockDuration);
 
-    const lockAcquisitionTime = performance.now() - start;
+    const lockAcquisitionTime = getElapsedDuration(start);
     logger.info(`Lock acquired for ${lockKey} in ${lockAcquisitionTime}ms`);
 
     const fnStartTime = performance.now();
     const result = await fn();
-    const fnExecutionTime = performance.now() - fnStartTime;
+    const fnExecutionTime = getElapsedDuration(fnStartTime);
     logger.info(`Function executed for ${lockKey} in ${fnExecutionTime}ms`);
 
     return result;
@@ -43,7 +44,7 @@ function logLockError(
   error: unknown,
   startTime: number
 ) {
-  const errorTime = performance.now() - startTime;
+  const errorTime = getElapsedDuration(startTime);
 
   if (!lockAcquired) {
     error instanceof ResourceLockedError
@@ -66,7 +67,7 @@ async function releaseLock(lock: Lock, lockKey: string, startTime: number) {
   try {
     await lock.release();
 
-    const totalTime = performance.now() - startTime;
+    const totalTime = getElapsedDuration(startTime);
     logger.info(`Lock released for ${lockKey}, total time: ${totalTime}ms`);
   } catch (error) {
     logger.error(`Failed to release lock for ${lockKey}`, error);

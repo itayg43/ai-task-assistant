@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import { createLogger } from "../../config/create-logger";
 import { HEALTH_ROUTE } from "../../constants";
 import { getAuthenticationContext } from "../../utils/authentication-context";
+import { getElapsedDuration } from "../../utils/performance";
 
 export const requestResponseMetadata = (
   req: Request,
@@ -30,7 +31,7 @@ export const requestResponseMetadata = (
     res.end = function (chunk?: any, encoding?: any) {
       if (!completed) {
         completed = true;
-        const duration = performance.now() - start;
+        const duration = getElapsedDuration(start);
 
         logger.info("Request completed", {
           ...requestMetadata,
