@@ -46,7 +46,7 @@ describe("executeSyncPattern", () => {
 
       return {
         result,
-        duration: mockDuration,
+        durationMs: mockDuration,
       };
     });
   });

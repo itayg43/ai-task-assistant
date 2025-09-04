@@ -8,7 +8,7 @@ describe("countTokens", () => {
     const result = countTokens("gpt-4o-mini", text);
 
     expect(result.count).toBeGreaterThan(0);
-    expect(result.duration).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThan(0);
   });
 
   it("should return consistent results for same text", () => {

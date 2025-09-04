@@ -31,7 +31,7 @@ export const executeCapability = async (
     const config = getCapabilityConfig(res);
     const patternExecutor = getPatternExecutor(pattern);
 
-    const { result, duration } = await patternExecutor(config, {
+    const { result, durationMs } = await patternExecutor(config, {
       body: req.body,
       params: req.params,
       query: req.query,
@@ -41,7 +41,7 @@ export const executeCapability = async (
       capability,
       pattern,
       result,
-      totalDuration: `${duration}ms`,
+      totalDurationMs: durationMs,
     });
 
     res.status(StatusCodes.OK).json(result);

@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import { createLogger } from "../../config/create-logger";
 import { HEALTH_ROUTE } from "../../constants";
 import { getAuthenticationContext } from "../../utils/authentication-context";
-import { getCurrentTime, getElapsedTime } from "../../utils/date-time";
+import { getElapsedDuration, getStartTimestamp } from "../../utils/performance";
 
 export const requestResponseMetadata = (
   req: Request,
@@ -13,7 +13,7 @@ export const requestResponseMetadata = (
   try {
     const logger = createLogger("requestResponseMetadata");
 
-    const startTimestamp = getCurrentTime();
+    const start = getStartTimestamp();
 
     const requestMetadata = {
       method: req.method,
@@ -31,12 +31,12 @@ export const requestResponseMetadata = (
     res.end = function (chunk?: any, encoding?: any) {
       if (!completed) {
         completed = true;
-        const duration = getElapsedTime(startTimestamp);
+        const duration = getElapsedDuration(start);
 
         logger.info("Request completed", {
           ...requestMetadata,
           statusCode: res.statusCode,
-          duration: `${duration}ms`,
+          durationMs: duration,
         });
       }
       return originalEnd.call(this, chunk, encoding);

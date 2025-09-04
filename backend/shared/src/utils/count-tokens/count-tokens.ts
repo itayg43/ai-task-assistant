@@ -6,7 +6,7 @@ import { withDurationSync } from "../with-duration";
 const logger = createLogger("countTokens");
 
 export const countTokens = (model: TiktokenModel, text: string) => {
-  const { result: count, duration } = withDurationSync(() => {
+  const { result: count, durationMs } = withDurationSync(() => {
     const encoder = encodingForModel(model);
 
     return encoder.encode(text).length;
@@ -16,12 +16,12 @@ export const countTokens = (model: TiktokenModel, text: string) => {
     model,
     text,
     count,
-    duration: `${duration}ms`,
+    durationMs,
   });
 
   return {
     count,
-    duration,
+    durationMs,
   };
 };
 

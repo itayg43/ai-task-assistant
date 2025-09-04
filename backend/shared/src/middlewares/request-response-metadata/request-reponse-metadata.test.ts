@@ -60,11 +60,11 @@ describe("requestResponseMetadata", () => {
   const createExpectedCompletionMetadata = (
     requestMetadata: any,
     statusCode: number,
-    duration: string
+    durationMs: number
   ) => ({
     ...requestMetadata,
     statusCode,
-    duration,
+    durationMs,
   });
 
   const executeMiddleware = () => {
@@ -118,7 +118,7 @@ describe("requestResponseMetadata", () => {
 
     expect(getLogger().info).toHaveBeenLastCalledWith(
       expect.any(String),
-      createExpectedCompletionMetadata(expectedRequestMetadata, 200, "150ms")
+      createExpectedCompletionMetadata(expectedRequestMetadata, 200, 150)
     );
   });
 
@@ -153,7 +153,7 @@ describe("requestResponseMetadata", () => {
 
     expect(getLogger().info).toHaveBeenLastCalledWith(
       expect.any(String),
-      createExpectedCompletionMetadata(expectedRequestMetadata, 200, "150ms")
+      createExpectedCompletionMetadata(expectedRequestMetadata, 200, 150)
     );
   });
 
@@ -171,7 +171,7 @@ describe("requestResponseMetadata", () => {
           mockAuthenticationContextResponse
         ),
         200,
-        "100ms"
+        100
       )
     );
   });
