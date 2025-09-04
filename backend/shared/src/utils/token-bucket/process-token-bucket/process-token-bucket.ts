@@ -45,7 +45,7 @@ export const processTokenBucket = async (
     tokensBefore: prevTokens.toFixed(2),
     tokensToAdd: tokensToAdd.toFixed(2),
     tokensAfterRefill: tokens.toFixed(2),
-    elapsed: elapsed.toFixed(2),
+    elapsedSec: parseFloat(elapsed.toFixed(2)),
   });
 
   if (tokens < 1) {
