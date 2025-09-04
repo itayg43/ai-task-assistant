@@ -7,12 +7,12 @@ export const executeSyncPattern = async <TInput, TOutput>(
   config: CapabilityConfig<TInput, TOutput>,
   input: TInput
 ) => {
-  const { result, duration } = await withDurationAsync(async () => {
+  const { result, durationMs } = await withDurationAsync(async () => {
     return await withRetry(DEFAULT_RETRY_CONFIG, () => config.handler(input));
   });
 
   return {
     result,
-    duration,
+    durationMs,
   };
 };

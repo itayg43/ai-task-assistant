@@ -9,7 +9,7 @@ export const createCapabilityResponseSchema = <T extends z.ZodTypeAny>(
         input: z.number(),
         output: z.number(),
       }),
-      duration: z.string(),
+      durationMs: z.number(),
     }),
     result: outputSchema,
   });

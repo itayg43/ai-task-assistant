@@ -1,4 +1,4 @@
-import { parseTaskPrompt } from "@capabilities/parse-task/parse-task-prompt";
+import { createParseTaskCorePrompt } from "@capabilities/parse-task/parse-task-prompts";
 import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schemas";
 import { ParseTaskInput } from "@capabilities/parse-task/parse-task-types";
 import { openai } from "@clients/openai";
@@ -12,16 +12,15 @@ const logger = createLogger("parseTaskHandler");
 export const parseTaskHandler = async (
   input: ParseTaskInput
 ): Promise<CapabilityResponse<typeof parseTaskOutputSchema>> => {
-  const { naturalLanguage } = input.body;
+  const { naturalLanguage, config } = input.body;
 
-  const prompt = parseTaskPrompt(naturalLanguage);
-
-  const { result: response, duration } = await withDurationAsync(() =>
-    openai.responses.create(prompt)
+  const corePrompt = createParseTaskCorePrompt("v1", naturalLanguage, config);
+  const corePromptResponse = await withDurationAsync(() =>
+    openai.responses.create(corePrompt)
   );
 
   try {
-    const parsedResponse = JSON.parse(response.output_text);
+    const parsedResponse = JSON.parse(corePromptResponse.result.output_text);
     const parsedTask = parseTaskOutputSchema.parse(parsedResponse);
 
     const { count: inputTokens } =
@@ -31,9 +30,9 @@ export const parseTaskHandler = async (
       metadata: {
         tokens: {
           input: inputTokens,
-          output: response.usage?.output_tokens || 0,
+          output: corePromptResponse.result.usage?.output_tokens || 0,
         },
-        duration: `${duration}ms`,
+        durationMs: corePromptResponse.durationMs,
       },
       result: parsedTask,
     };
@@ -43,7 +42,7 @@ export const parseTaskHandler = async (
       error,
       {
         input,
-        aiResponse: response.output_text,
+        aiResponse: corePromptResponse.result.output_text,
       }
     );
 

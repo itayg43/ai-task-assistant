@@ -27,7 +27,7 @@ describe("withDuration", () => {
       });
 
       expect(result.result).toBe(4950);
-      expect(result.duration).toBe(50);
+      expect(result.durationMs).toBe(50);
     });
   });
 
@@ -44,7 +44,7 @@ describe("withDuration", () => {
       });
 
       expect(result.result).toBe("async result");
-      expect(result.duration).toBe(100);
+      expect(result.durationMs).toBe(100);
     });
   });
 });

@@ -11,6 +11,8 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../../shared/dist/*"],
+      "@constants": ["src/constants"],
+      "@types": ["src/types"],
       "@clients/*": ["src/clients/*"],
       "@routers/*": ["src/routers/*"],
       "@config/*": ["src/config/*"],
