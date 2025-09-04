@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import { createLogger } from "../../config/create-logger";
 import { HEALTH_ROUTE } from "../../constants";
 import { getAuthenticationContext } from "../../utils/authentication-context";
-import { getElapsedDuration } from "../../utils/performance";
+import { getElapsedDuration, getStartTimestamp } from "../../utils/performance";
 
 export const requestResponseMetadata = (
   req: Request,
@@ -13,7 +13,7 @@ export const requestResponseMetadata = (
   try {
     const logger = createLogger("requestResponseMetadata");
 
-    const start = performance.now();
+    const start = getStartTimestamp();
 
     const requestMetadata = {
       method: req.method,

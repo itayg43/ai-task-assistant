@@ -1,10 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getElapsedDuration } from "./performance";
+import { getElapsedDuration, getStartTimestamp } from "./performance";
 
 describe("performance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe("getStartTimestamp", () => {
+    it("should return a number", () => {
+      const timestamp = getStartTimestamp();
+
+      expect(typeof timestamp).toBe("number");
+    });
+
+    it("should return a positive number", () => {
+      const timestamp = getStartTimestamp();
+
+      expect(timestamp).toBeGreaterThan(0);
+    });
+
+    it("should return different values on subsequent calls", () => {
+      const timestamp1 = getStartTimestamp();
+      const timestamp2 = getStartTimestamp();
+
+      expect(timestamp2).toBeGreaterThan(timestamp1);
+    });
+
+    it("should return a finite number", () => {
+      const timestamp = getStartTimestamp();
+
+      // Ensure the timestamp is not Infinity, -Infinity, or NaN
+      expect(Number.isFinite(timestamp)).toBe(true);
+    });
   });
 
   describe("getElapsedDuration", () => {

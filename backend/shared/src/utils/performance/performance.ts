@@ -4,6 +4,10 @@ import {
 } from "../../constants";
 import { GetElapsedDurationOptions } from "../../types";
 
+export const getStartTimestamp = () => {
+  return performance.now();
+};
+
 export const getElapsedDuration = (
   start: number,
   options: Partial<GetElapsedDurationOptions> = {}
@@ -13,7 +17,7 @@ export const getElapsedDuration = (
     fractionDigits = DEFAULT_GET_ELAPSED_DURATION_OPTIONS.fractionDigits,
   } = options;
 
-  let duration = performance.now() - start;
+  let duration = getStartTimestamp() - start;
 
   if (unit === "sec") {
     duration /= MS_PER_SECOND;

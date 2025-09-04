@@ -1,10 +1,10 @@
 import { WithDurationResult } from "../../types";
-import { getElapsedDuration } from "../performance";
+import { getElapsedDuration, getStartTimestamp } from "../performance";
 
 export const withDurationAsync = async <T>(
   fn: () => Promise<T>
 ): Promise<WithDurationResult<T>> => {
-  const start = performance.now();
+  const start = getStartTimestamp();
   const result = await fn();
   const duration = getElapsedDuration(start);
 
@@ -15,7 +15,7 @@ export const withDurationAsync = async <T>(
 };
 
 export const withDurationSync = <T>(fn: () => T): WithDurationResult<T> => {
-  const start = performance.now();
+  const start = getStartTimestamp();
   const result = fn();
   const duration = getElapsedDuration(start);
 
