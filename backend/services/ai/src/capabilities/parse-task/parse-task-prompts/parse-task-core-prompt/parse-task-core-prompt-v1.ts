@@ -1,6 +1,9 @@
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
-import { ParseTaskConfig } from "@capabilities/parse-task/parse-task-types";
+import {
+  ParseTaskConfig,
+  ParseTaskConfigPrioritiesOverallScoreRange,
+} from "@capabilities/parse-task/parse-task-types";
 import { getDateISO } from "@shared/utils/date-time";
 
 const ROLE = `
@@ -20,7 +23,8 @@ Parse the natural language task description into structured JSON data following 
 
 const generateRequiredOutputFormat = (
   categories: string[],
-  priorityLevels: string[]
+  priorityLevels: string[],
+  priorityOverallScoreRange: ParseTaskConfigPrioritiesOverallScoreRange
 ) => `
 ## Required Output Format
 You must respond with a JSON object in exactly this format:
@@ -32,13 +36,18 @@ You must respond with a JSON object in exactly this format:
     "level": "${priorityLevels.join(
       " | "
     )} - Must be one of these exact values",
-    "score": "number (0-100) - Numeric priority score",
+    "score": "number (${priorityOverallScoreRange.min}-${
+  priorityOverallScoreRange.max
+}) - Numeric priority score",
     "reason": "string - Brief explanation for the priority assignment"
   }
 }
 `;
 
-const generateParsingRules = (priorityLevels: string[]) => `
+const generateParsingRules = (
+  priorityLevels: string[],
+  priorityOverallScoreRange: ParseTaskConfigPrioritiesOverallScoreRange
+) => `
 ## Parsing Rules
 Follow these rules when parsing the input:
 **Title Extraction:**
@@ -55,7 +64,9 @@ Follow these rules when parsing the input:
 - Must be one of the allowed categories: ${priorityLevels.join(", ")}
 **Priority Assessment:**
 - level: Map urgency/importance cues to one of: "${priorityLevels.join(", ")}"
-- score: Calculate 0-100 based on urgency, deadlines, language intensity, category context, and potential consequences
+- score: Calculate ${priorityOverallScoreRange.min}-${
+  priorityOverallScoreRange.max
+} based on urgency, deadlines, language intensity, category context, and potential consequences
 - reason: Provide a concise explanation of the priority assignment, including context and reasoning
 `;
 
@@ -71,12 +82,19 @@ export const parseTaskCorePromptV1 = (
   naturalLanguage: string,
   config: ParseTaskConfig
 ): ResponseCreateParamsNonStreaming => {
-  const { categories, priorityLevels } = config;
+  const { categories, priorities } = config;
 
   const prompt = `${ROLE}
                   ${INSTRUCTIONS}
-                  ${generateRequiredOutputFormat(categories, priorityLevels)}
-                  ${generateParsingRules(priorityLevels)}
+                  ${generateRequiredOutputFormat(
+                    categories,
+                    priorities.levels,
+                    priorities.overallScoreRange
+                  )}
+                  ${generateParsingRules(
+                    priorities.levels,
+                    priorities.overallScoreRange
+                  )}
                   ${INPUT}`;
 
   return {
