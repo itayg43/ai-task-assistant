@@ -1,14 +1,19 @@
 import * as z from "zod";
 
 import {
-  parseTaskConfigPrioritiesOverallScoreRange,
+  parseTaskConfigPrioritiesScoreRangeSchema,
+  parseTaskConfigPrioritiesScoresSchema,
   parseTaskConfigSchema,
   parseTaskInputSchema,
   parseTaskOutputSchema,
 } from "@capabilities/parse-task/parse-task-schemas";
 
-export type ParseTaskConfigPrioritiesOverallScoreRange = z.infer<
-  typeof parseTaskConfigPrioritiesOverallScoreRange
+export type ParseTaskConfigPrioritiesScoreRange = z.infer<
+  typeof parseTaskConfigPrioritiesScoreRangeSchema
+>;
+
+export type ParseTaskConfigPrioritiesScores = z.infer<
+  typeof parseTaskConfigPrioritiesScoresSchema
 >;
 
 export type ParseTaskConfig = z.infer<typeof parseTaskConfigSchema>;

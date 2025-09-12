@@ -1,11 +1,14 @@
+type ScoreRange = {
+  min: number;
+  max: number;
+};
+
 export type ParseTaskConfig = {
   categories: string[];
   priorities: {
     levels: string[];
-    overallScoreRange: {
-      min: number;
-      max: number;
-    };
+    scores: Record<string, ScoreRange>;
+    overallScoreRange: ScoreRange;
   };
   frequencies: string[];
 };
