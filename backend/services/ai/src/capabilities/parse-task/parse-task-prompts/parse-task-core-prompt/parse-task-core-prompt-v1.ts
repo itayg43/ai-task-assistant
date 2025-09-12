@@ -1,74 +1,59 @@
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
-import {
-  ParseTaskConfig,
-  ParseTaskConfigPrioritiesOverallScoreRange,
-} from "@capabilities/parse-task/parse-task-types";
+import { ParseTaskConfig } from "@capabilities/parse-task/parse-task-types";
 import { getDateISO } from "@shared/utils/date-time";
 
-const ROLE = `
-## Role
-You are an expert task management assistant that parses natural language task descriptions into structured JSON data.
-`;
-
-const INSTRUCTIONS = `
+const BASE_INSTRUCTIONS = `
 ## Instructions
-Parse the natural language task description into structured JSON data following these strict requirements:
-- Respond with ONLY a valid JSON object
-- Do not include explanations, comments, or any other text
-- Do not wrap the response in markdown or code block markers (\`\`\`)
-- Ensure the JSON is properly formatted and parseable
-- If any field cannot be determined, use null or appropriate default values
-`;
-
-const generateRequiredOutputFormat = (
-  categories: string[],
-  priorityLevels: string[],
-  priorityOverallScoreRange: ParseTaskConfigPrioritiesOverallScoreRange
-) => `
-## Required Output Format
-You must respond with a JSON object in exactly this format:
+You are an assistant that converts natural language tasks into structured JSON.
+Always respond with valid JSON only, no extra commentary.
+The JSON must follow this schema:
 {
-  "title": "string - Clean, concise task title extracted from input",
-  "dueDate": "ISO datetime string | null - Parsed due date or null if not specified",
-  "category": "${categories.join(" | ")} - Must be one of these exact values",
+  "title": string,
+  "dueDate": string | null,
+  "category": string,
   "priority": {
-    "level": "${priorityLevels.join(
-      " | "
-    )} - Must be one of these exact values",
-    "score": "number (${priorityOverallScoreRange.min}-${
-  priorityOverallScoreRange.max
-}) - Numeric priority score",
-    "reason": "string - Brief explanation for the priority assignment"
+    "level": string,
+    "score": number,
+    "reason": string
   }
 }
 `;
 
-const generateParsingRules = (
-  priorityLevels: string[],
-  priorityOverallScoreRange: ParseTaskConfigPrioritiesOverallScoreRange
-) => `
+const generateParsingRules = (config: ParseTaskConfig) => {
+  const {
+    categories,
+    priorities: { levels, scores, overallScoreRange },
+  } = config;
+
+  return `
 ## Parsing Rules
-Follow these rules when parsing the input:
-**Title Extraction:**
-- Create a clean, concise title that captures the core task
+**Title**
+- Create a concise title that captures the core task
 - Remove unnecessary words while preserving essential meaning
 - Use proper capitalization and grammar
-**Date Parsing:**
+**Due Date**
 - Use current date ${getDateISO()} as reference for relative dates
 - Interpret "tomorrow", "next Friday", "this weekend", etc. correctly
 - Return null if no date is mentioned or implied
-**Category Assignment:**
-- Infer from context, keywords, or explicit mentions
-- Default to most appropriate category based on task title if unclear
-- Must be one of the allowed categories: ${priorityLevels.join(", ")}
-**Priority Assessment:**
-- level: Map urgency/importance cues to one of: "${priorityLevels.join(", ")}"
-- score: Calculate ${priorityOverallScoreRange.min}-${
-  priorityOverallScoreRange.max
-} based on urgency, deadlines, language intensity, category context, and potential consequences
-- reason: Provide a concise explanation of the priority assignment, including context and reasoning
+**Category**
+- Categories are dynamically defined as:
+${JSON.stringify(categories, null, 2)}
+- Select the most relevant category from this list only. Do not invent categories.
+**Priority**
+1. Each task priority must include:
+   - \`level\`: one of the allowed dynamic levels:
+${JSON.stringify(levels, null, 2)}
+   - \`score\`: a number within ${overallScoreRange.min}–${
+    overallScoreRange.max
+  }, appropriate to the chosen level
+   - \`reason\`: short explanation mentioning urgency and/or importance
+2. Levels and numeric ranges: ${JSON.stringify(scores, null, 2)}
+- Always pick a score inside the range of the chosen level.
+- If a task is vague or low-impact, pick a score at the lower end of the level’s range.
+- If a task is urgent/important, pick a score at the higher end of the level’s range.
 `;
+};
 
 const INPUT = `
 ## Task to Parse
@@ -82,19 +67,8 @@ export const parseTaskCorePromptV1 = (
   naturalLanguage: string,
   config: ParseTaskConfig
 ): ResponseCreateParamsNonStreaming => {
-  const { categories, priorities } = config;
-
-  const prompt = `${ROLE}
-                  ${INSTRUCTIONS}
-                  ${generateRequiredOutputFormat(
-                    categories,
-                    priorities.levels,
-                    priorities.overallScoreRange
-                  )}
-                  ${generateParsingRules(
-                    priorities.levels,
-                    priorities.overallScoreRange
-                  )}
+  const prompt = `${BASE_INSTRUCTIONS}
+                  ${generateParsingRules(config)}
                   ${INPUT}`;
 
   return {
