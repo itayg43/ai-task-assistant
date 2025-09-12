@@ -3,19 +3,17 @@ import * as z from "zod";
 import { executeCapabilityInputSchema } from "@schemas";
 import { isNonEmptyString, trimString } from "@shared/utils/zod-schema-helpers";
 
-export const parseTaskConfigPrioritiesScoreRangeSchema = z.object({
+const parseTaskConfigPrioritiesScoreRangeSchema = z.object({
   min: z.number(),
   max: z.number(),
 });
 
-export const parseTaskConfigPrioritiesScoresSchema = z.record(
-  z.string().transform(trimString).refine(isNonEmptyString),
-  parseTaskConfigPrioritiesScoreRangeSchema
-);
-
 const parseTaskConfigPrioritiesSchema = z.object({
   levels: z.array(z.string().transform(trimString).refine(isNonEmptyString)),
-  scores: parseTaskConfigPrioritiesScoresSchema,
+  scores: z.record(
+    z.string().transform(trimString).refine(isNonEmptyString),
+    parseTaskConfigPrioritiesScoreRangeSchema
+  ),
   overallScoreRange: parseTaskConfigPrioritiesScoreRangeSchema,
 });
 

@@ -1,17 +1,13 @@
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
-import {
-  ParseTaskConfig,
-  ParseTaskConfigPrioritiesScoreRange,
-  ParseTaskConfigPrioritiesScores,
-} from "@capabilities/parse-task/parse-task-types";
+import { ParseTaskConfig } from "@capabilities/parse-task/parse-task-types";
 import { getDateISO } from "@shared/utils/date-time";
 
-const INSTRUCTIONS = `
+const BASE_INSTRUCTIONS = `
 ## Instructions
 You are an assistant that converts natural language tasks into structured JSON.
-Always respond with valid JSON only, no extra commentary.  
-The JSON must follow this schema:  
+Always respond with valid JSON only, no extra commentary.
+The JSON must follow this schema:
 {
   "title": string,
   "dueDate": string | null,
@@ -24,12 +20,13 @@ The JSON must follow this schema:
 }
 `;
 
-const generateParsingRules = (
-  categories: string[],
-  priorityLevels: string[],
-  priorityScores: ParseTaskConfigPrioritiesScores,
-  priorityOverallScoreRange: ParseTaskConfigPrioritiesScoreRange
-) => `
+const generateParsingRules = (config: ParseTaskConfig) => {
+  const {
+    categories,
+    priorities: { levels, scores, overallScoreRange },
+  } = config;
+
+  return `
 ## Parsing Rules
 **Title**
 - Create a concise title that captures the core task
@@ -46,16 +43,17 @@ ${JSON.stringify(categories, null, 2)}
 **Priority**
 1. Each task priority must include:
    - \`level\`: one of the allowed dynamic levels:
-${JSON.stringify(priorityLevels, null, 2)}
-   - \`score\`: a number within ${priorityOverallScoreRange.min}–${
-  priorityOverallScoreRange.max
-}, appropriate to the chosen level
+${JSON.stringify(levels, null, 2)}
+   - \`score\`: a number within ${overallScoreRange.min}–${
+    overallScoreRange.max
+  }, appropriate to the chosen level
    - \`reason\`: short explanation mentioning urgency and/or importance
-2. Levels and numeric ranges: ${JSON.stringify(priorityScores, null, 2)}
+2. Levels and numeric ranges: ${JSON.stringify(scores, null, 2)}
 - Always pick a score inside the range of the chosen level.
 - If a task is vague or low-impact, pick a score at the lower end of the level’s range.
 - If a task is urgent/important, pick a score at the higher end of the level’s range.
 `;
+};
 
 const INPUT = `
 ## Task to Parse
@@ -69,15 +67,8 @@ export const parseTaskCorePromptV1 = (
   naturalLanguage: string,
   config: ParseTaskConfig
 ): ResponseCreateParamsNonStreaming => {
-  const { categories, priorities } = config;
-
-  const prompt = `${INSTRUCTIONS}
-                  ${generateParsingRules(
-                    categories,
-                    priorities.levels,
-                    priorities.scores,
-                    priorities.overallScoreRange
-                  )}
+  const prompt = `${BASE_INSTRUCTIONS}
+                  ${generateParsingRules(config)}
                   ${INPUT}`;
 
   return {
