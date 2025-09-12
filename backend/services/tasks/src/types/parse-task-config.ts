@@ -1,4 +1,4 @@
-type ScoreRange = {
+export type ParseTaskConfigScoreRange = {
   min: number;
   max: number;
 };
@@ -7,8 +7,8 @@ export type ParseTaskConfig = {
   categories: string[];
   priorities: {
     levels: string[];
-    scores: Record<string, ScoreRange>;
-    overallScoreRange: ScoreRange;
+    scores: Record<string, ParseTaskConfigScoreRange>;
+    overallScoreRange: ParseTaskConfigScoreRange;
   };
   frequencies: string[];
 };
