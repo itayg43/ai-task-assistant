@@ -7,10 +7,12 @@ const DEFAULT_LEVELS = {
   CRITICAL: "critical",
 } as const;
 
+const DEFAULT_LEVELS_VALUES = Object.values(DEFAULT_LEVELS);
+
 export const DEFAULT_PARSE_TASK_CONFIG: ParseTaskConfig = {
   categories: ["work", "personal", "health", "finance", "errand"],
   priorities: {
-    levels: Object.values(DEFAULT_LEVELS),
+    levels: DEFAULT_LEVELS_VALUES,
     scores: {
       [DEFAULT_LEVELS.LOW]: {
         min: 0,
