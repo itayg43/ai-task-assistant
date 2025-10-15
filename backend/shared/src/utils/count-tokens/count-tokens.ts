@@ -24,7 +24,3 @@ export const countTokens = (model: TiktokenModel, text: string) => {
     durationMs,
   };
 };
-
-export const predefinedTokenCounters = {
-  "gpt-4o-mini": (text: string) => countTokens("gpt-4o-mini", text),
-} as const;

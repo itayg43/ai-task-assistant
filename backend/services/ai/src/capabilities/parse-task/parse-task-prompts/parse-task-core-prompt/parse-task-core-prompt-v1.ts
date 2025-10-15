@@ -6,8 +6,11 @@ import { ParseTaskConfig } from "@capabilities/parse-task/parse-task-types";
 import { getDateISO } from "@shared/utils/date-time";
 
 const BASE_INSTRUCTIONS = `
-## Base Instructions
-You are an assistant that converts natural language tasks into structured JSON.
+## Role
+You are an expert task management assistant that converts natural language into structured task data.
+
+## Task
+Parse the user's natural language input into a structured JSON format with accurate categorization, priority assessment, and deadline interpretation.
 `;
 
 const generateParsingRules = (config: ParseTaskConfig) => {
@@ -17,31 +20,37 @@ const generateParsingRules = (config: ParseTaskConfig) => {
   } = config;
 
   return `
-## Parsing Rules
-**Title**
-- Create a concise title that captures the core task
-- Remove unnecessary words while preserving essential meaning
-- Use proper capitalization and grammar
-**Due Date**
-- Use current date ${getDateISO()} as reference for relative dates
-- Interpret "tomorrow", "next Friday", "this weekend", etc. correctly
-- Return null if no date is mentioned or implied
-**Category**
-- Categories are dynamically defined as:
-${JSON.stringify(categories, null, 2)}
-- Select the most relevant category from this list only. Do not invent categories.
-**Priority**
-1. Each task priority must include:
-   - \`level\`: one of the allowed dynamic levels:
-${JSON.stringify(levels, null, 2)}
-   - \`score\`: a number within ${overallScoreRange.min}–${
+## Output Format Rules
+
+### Title
+- Extract core task essence in 2-8 words
+- Use title case, remove filler words
+- Preserve key action verbs
+
+### Due Date  
+- Use current date ${getDateISO()} as reference
+- Set dueDate when a specific deadline is explicitly mentioned or clearly implied
+- Parse relative dates: "tomorrow" → next day, "next Friday" → specific date
+- Vague terms like "soon", "eventually", "sometime" should result in null
+- Return ISO datetime string or null if no deadline mentioned
+
+### Category
+- Must match exactly one from: ${categories.join(", ")}
+- Choose most semantically relevant category
+- Default to first category if ambiguous
+
+### Priority
+- Consider the context, nature of the task, and consequences of not completing it or completing it late
+- Match the priority level to the severity of consequences and importance, not just urgency
+- For vague, non-urgent tasks (e.g., "plan something soon"), use the lowest priority level available
+- Level: ${levels.join(" | ")}
+- Score: ${overallScoreRange.min}-${
     overallScoreRange.max
-  }, appropriate to the chosen level
-   - \`reason\`: short explanation mentioning urgency and/or importance
-2. Levels and numeric ranges: ${JSON.stringify(scores, null, 2)}
-- Always pick a score inside the range of the chosen level.
-- If a task is vague or low-impact, pick a score at the lower end of the level’s range.
-- If a task is urgent/important, pick a score at the higher end of the level’s range.
+  } (within level's range)
+- Reason: Brief explanation (urgency + importance)
+- Score ranges: ${Object.entries(scores)
+    .map(([level, range]) => `${level}: ${range.min}-${range.max}`)
+    .join(", ")}
 `;
 };
 
@@ -54,12 +63,20 @@ export const parseTaskCorePromptV1 = (
                 `;
 
   return {
-    model: "gpt-4o-mini",
+    model: "gpt-4.1-mini",
     instructions: prompt,
     input: naturalLanguage,
+    // Deterministic output configuration for consistent task parsing:
+    // - temperature: 0 ensures the model always picks the most likely token
+    // - top_p: 1 allows the model to consider all possible tokens (not just top 90% etc.)
+    // Together, these settings maximize determinism while maintaining the model's full
+    // vocabulary access, crucial for structured data extraction where consistency
+    // and reliability are more important than creativity
     temperature: 0,
+    top_p: 1,
     text: {
       format: zodTextFormat(parseTaskOutputSchema, "parseTaskOutputSchema"),
     },
+    max_output_tokens: 500,
   };
 };
