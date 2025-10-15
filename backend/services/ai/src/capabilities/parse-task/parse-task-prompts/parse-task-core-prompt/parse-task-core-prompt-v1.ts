@@ -6,8 +6,11 @@ import { ParseTaskConfig } from "@capabilities/parse-task/parse-task-types";
 import { getDateISO } from "@shared/utils/date-time";
 
 const BASE_INSTRUCTIONS = `
-## Base Instructions
-You are an assistant that converts natural language tasks into structured JSON.
+## Role
+You are an expert task management assistant that converts natural language into structured task data.
+
+## Task
+Parse the user's natural language input into a structured JSON format with accurate categorization, priority assessment, and deadline interpretation.
 `;
 
 const generateParsingRules = (config: ParseTaskConfig) => {
@@ -17,31 +20,32 @@ const generateParsingRules = (config: ParseTaskConfig) => {
   } = config;
 
   return `
-## Parsing Rules
-**Title**
-- Create a concise title that captures the core task
-- Remove unnecessary words while preserving essential meaning
-- Use proper capitalization and grammar
-**Due Date**
-- Use current date ${getDateISO()} as reference for relative dates
-- Interpret "tomorrow", "next Friday", "this weekend", etc. correctly
-- Return null if no date is mentioned or implied
-**Category**
-- Categories are dynamically defined as:
-${JSON.stringify(categories, null, 2)}
-- Select the most relevant category from this list only. Do not invent categories.
-**Priority**
-1. Each task priority must include:
-   - \`level\`: one of the allowed dynamic levels:
-${JSON.stringify(levels, null, 2)}
-   - \`score\`: a number within ${overallScoreRange.min}–${
+## Output Format Rules
+
+### Title
+- Extract core task essence in 2-8 words
+- Use title case, remove filler words
+- Preserve key action verbs
+
+### Due Date  
+- Parse relative dates: "tomorrow" → next day, "next Friday" → specific date
+- Return ISO datetime string or null if no deadline mentioned
+- Use current date ${getDateISO()} as reference
+
+### Category
+- Must match exactly one from: ${categories.join(", ")}
+- Choose most semantically relevant category
+- Default to first category if ambiguous
+
+### Priority
+- Level: ${levels.join(" | ")}
+- Score: ${overallScoreRange.min}-${
     overallScoreRange.max
-  }, appropriate to the chosen level
-   - \`reason\`: short explanation mentioning urgency and/or importance
-2. Levels and numeric ranges: ${JSON.stringify(scores, null, 2)}
-- Always pick a score inside the range of the chosen level.
-- If a task is vague or low-impact, pick a score at the lower end of the level’s range.
-- If a task is urgent/important, pick a score at the higher end of the level’s range.
+  } (within level's range)
+- Reason: Brief explanation (urgency + importance)
+- Score ranges: ${Object.entries(scores)
+    .map(([level, range]) => `${level}: ${range.min}-${range.max}`)
+    .join(", ")}
 `;
 };
 
