@@ -5,7 +5,7 @@ import {
   ParseTaskOutput,
 } from "@capabilities/parse-task/parse-task-types";
 import { openai } from "@clients/openai";
-import { predefinedTokenCounters } from "@shared/utils/count-tokens";
+import { countTokens } from "@shared/utils/count-tokens";
 import { withDurationAsync } from "@shared/utils/with-duration";
 import { CapabilityResponse } from "@types";
 
@@ -31,7 +31,7 @@ export const parseTaskHandler = async (
   return {
     metadata: {
       tokens: {
-        input: predefinedTokenCounters["gpt-4o-mini"](naturalLanguage).count,
+        input: countTokens("gpt-4.1-mini", naturalLanguage).count,
         output: corePromptResponse.result.usage?.output_tokens || 0,
       },
       durationMs: corePromptResponse.durationMs,

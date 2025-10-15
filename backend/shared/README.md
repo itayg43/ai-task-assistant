@@ -150,23 +150,16 @@ app.use("/api", rateLimiter);
 #### Count Tokens
 
 ```typescript
-import {
-  countTokens,
-  predefinedTokenCounters,
-} from "@shared/utils/count-tokens";
+import { countTokens } from "@shared/utils/count-tokens";
 
 // Count tokens for any model
 const { count, duration } = countTokens("gpt-4o-mini", "Hello, world!");
-
-// Use predefined counter for common models
-const tokenCount = predefinedTokenCounters["gpt-4o-mini"]("Hello, world!");
 ```
 
 **Features:**
 
 - Token counting for any Tiktoken model
 - Performance timing with duration tracking
-- Predefined counters for common models (gpt-4o-mini)
 - Comprehensive logging with model, text, count, and duration
 
 #### With Duration
