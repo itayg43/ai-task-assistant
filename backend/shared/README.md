@@ -108,7 +108,7 @@ app.use(requestResponseMetadata);
 
 ```typescript
 import { validateSchema } from "@shared/middlewares/validate-schema";
-import { z } from "zod";
+import z from "zod";
 
 const userSchema = z.object({
   name: z.string().min(2),
@@ -240,25 +240,6 @@ const getStatusMessage = (status: Status) => {
 - Compile-time checking for missing cases
 - Runtime error if unhandled value is encountered
 - Perfect for union type handling
-
-#### Zod Schema Helpers
-
-```typescript
-import { trimString, isNonEmptyString } from "@shared/utils/zod-schema-helpers";
-import { z } from "zod";
-
-const userSchema = z
-  .string()
-  .transform(trimString)
-  .refine(isNonEmptyString, "String cannot be empty");
-```
-
-**Features:**
-
-- String trimming utility for Zod transforms
-- Non-empty string validation
-- Designed for Zod's transform + refine pattern
-- Ensures proper validation flow
 
 #### With Retry
 

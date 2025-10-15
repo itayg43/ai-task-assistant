@@ -5,12 +5,12 @@ import { baseRequestSchema } from "@shared/schemas";
 
 export const executeCapabilityInputSchema = baseRequestSchema.extend({
   params: z.object({
-    capability: z.enum(CAPABILITY, {
+    capability: z.nativeEnum(CAPABILITY, {
       message: "Invalid",
     }),
   }),
   query: z.object({
-    pattern: z.enum(CAPABILITY_PATTERN, {
+    pattern: z.nativeEnum(CAPABILITY_PATTERN, {
       message: "Invalid",
     }),
   }),

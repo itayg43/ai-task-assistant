@@ -1,10 +1,8 @@
-import * as z from "zod";
-
-import { isNonEmptyString, trimString } from "@shared/utils/zod-schema-helpers";
+import z from "zod";
 
 export const createTaskSchema = z.object({
   body: z.object({
-    naturalLanguage: z.string().transform(trimString).refine(isNonEmptyString),
+    naturalLanguage: z.string().nonempty(),
   }),
 });
 

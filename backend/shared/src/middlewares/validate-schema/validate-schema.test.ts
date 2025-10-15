@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as z from "zod";
+import z from "zod";
 
 import { validateSchema } from "./validate-schema";
 
@@ -9,7 +9,7 @@ describe("validateSchema", () => {
   let mockResponse: Partial<Response> = {};
   let mockNextFunction: NextFunction;
 
-  const executeMiddleware = (schema: z.ZodSchema) => {
+  const executeMiddleware = (schema: z.AnyZodObject) => {
     const middleware = validateSchema(schema);
 
     middleware(
