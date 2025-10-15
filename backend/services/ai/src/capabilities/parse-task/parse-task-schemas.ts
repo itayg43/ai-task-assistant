@@ -31,7 +31,7 @@ export const parseTaskInputSchema = executeCapabilityInputSchema.extend({
 
 const parseTaskPrioritySchema = z.object({
   level: z.string().nonempty(),
-  score: z.number().positive(),
+  score: z.number().min(0),
   reason: z.string().nonempty(),
 });
 
