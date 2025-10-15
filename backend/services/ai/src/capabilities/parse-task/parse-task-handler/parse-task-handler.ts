@@ -15,7 +15,7 @@ export const parseTaskHandler = async (
   const { naturalLanguage, config } = input.body;
 
   // TODO: Monitor prompt generation performance and consider Redis caching if:
-  // - High frequency of repeated configs (same categories/priorities)
+  // - High frequency of repeated configs
   // - Prompt generation becomes a bottleneck (>1ms consistently)
   // - Multiple service instances could benefit from shared cache
   // Implementation: Cache full generated prompts with config hash as key
