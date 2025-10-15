@@ -1,23 +1,13 @@
+import { zodTextFormat } from "openai/helpers/zod";
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
+import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schemas";
 import { ParseTaskConfig } from "@capabilities/parse-task/parse-task-types";
 import { getDateISO } from "@shared/utils/date-time";
 
 const BASE_INSTRUCTIONS = `
-## Instructions
+## Base Instructions
 You are an assistant that converts natural language tasks into structured JSON.
-Always respond with valid JSON only, no extra commentary.
-The JSON must follow this schema:
-{
-  "title": string,
-  "dueDate": string | null,
-  "category": string,
-  "priority": {
-    "level": string,
-    "score": number,
-    "reason": string
-  }
-}
 `;
 
 const generateParsingRules = (config: ParseTaskConfig) => {
@@ -55,26 +45,21 @@ ${JSON.stringify(levels, null, 2)}
 `;
 };
 
-const INPUT = `
-## Task to Parse
-Parse this natural language task description:
-"""
-{naturalLanguage}
-"""
-`;
-
 export const parseTaskCorePromptV1 = (
   naturalLanguage: string,
   config: ParseTaskConfig
 ): ResponseCreateParamsNonStreaming => {
   const prompt = `${BASE_INSTRUCTIONS}
                   ${generateParsingRules(config)}
-                  ${INPUT}`;
+                `;
 
   return {
     model: "gpt-4o-mini",
     instructions: prompt,
     input: naturalLanguage,
     temperature: 0,
+    text: {
+      format: zodTextFormat(parseTaskOutputSchema, "parseTaskOutputSchema"),
+    },
   };
 };
