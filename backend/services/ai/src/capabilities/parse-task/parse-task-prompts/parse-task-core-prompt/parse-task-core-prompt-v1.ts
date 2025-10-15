@@ -28,9 +28,11 @@ const generateParsingRules = (config: ParseTaskConfig) => {
 - Preserve key action verbs
 
 ### Due Date  
-- Parse relative dates: "tomorrow" → next day, "next Friday" → specific date
-- Return ISO datetime string or null if no deadline mentioned
 - Use current date ${getDateISO()} as reference
+- Set dueDate when a specific deadline is explicitly mentioned or clearly implied
+- Parse relative dates: "tomorrow" → next day, "next Friday" → specific date
+- Vague terms like "soon", "eventually", "sometime" should result in null
+- Return ISO datetime string or null if no deadline mentioned
 
 ### Category
 - Must match exactly one from: ${categories.join(", ")}
@@ -38,6 +40,9 @@ const generateParsingRules = (config: ParseTaskConfig) => {
 - Default to first category if ambiguous
 
 ### Priority
+- Consider the context, nature of the task, and consequences of not completing it or completing it late
+- Match the priority level to the severity of consequences and importance, not just urgency
+- For vague, non-urgent tasks (e.g., "plan something soon"), use the lowest priority level available
 - Level: ${levels.join(" | ")}
 - Score: ${overallScoreRange.min}-${
     overallScoreRange.max
@@ -58,7 +63,7 @@ export const parseTaskCorePromptV1 = (
                 `;
 
   return {
-    model: "gpt-4o-mini",
+    model: "gpt-4.1-mini",
     instructions: prompt,
     input: naturalLanguage,
     temperature: 0,
