@@ -65,7 +65,7 @@ describe("executeSyncPattern", () => {
     );
     expect(result).toEqual({
       result: mockResult,
-      duration: mockDuration,
+      durationMs: mockDuration,
     });
   });
 });

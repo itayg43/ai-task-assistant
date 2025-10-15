@@ -1,67 +1,56 @@
-import * as z from "zod";
+import z from "zod";
 
 import { executeCapabilityInputSchema } from "@schemas";
-import { isNonEmptyString, trimString } from "@shared/utils/zod-schema-helpers";
 
 const parseTaskConfigPrioritiesScoreRangeSchema = z.object({
-  min: z.number(),
-  max: z.number(),
+  min: z.number().min(0),
+  max: z.number().positive(),
 });
 
 const parseTaskConfigPrioritiesSchema = z.object({
-  levels: z.array(z.string().transform(trimString).refine(isNonEmptyString)),
+  levels: z.array(z.string().nonempty()),
   scores: z.record(
-    z.string().transform(trimString).refine(isNonEmptyString),
+    z.string().nonempty(),
     parseTaskConfigPrioritiesScoreRangeSchema
   ),
   overallScoreRange: parseTaskConfigPrioritiesScoreRangeSchema,
 });
 
 export const parseTaskConfigSchema = z.object({
-  categories: z.array(
-    z.string().transform(trimString).refine(isNonEmptyString)
-  ),
+  categories: z.array(z.string().nonempty()),
   priorities: parseTaskConfigPrioritiesSchema,
-  frequencies: z.array(
-    z.string().transform(trimString).refine(isNonEmptyString)
-  ),
+  frequencies: z.array(z.string().nonempty()),
 });
 
 export const parseTaskInputSchema = executeCapabilityInputSchema.extend({
   body: z.object({
-    naturalLanguage: z
-      .string()
-      .max(255)
-      .transform(trimString)
-      .refine(isNonEmptyString, "Required"),
+    naturalLanguage: z.string().nonempty().max(255),
     config: parseTaskConfigSchema,
   }),
 });
 
 const parseTaskPrioritySchema = z.object({
-  level: z.string().transform(trimString).refine(isNonEmptyString),
-  score: z.number(),
-  reason: z.string().transform(trimString).refine(isNonEmptyString),
+  level: z.string().nonempty(),
+  score: z.number().positive(),
+  reason: z.string().nonempty(),
 });
 
-const recurrenceSchema = z
-  .object({
-    frequency: z.string().transform(trimString).refine(isNonEmptyString),
-    interval: z.number().min(1).default(1),
-    dayOfWeek: z.number().min(0).max(6).nullable(),
-    dayOfMonth: z.number().min(1).max(31).nullable(),
-    endDate: z.iso.datetime().nullable(),
-  })
-  .nullable();
+// const recurrenceSchema = z
+//   .object({
+//     frequency: z.string(),
+//     interval: z.number().min(1).default(1),
+//     dayOfWeek: z.number().min(0).max(6).nullable(),
+//     dayOfMonth: z.number().min(1).max(31).nullable(),
+//     endDate: z.iso.datetime().nullable(),
+//   })
+//   .nullable();
 
-const subtasksSchema = z
-  .array(z.string().transform(trimString).refine(isNonEmptyString))
-  .nullable();
+// const subtasksSchema = z.array(z.string()).nullable();
 
 export const parseTaskOutputSchema = z.object({
-  title: z.string().transform(trimString).refine(isNonEmptyString),
-  dueDate: z.iso.datetime().nullable(),
-  category: z.string().transform(trimString).refine(isNonEmptyString),
+  title: z.string(),
+  dueDate: z.string().datetime().nullable(),
+  category: z.string(),
   priority: parseTaskPrioritySchema,
   // recurrence: recurrenceSchema,
   // subtasks: subtasksSchema,

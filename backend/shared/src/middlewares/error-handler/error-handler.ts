@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes, getReasonPhrase } from "http-status-codes";
-import * as z from "zod";
+import z from "zod";
 
 import { createLogger } from "../../config/create-logger";
 import { BaseError } from "../../errors";
