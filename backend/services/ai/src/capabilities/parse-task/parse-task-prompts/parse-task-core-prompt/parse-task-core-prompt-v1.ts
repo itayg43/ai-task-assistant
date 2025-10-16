@@ -66,17 +66,9 @@ export const parseTaskCorePromptV1 = (
     model: "gpt-4.1-mini",
     instructions: prompt,
     input: naturalLanguage,
-    // Deterministic output configuration for consistent task parsing:
-    // - temperature: 0 ensures the model always picks the most likely token
-    // - top_p: 1 allows the model to consider all possible tokens (not just top 90% etc.)
-    // Together, these settings maximize determinism while maintaining the model's full
-    // vocabulary access, crucial for structured data extraction where consistency
-    // and reliability are more important than creativity
     temperature: 0,
-    top_p: 1,
     text: {
       format: zodTextFormat(parseTaskOutputSchema, "parseTaskOutputSchema"),
     },
-    max_output_tokens: 500,
   };
 };
