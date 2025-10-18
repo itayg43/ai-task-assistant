@@ -1,4 +1,4 @@
-import { parseTaskHandler } from "@capabilities/parse-task/handler";
+import { handler as parseTaskHandler } from "@capabilities/parse-task/handler";
 import {
   parseTaskInputSchema,
   parseTaskOutputSchema,
