@@ -1,8 +1,8 @@
 import { zodTextFormat } from "openai/helpers/zod";
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
-import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schemas";
-import { ParseTaskConfig } from "@capabilities/parse-task/parse-task-types";
+import { parseTaskOutputCoreSchema } from "@capabilities/parse-task/parse-task-schemas";
+import { ParseTaskInputConfig } from "@capabilities/parse-task/parse-task-types";
 import { getDateISO } from "@shared/utils/date-time";
 
 const BASE_INSTRUCTIONS = `
@@ -13,7 +13,7 @@ You are an expert task management assistant that converts natural language into 
 Parse the user's natural language input into a structured JSON format with accurate categorization, priority assessment, and deadline interpretation.
 `;
 
-const generateParsingRules = (config: ParseTaskConfig) => {
+const generateParsingRules = (config: ParseTaskInputConfig) => {
   const {
     categories,
     priorities: { levels, scores, overallScoreRange },
@@ -56,7 +56,7 @@ const generateParsingRules = (config: ParseTaskConfig) => {
 
 export const parseTaskCorePromptV1 = (
   naturalLanguage: string,
-  config: ParseTaskConfig
+  config: ParseTaskInputConfig
 ): ResponseCreateParamsNonStreaming => {
   const prompt = `${BASE_INSTRUCTIONS}
                   ${generateParsingRules(config)}
@@ -68,7 +68,10 @@ export const parseTaskCorePromptV1 = (
     input: naturalLanguage,
     temperature: 0,
     text: {
-      format: zodTextFormat(parseTaskOutputSchema, "parseTaskOutputSchema"),
+      format: zodTextFormat(
+        parseTaskOutputCoreSchema,
+        "parseTaskOutputCoreSchema"
+      ),
     },
   };
 };

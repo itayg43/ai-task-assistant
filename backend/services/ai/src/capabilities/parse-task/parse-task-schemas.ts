@@ -2,37 +2,49 @@ import z from "zod";
 
 import { executeCapabilityInputSchema } from "@schemas";
 
-const parseTaskConfigPrioritiesScoreRangeSchema = z.object({
+const parseTaskInputConfigPrioritiesScoreRangeSchema = z.object({
   min: z.number().min(0),
   max: z.number().positive(),
 });
 
-const parseTaskConfigPrioritiesSchema = z.object({
+const parseTaskInputConfigPrioritiesSchema = z.object({
   levels: z.array(z.string().nonempty()),
   scores: z.record(
     z.string().nonempty(),
-    parseTaskConfigPrioritiesScoreRangeSchema
+    parseTaskInputConfigPrioritiesScoreRangeSchema
   ),
-  overallScoreRange: parseTaskConfigPrioritiesScoreRangeSchema,
+  overallScoreRange: parseTaskInputConfigPrioritiesScoreRangeSchema,
 });
 
-export const parseTaskConfigSchema = z.object({
+export const parseTaskInputConfigSchema = z.object({
   categories: z.array(z.string().nonempty()),
-  priorities: parseTaskConfigPrioritiesSchema,
+  priorities: parseTaskInputConfigPrioritiesSchema,
   frequencies: z.array(z.string().nonempty()),
 });
 
 export const parseTaskInputSchema = executeCapabilityInputSchema.extend({
   body: z.object({
     naturalLanguage: z.string().nonempty().max(255),
-    config: parseTaskConfigSchema,
+    config: parseTaskInputConfigSchema,
   }),
 });
 
-const parseTaskPrioritySchema = z.object({
+const parseTaskOutputCorePrioritySchema = z.object({
   level: z.string().nonempty(),
   score: z.number().min(0),
   reason: z.string().nonempty(),
+});
+
+export const parseTaskOutputCoreSchema = z.object({
+  title: z.string(),
+  dueDate: z.string().datetime().nullable(),
+  category: z.string(),
+  priority: parseTaskOutputCorePrioritySchema,
+});
+
+export const parseTaskOutputSchema = parseTaskOutputCoreSchema.extend({
+  // recurrence: recurrenceSchema,
+  // subtasks: subtasksSchema,
 });
 
 // const recurrenceSchema = z
@@ -46,12 +58,3 @@ const parseTaskPrioritySchema = z.object({
 //   .nullable();
 
 // const subtasksSchema = z.array(z.string()).nullable();
-
-export const parseTaskOutputSchema = z.object({
-  title: z.string(),
-  dueDate: z.string().datetime().nullable(),
-  category: z.string(),
-  priority: parseTaskPrioritySchema,
-  // recurrence: recurrenceSchema,
-  // subtasks: subtasksSchema,
-});
