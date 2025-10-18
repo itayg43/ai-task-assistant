@@ -2,7 +2,7 @@ import { createParseTaskCorePrompt } from "@capabilities/parse-task/parse-task-p
 import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schemas";
 import {
   ParseTaskInput,
-  ParseTaskOutput,
+  ParseTaskOutputCore,
 } from "@capabilities/parse-task/parse-task-types";
 import { executeParse } from "@clients/openai";
 import { withDurationAsync } from "@shared/utils/with-duration";
@@ -15,7 +15,9 @@ export const parseTaskHandler = async (
 
   const corePrompt = createParseTaskCorePrompt("v1", naturalLanguage, config);
   const { result: corePromptResponse, durationMs: corePromptResponseDuration } =
-    await withDurationAsync(() => executeParse<ParseTaskOutput>(corePrompt));
+    await withDurationAsync(() =>
+      executeParse<ParseTaskOutputCore>(corePrompt)
+    );
 
   if (!corePromptResponse.output_parsed) {
     throw new Error("Failed to parse task correctly");
