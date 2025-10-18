@@ -9,7 +9,7 @@
     "start:dev": "ts-node-dev -r tsconfig-paths/register --respawn src/server.ts",
     "type-check": "tsc --noEmit --watch",
     "test": "vitest",
-    "test:llm": "dotenv -e .env.test -- vitest --config vitest.llm.config.ts --run src/capabilities/parse-task/parse-task-prompts/parse-task-core-prompt/parse-task-core-prompt-v1.test.ts"
+    "test:llm": "dotenv -e .env.test -- vitest --config vitest.llm.config.ts"
   },
   "keywords": [],
   "author": "",

@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { parseTaskCorePromptV1 } from "@capabilities/parse-task/parse-task-prompts/parse-task-core-prompt/v1";
 import { parseTaskOutputCoreSchema } from "@capabilities/parse-task/parse-task-schemas";
 import {
   ParseTaskInputConfig,
   ParseTaskOutputCore,
 } from "@capabilities/parse-task/parse-task-types";
 import { executeParse } from "@clients/openai";
-import { parseTaskCorePromptV1 } from "./parse-task-core-prompt-v1";
 
 type TestCase = {
   naturalLanguage: string;

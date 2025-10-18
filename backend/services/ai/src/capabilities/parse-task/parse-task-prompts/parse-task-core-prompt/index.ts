@@ -1,5 +1,5 @@
 import { ParseTaskInputConfig } from "@capabilities/parse-task/parse-task-types";
-import { parseTaskCorePromptV1 } from "./parse-task-core-prompt-v1";
+import { parseTaskCorePromptV1 } from "@capabilities/parse-task/parse-task-prompts/parse-task-core-prompt/v1";
 
 const PROMPT_VERSIONS = {
   v1: parseTaskCorePromptV1,
