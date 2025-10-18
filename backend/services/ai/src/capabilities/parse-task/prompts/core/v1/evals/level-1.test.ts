@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseTaskCorePromptV1 } from "@capabilities/parse-task/parse-task-prompts/parse-task-core-prompt/v1";
 import { parseTaskOutputCoreSchema } from "@capabilities/parse-task/parse-task-schemas";
 import {
   ParseTaskInputConfig,
   ParseTaskOutputCore,
 } from "@capabilities/parse-task/parse-task-types";
+import { corePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
 import { executeParse } from "@clients/openai";
 
 type TestCase = {
@@ -163,7 +163,7 @@ const testCases: TestCase[] = [
   },
 ];
 
-describe("ParseTaskCorePromptV1 - Level1Tests", () => {
+describe("corePromptV1 - Level1Tests", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-01-15T12:00:00.000Z"));
@@ -174,7 +174,7 @@ describe("ParseTaskCorePromptV1 - Level1Tests", () => {
   });
 
   const executeParseTask = async (naturalLanguage: string) => {
-    const prompt = parseTaskCorePromptV1(naturalLanguage, mockConfig);
+    const prompt = corePromptV1(naturalLanguage, mockConfig);
     const response = await executeParse<ParseTaskOutputCore>(prompt);
 
     if (!response.output_parsed) {
