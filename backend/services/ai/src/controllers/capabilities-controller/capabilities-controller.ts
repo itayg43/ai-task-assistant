@@ -37,7 +37,7 @@ export const executeCapability = async (
       query: req.query,
     });
 
-    logger.info("executeCapability - succeded", {
+    logger.info("executeCapability - succeeded", {
       capability,
       pattern,
       result,
