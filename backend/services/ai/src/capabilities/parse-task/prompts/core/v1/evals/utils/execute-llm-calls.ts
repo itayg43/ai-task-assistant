@@ -9,13 +9,12 @@ import { executeParse } from "@clients/openai";
 
 export const executeParseTask = async (naturalLanguage: string) => {
   const prompt = corePromptV1(naturalLanguage, mockInputConfig);
-  const response = await executeParse<ParseTaskOutputCore>(prompt);
 
-  if (!response.output_parsed) {
-    throw new Error(`Failed to parse: ${naturalLanguage}`);
-  }
-
-  return response.output_parsed;
+  return await executeParse<ParseTaskOutputCore>(
+    "parse-task",
+    naturalLanguage,
+    prompt
+  );
 };
 
 export const executeJudgeOutput = async (
@@ -23,11 +22,6 @@ export const executeJudgeOutput = async (
   output: ParseTaskOutputCore
 ) => {
   const prompt = createJudgePrompt(naturalLanguage, output, mockInputConfig);
-  const response = await executeParse<Judge>(prompt);
 
-  if (!response.output_parsed) {
-    throw new Error(`Failed to judge: ${naturalLanguage}`);
-  }
-
-  return response.output_parsed;
+  return await executeParse<Judge>("parse-task", naturalLanguage, prompt);
 };
