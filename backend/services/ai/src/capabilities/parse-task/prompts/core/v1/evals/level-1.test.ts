@@ -1,45 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseTaskOutputCoreSchema } from "@capabilities/parse-task/parse-task-schemas";
-import {
-  ParseTaskInputConfig,
-  ParseTaskOutputCore,
-} from "@capabilities/parse-task/parse-task-types";
-import { corePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
-import { executeParse } from "@clients/openai";
+import { executeParseTask } from "@capabilities/parse-task/prompts/core/v1/evals/utils/execute-llm-calls";
 
-type TestCase = {
-  naturalLanguage: string;
-  expected: {
-    title: {
-      contains: string;
-    };
-    dueDate: string | null;
-    category: string[];
-    priority: {
-      level: string[];
-      minScore: number;
-      maxScore: number;
-    };
-  };
-};
-
-const mockConfig: ParseTaskInputConfig = {
-  categories: ["work", "personal", "health", "finance", "errand"],
-  priorities: {
-    levels: ["low", "medium", "high", "critical"],
-    scores: {
-      low: { min: 0, max: 3 },
-      medium: { min: 4, max: 6 },
-      high: { min: 7, max: 8 },
-      critical: { min: 9, max: 10 },
-    },
-    overallScoreRange: { min: 0, max: 10 },
-  },
-  frequencies: ["daily", "weekly", "monthly"],
-};
-
-const testCases: TestCase[] = [
+const testCases = [
   {
     naturalLanguage: "Plan something soon",
     expected: {
@@ -161,7 +125,7 @@ const testCases: TestCase[] = [
       },
     },
   },
-];
+] as const;
 
 describe("corePromptV1 - Level1Tests", () => {
   beforeEach(() => {
@@ -172,17 +136,6 @@ describe("corePromptV1 - Level1Tests", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
-
-  const executeParseTask = async (naturalLanguage: string) => {
-    const prompt = corePromptV1(naturalLanguage, mockConfig);
-    const response = await executeParse<ParseTaskOutputCore>(prompt);
-
-    if (!response.output_parsed) {
-      throw new Error(`Failed to parse: ${naturalLanguage}`);
-    }
-
-    return response.output_parsed;
-  };
 
   it.each(testCases)(
     "should parse $naturalLanguage",
