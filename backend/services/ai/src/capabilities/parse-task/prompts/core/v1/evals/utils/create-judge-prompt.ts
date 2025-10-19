@@ -57,8 +57,9 @@ export const createJudgePrompt = (
   5. **Priority Reason**: Clear, specific, well-justified
   
   ### Output Format
-  - **explanation**: detailed failure explanation ONLY if overallPass is false.
-  - **suggestedPromptImprovements**: max 3 prompt improvement suggestions ONLY if overallPass is false.
+  - **overallPass**: boolean - true if the output meets all criteria, false otherwise
+  - **explanation**: string | null - ONLY provide if overallPass is false. Concise failure explanation (2-3 sentences max) focusing on the most critical issues. Prioritize the most impactful problems and avoid repetitive analysis.
+  - **suggestedPromptImprovements**: string[] | null - ONLY provide if overallPass is false. Max 3 prompt improvement suggestions.
   `;
 
   return {
