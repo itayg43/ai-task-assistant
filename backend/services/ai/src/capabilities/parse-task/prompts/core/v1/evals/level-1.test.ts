@@ -140,30 +140,30 @@ describe("corePromptV1 - Level1Tests", () => {
   it.each(testCases)(
     "should parse $naturalLanguage",
     async ({ naturalLanguage, expected }) => {
-      const result = await executeParseTask(naturalLanguage);
+      const { output } = await executeParseTask(naturalLanguage);
 
-      expect(() => parseTaskOutputCoreSchema.parse(result)).not.toThrow();
+      expect(() => parseTaskOutputCoreSchema.parse(output)).not.toThrow();
 
-      expect(result.title.toLowerCase()).toContain(expected.title.contains);
+      expect(output.title.toLowerCase()).toContain(expected.title.contains);
 
-      if (expected.dueDate && result.dueDate) {
-        const actualDate = new Date(result.dueDate).toISOString().split("T")[0];
+      if (expected.dueDate && output.dueDate) {
+        const actualDate = new Date(output.dueDate).toISOString().split("T")[0];
 
         expect(actualDate).toBe(expected.dueDate);
       } else {
-        expect(result.dueDate).toBeNull();
+        expect(output.dueDate).toBeNull();
       }
 
-      expect(expected.category).toContain(result.category);
+      expect(expected.category).toContain(output.category);
 
-      expect(expected.priority.level).toContain(result.priority.level);
-      expect(result.priority.score).toBeGreaterThanOrEqual(
+      expect(expected.priority.level).toContain(output.priority.level);
+      expect(output.priority.score).toBeGreaterThanOrEqual(
         expected.priority.minScore
       );
-      expect(result.priority.score).toBeLessThanOrEqual(
+      expect(output.priority.score).toBeLessThanOrEqual(
         expected.priority.maxScore
       );
-      expect(result.priority.reason).toBeTruthy();
+      expect(output.priority.reason).toBeTruthy();
     }
   );
 });

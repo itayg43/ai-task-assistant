@@ -34,27 +34,34 @@ describe("corePromptV1 - Level2Tests", () => {
   it.each(testCases)(
     "should judge $naturalLanguage",
     async ({ naturalLanguage }) => {
-      const output = await executeParseTask(naturalLanguage);
-      const judge = await executeJudgeOutput(naturalLanguage, output);
+      const { output: parseOutput } = await executeParseTask(naturalLanguage);
+      const { output: judgeOutput } = await executeJudgeOutput(
+        naturalLanguage,
+        parseOutput
+      );
 
       console.log(`\n=== Judge for: "${naturalLanguage}" ===`);
-      console.log(`Overall: ${judge.overallPass ? "✅ PASS" : "❌ FAIL"}`);
+      console.log(
+        `Overall: ${judgeOutput.overallPass ? "✅ PASS" : "❌ FAIL"}`
+      );
 
-      if (judge.explanation) {
-        console.log("Explanation:", judge.explanation);
+      if (judgeOutput.explanation) {
+        console.log("Explanation:", judgeOutput.explanation);
       }
 
       if (
-        judge.suggestedPromptImprovements &&
-        judge.suggestedPromptImprovements.length > 0
+        judgeOutput.suggestedPromptImprovements &&
+        judgeOutput.suggestedPromptImprovements.length > 0
       ) {
         console.log(`Prompt Improvements:`);
-        judge.suggestedPromptImprovements.forEach((improvement, index) => {
-          console.log(`${index + 1}. ${improvement}`);
-        });
+        judgeOutput.suggestedPromptImprovements.forEach(
+          (improvement, index) => {
+            console.log(`${index + 1}. ${improvement}`);
+          }
+        );
       }
 
-      expect(judge.overallPass).toBe(true);
+      expect(judgeOutput.overallPass).toBe(true);
     },
     TEST_TIMEOUT
   );
