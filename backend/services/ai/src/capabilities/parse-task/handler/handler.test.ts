@@ -1,35 +1,34 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { handler } from "@capabilities/parse-task/handler";
-import { parseTaskPrompt } from "@capabilities/parse-task/parse-task-prompts";
-import { openai } from "@clients/openai";
+import { createCorePrompt } from "@capabilities/parse-task/prompts";
+import { executeParse } from "@clients/openai";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { Mocked } from "@shared/types";
-import { predefinedTokenCounters } from "@shared/utils/count-tokens";
-import { withDurationAsync } from "@shared/utils/with-duration";
 
-vi.mock("@clients/openai");
-vi.mock("@capabilities/parse-task/parse-task-prompt");
-
-vi.mock("@shared/utils/with-duration", () => ({
-  withDurationAsync: vi.fn(),
+vi.mock("@clients/openai", () => ({
+  executeParse: vi.fn(),
 }));
-
-vi.mock("@shared/utils/count-tokens", () => ({
-  predefinedTokenCounters: {
-    "gpt-4o-mini": vi.fn(),
-  },
-}));
+vi.mock("@capabilities/parse-task/prompts");
 
 describe("parseTaskHandler", () => {
-  let mockedParseTaskPrompt: Mocked<typeof parseTaskPrompt>;
-  let mockedOpenaiCreate: Mocked<typeof openai.responses.create>;
-  let mockedWithDurationAsync: Mocked<typeof withDurationAsync>;
-  let mockedPredefinedTokenCounter: Mocked<
-    (typeof predefinedTokenCounters)["gpt-4o-mini"]
-  >;
+  let mockedCreateCorePrompt: Mocked<typeof createCorePrompt>;
+  let mockedExecuteParse: Mocked<typeof executeParse>;
 
   const mockNaturalLanguage = "Submit Q2 report by next Friday";
+  const mockConfig = {
+    categories: ["personal", "work", "health"],
+    priorities: {
+      levels: ["low", "medium", "high"],
+      scores: {
+        low: { min: 0, max: 33 },
+        medium: { min: 34, max: 66 },
+        high: { min: 67, max: 100 },
+      },
+      overallScoreRange: { min: 0, max: 100 },
+    },
+    frequencies: ["daily", "weekly", "monthly"],
+  };
   const mockPrompt = {
     model: "gpt-4o-mini",
     instructions: "instructions",
@@ -44,16 +43,23 @@ describe("parseTaskHandler", () => {
     priorityReason:
       "Marked as high priority with a clear deadline next Friday.",
     category: "work",
-    recurrence: null,
-    subtasks: ["Gather Q2 data", "Create report draft", "Review with team"],
   };
-  const mockWithDurationAsyncDuration = 150;
-  const mockPredefinedTokenCounterCount = 9;
+  const mockExecuteParseResponse = {
+    output: mockParsedTask,
+    usage: {
+      tokens: {
+        input: 150,
+        output: 135,
+      },
+    },
+    durationMs: 250,
+  };
 
   const executeHandler = async () => {
-    return await parseTaskHandler({
+    return await handler({
       body: {
         naturalLanguage: mockNaturalLanguage,
+        config: mockConfig,
       },
       params: {
         capability: CAPABILITY.PARSE_TASK,
@@ -65,97 +71,40 @@ describe("parseTaskHandler", () => {
   };
 
   beforeEach(() => {
-    mockedParseTaskPrompt = vi.mocked(parseTaskPrompt);
-    mockedParseTaskPrompt.mockReturnValue(mockPrompt);
+    mockedCreateCorePrompt = vi.mocked(createCorePrompt);
+    mockedCreateCorePrompt.mockReturnValue(mockPrompt);
 
-    mockedOpenaiCreate = vi.mocked(openai.responses.create);
-    mockedOpenaiCreate.mockResolvedValue({
-      output_text: JSON.stringify(mockParsedTask),
-      usage: {
-        output_tokens: 135,
-      },
-    } as any);
-
-    mockedWithDurationAsync = vi.mocked(withDurationAsync);
-    mockedWithDurationAsync.mockImplementation(async (fn) => {
-      const result = await fn();
-
-      return {
-        result,
-        duration: mockWithDurationAsyncDuration,
-      };
-    });
-
-    mockedPredefinedTokenCounter = vi.mocked(
-      predefinedTokenCounters["gpt-4o-mini"]
-    );
-    mockedPredefinedTokenCounter.mockReturnValue({
-      count: mockPredefinedTokenCounterCount,
-      duration: 350,
-    });
+    mockedExecuteParse = vi.mocked(executeParse);
+    mockedExecuteParse.mockResolvedValue(mockExecuteParseResponse);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should parse task successfully", async () => {
+  it("should handle success", async () => {
     const { metadata, result } = await executeHandler();
 
-    expect(mockedParseTaskPrompt).toHaveBeenCalledWith(mockNaturalLanguage);
-    expect(mockedOpenaiCreate).toHaveBeenCalledWith(mockPrompt);
-    expect(mockedPredefinedTokenCounter).toHaveBeenCalledWith(
-      mockNaturalLanguage
+    expect(mockedCreateCorePrompt).toHaveBeenCalledWith(
+      "v1",
+      mockNaturalLanguage,
+      mockConfig
     );
-    expect(metadata.tokens.input).toBe(mockPredefinedTokenCounterCount);
+    expect(mockedExecuteParse).toHaveBeenCalledWith(
+      CAPABILITY.PARSE_TASK,
+      mockNaturalLanguage,
+      mockPrompt
+    );
+    expect(metadata.tokens.input).toBe(150);
     expect(metadata.tokens.output).toBe(135);
-    expect(metadata.duration).toBe(`${mockWithDurationAsyncDuration}ms`);
+    expect(metadata.durationMs).toBe(250);
     expect(result).toEqual(mockParsedTask);
   });
 
-  it("should handle openai api error", async () => {
-    const apiError = new Error("API Error");
-    mockedOpenaiCreate.mockRejectedValue(apiError);
+  it("should handle error", async () => {
+    const apiError = new Error("ExecuteParse Error");
+    mockedExecuteParse.mockRejectedValue(apiError);
 
     await expect(executeHandler()).rejects.toThrow(apiError);
-  });
-
-  it("should handle invalid json error", async () => {
-    const mockAiResponse = {
-      output_text: "This is not valid JSON",
-      usage: {
-        output_tokens: 10,
-      },
-    };
-
-    mockedOpenaiCreate.mockResolvedValue(mockAiResponse as any);
-
-    await expect(executeHandler()).rejects.toThrow();
-  });
-
-  it("should handle invalid schema error", async () => {
-    const mockAiResponse = {
-      output_text: JSON.stringify({
-        title: "Test task",
-        // Missing required fields like priorityLevel, category, etc.
-      }),
-      usage: {
-        output_tokens: 15,
-      },
-    };
-
-    mockedOpenaiCreate.mockResolvedValue(mockAiResponse as any);
-
-    await expect(executeHandler()).rejects.toThrow();
-  });
-
-  it("should handle token counting error", async () => {
-    const mockCountingError = new Error("Token counting failed");
-
-    mockedPredefinedTokenCounter.mockImplementation(() => {
-      throw mockCountingError;
-    });
-
-    await expect(executeHandler()).rejects.toThrow(mockCountingError);
   });
 });
