@@ -37,9 +37,7 @@ function log(
 
 function serializeError(error: unknown) {
   if (error instanceof Error) {
-    const stack = error.stack || "";
-
-    return `${error.name}: ${error.message}\n${stack}`;
+    return error.stack || `${error.name}: ${error.message}`;
   }
 
   return String(error);
