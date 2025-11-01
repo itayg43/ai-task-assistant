@@ -1,7 +1,12 @@
+import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { handler } from "@capabilities/parse-task/handler";
-import { createCorePrompt } from "@capabilities/parse-task/prompts";
+import { parseTaskHandler } from "@capabilities/parse-task/handler";
+import {
+  mockParseTaskInputConfig,
+  mockParseTaskOutput,
+} from "@capabilities/parse-task/parse-task-mocks";
+import { createParseTaskCorePrompt } from "@capabilities/parse-task/prompts";
 import { executeParse } from "@clients/openai";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { Mocked } from "@shared/types";
@@ -12,40 +17,18 @@ vi.mock("@clients/openai", () => ({
 vi.mock("@capabilities/parse-task/prompts");
 
 describe("parseTaskHandler", () => {
-  let mockedCreateCorePrompt: Mocked<typeof createCorePrompt>;
+  let mockedCreateCorePrompt: Mocked<typeof createParseTaskCorePrompt>;
   let mockedExecuteParse: Mocked<typeof executeParse>;
 
   const mockNaturalLanguage = "Submit Q2 report by next Friday";
-  const mockConfig = {
-    categories: ["personal", "work", "health"],
-    priorities: {
-      levels: ["low", "medium", "high"],
-      scores: {
-        low: { min: 0, max: 33 },
-        medium: { min: 34, max: 66 },
-        high: { min: 67, max: 100 },
-      },
-      overallScoreRange: { min: 0, max: 100 },
-    },
-    frequencies: ["daily", "weekly", "monthly"],
-  };
-  const mockPrompt = {
-    model: "gpt-4o-mini",
+  const mockPrompt: ResponseCreateParamsNonStreaming = {
+    model: "gpt-4.1-mini",
     instructions: "instructions",
     input: "input",
     temperature: 0,
   };
-  const mockParsedTask = {
-    title: "Submit Q2 report",
-    dueDate: "2024-01-19T23:59:59Z",
-    priorityLevel: "high",
-    priorityScore: 88,
-    priorityReason:
-      "Marked as high priority with a clear deadline next Friday.",
-    category: "work",
-  };
   const mockExecuteParseResponse = {
-    output: mockParsedTask,
+    output: mockParseTaskOutput,
     usage: {
       tokens: {
         input: 150,
@@ -56,10 +39,10 @@ describe("parseTaskHandler", () => {
   };
 
   const executeHandler = async () => {
-    return await handler({
+    return await parseTaskHandler({
       body: {
         naturalLanguage: mockNaturalLanguage,
-        config: mockConfig,
+        config: mockParseTaskInputConfig,
       },
       params: {
         capability: CAPABILITY.PARSE_TASK,
@@ -71,7 +54,7 @@ describe("parseTaskHandler", () => {
   };
 
   beforeEach(() => {
-    mockedCreateCorePrompt = vi.mocked(createCorePrompt);
+    mockedCreateCorePrompt = vi.mocked(createParseTaskCorePrompt);
     mockedCreateCorePrompt.mockReturnValue(mockPrompt);
 
     mockedExecuteParse = vi.mocked(executeParse);
@@ -88,7 +71,7 @@ describe("parseTaskHandler", () => {
     expect(mockedCreateCorePrompt).toHaveBeenCalledWith(
       "v1",
       mockNaturalLanguage,
-      mockConfig
+      mockParseTaskInputConfig
     );
     expect(mockedExecuteParse).toHaveBeenCalledWith(
       CAPABILITY.PARSE_TASK,
@@ -98,7 +81,7 @@ describe("parseTaskHandler", () => {
     expect(metadata.tokens.input).toBe(150);
     expect(metadata.tokens.output).toBe(135);
     expect(metadata.durationMs).toBe(250);
-    expect(result).toEqual(mockParsedTask);
+    expect(result).toEqual(mockParseTaskOutput);
   });
 
   it("should handle error", async () => {

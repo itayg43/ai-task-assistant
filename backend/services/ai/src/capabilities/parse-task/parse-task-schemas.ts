@@ -8,37 +8,37 @@ const parseTaskInputConfigPrioritiesScoreRangeSchema = z.object({
 });
 
 const parseTaskInputConfigPrioritiesSchema = z.object({
-  levels: z.array(z.string().nonempty()),
+  levels: z.array(z.string().trim().nonempty()),
   scores: z.record(
-    z.string().nonempty(),
+    z.string().trim().nonempty(),
     parseTaskInputConfigPrioritiesScoreRangeSchema
   ),
   overallScoreRange: parseTaskInputConfigPrioritiesScoreRangeSchema,
 });
 
 export const parseTaskInputConfigSchema = z.object({
-  categories: z.array(z.string().nonempty()),
+  categories: z.array(z.string().trim().nonempty()),
   priorities: parseTaskInputConfigPrioritiesSchema,
-  frequencies: z.array(z.string().nonempty()),
+  frequencies: z.array(z.string().trim().nonempty()),
 });
 
 export const parseTaskInputSchema = executeCapabilityInputSchema.extend({
   body: z.object({
-    naturalLanguage: z.string().nonempty().max(255),
+    naturalLanguage: z.string().trim().nonempty().max(255),
     config: parseTaskInputConfigSchema,
   }),
 });
 
 const parseTaskOutputCorePrioritySchema = z.object({
-  level: z.string().nonempty(),
+  level: z.string().trim().nonempty(),
   score: z.number().min(0),
-  reason: z.string().nonempty(),
+  reason: z.string().trim().nonempty(),
 });
 
 export const parseTaskOutputCoreSchema = z.object({
-  title: z.string(),
-  dueDate: z.string().datetime().nullable(),
-  category: z.string(),
+  title: z.string().trim(),
+  dueDate: z.string().trim().datetime().nullable(),
+  category: z.string().trim(),
   priority: parseTaskOutputCorePrioritySchema,
 });
 
@@ -49,7 +49,7 @@ export const parseTaskOutputSchema = parseTaskOutputCoreSchema.extend({
 
 // const recurrenceSchema = z
 //   .object({
-//     frequency: z.string(),
+//     frequency: z.string().trim(),
 //     interval: z.number().min(1).default(1),
 //     dayOfWeek: z.number().min(0).max(6).nullable(),
 //     dayOfMonth: z.number().min(1).max(31).nullable(),
@@ -57,4 +57,4 @@ export const parseTaskOutputSchema = parseTaskOutputCoreSchema.extend({
 //   })
 //   .nullable();
 
-// const subtasksSchema = z.array(z.string()).nullable();
+// const subtasksSchema = z.array(z.string().trim()).nullable();

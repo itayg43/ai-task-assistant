@@ -54,7 +54,7 @@ const generateParsingRules = (config: ParseTaskInputConfig) => {
 `;
 };
 
-export const corePromptV1 = (
+export const parseTaskCorePromptV1 = (
   naturalLanguage: string,
   config: ParseTaskInputConfig
 ): ResponseCreateParamsNonStreaming => {

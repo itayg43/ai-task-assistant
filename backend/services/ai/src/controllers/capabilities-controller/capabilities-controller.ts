@@ -31,11 +31,15 @@ export const executeCapability = async (
     const config = getCapabilityConfig(res);
     const patternExecutor = getPatternExecutor(pattern);
 
-    const { result, durationMs } = await patternExecutor(config, {
-      body: req.body,
+    const executeCapabilityInput: ExecuteCapabilityInput = {
+      body: req.body as Record<string, unknown>,
       params: req.params,
       query: req.query,
-    });
+    };
+    const { result, durationMs } = await patternExecutor(
+      config,
+      executeCapabilityInput
+    );
 
     logger.info("executeCapability - succeeded", {
       capability,
