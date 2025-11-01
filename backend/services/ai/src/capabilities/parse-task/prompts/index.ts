@@ -1,1 +1,1 @@
-export { createCorePrompt } from "./core";
+export { createParseTaskCorePrompt } from "./core";

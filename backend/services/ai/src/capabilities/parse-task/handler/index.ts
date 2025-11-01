@@ -1,1 +1,1 @@
-export { handler } from "./handler";
+export { parseTaskHandler } from "./parse-task-handler";

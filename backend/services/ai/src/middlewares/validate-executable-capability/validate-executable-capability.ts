@@ -4,7 +4,7 @@ import { capabilities } from "@capabilities";
 import { executeCapabilityInputSchema } from "@schemas";
 import { NotFoundError } from "@shared/errors";
 
-export const validateExecutableCapability = async (
+export const validateExecutableCapability = (
   req: Request,
   res: Response,
   next: NextFunction

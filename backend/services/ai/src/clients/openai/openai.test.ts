@@ -1,5 +1,7 @@
+import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { mockParseTaskOutput } from "@capabilities/parse-task/parse-task-mocks";
 import { CAPABILITY } from "@constants";
 import { Mocked } from "@shared/types";
 import { withDurationAsync } from "@shared/utils/with-duration";
@@ -31,35 +33,23 @@ describe("executeParse", () => {
 
   const mockCapability = CAPABILITY.PARSE_TASK;
   const mockInput = "Submit Q2 report by next Friday";
-  const mockPrompt = {
-    model: "gpt-4o-mini",
+  const mockPrompt: ResponseCreateParamsNonStreaming = {
+    model: "gpt-4.1-mini",
     instructions: "Parse this task",
     input: mockInput,
     temperature: 0,
   };
-
-  const mockParsedOutput = {
-    title: "Submit Q2 report",
-    dueDate: "2024-01-19T23:59:59Z",
-    priorityLevel: "high",
-    priorityScore: 88,
-    priorityReason:
-      "Marked as high priority with a clear deadline next Friday.",
-    category: "work",
-  };
-
   const mockUsage = {
     input_tokens: 150,
     output_tokens: 135,
   };
-
   const mockDurationMs = 250;
 
   beforeEach(async () => {
     const { openai } = await import("./openai");
     mockedOpenaiParse = vi.mocked(openai.responses.parse);
     mockedOpenaiParse.mockResolvedValue({
-      output_parsed: mockParsedOutput,
+      output_parsed: mockParseTaskOutput,
       usage: mockUsage,
     } as any);
 
@@ -84,7 +74,7 @@ describe("executeParse", () => {
     expect(mockedWithDurationAsync).toHaveBeenCalledWith(expect.any(Function));
     expect(mockedOpenaiParse).toHaveBeenCalledWith(mockPrompt);
     expect(result).toEqual({
-      output: mockParsedOutput,
+      output: mockParseTaskOutput,
       usage: {
         tokens: {
           input: mockUsage.input_tokens,
@@ -97,7 +87,7 @@ describe("executeParse", () => {
 
   it("should handle missing usage tokens gracefully", async () => {
     mockedOpenaiParse.mockResolvedValue({
-      output_parsed: mockParsedOutput,
+      output_parsed: mockParseTaskOutput,
       usage: undefined,
     });
 

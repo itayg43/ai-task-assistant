@@ -1,6 +1,6 @@
+import { mockParseTaskInputConfig } from "@capabilities/parse-task/parse-task-mocks";
 import { ParseTaskOutputCore } from "@capabilities/parse-task/parse-task-types";
-import { corePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
-import { mockInputConfig } from "@capabilities/parse-task/prompts/core/v1/evals/helpers/mock-input-config";
+import { parseTaskCorePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
 import {
   createJudgePrompt,
   Judge,
@@ -8,7 +8,10 @@ import {
 import { executeParse } from "@clients/openai";
 
 export const executeParseTask = async (naturalLanguage: string) => {
-  const prompt = corePromptV1(naturalLanguage, mockInputConfig);
+  const prompt = parseTaskCorePromptV1(
+    naturalLanguage,
+    mockParseTaskInputConfig
+  );
 
   return await executeParse<ParseTaskOutputCore>(
     "parse-task",
@@ -21,7 +24,11 @@ export const executeJudgeOutput = async (
   naturalLanguage: string,
   output: ParseTaskOutputCore
 ) => {
-  const prompt = createJudgePrompt(naturalLanguage, output, mockInputConfig);
+  const prompt = createJudgePrompt(
+    naturalLanguage,
+    output,
+    mockParseTaskInputConfig
+  );
 
   return await executeParse<Judge>("parse-task", naturalLanguage, prompt);
 };

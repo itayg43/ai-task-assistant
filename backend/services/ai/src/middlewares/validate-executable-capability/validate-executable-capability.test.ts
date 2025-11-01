@@ -20,8 +20,8 @@ describe("validateExecutableCapability", () => {
   let mockRes: Partial<Response>;
   let mockNext: NextFunction;
 
-  const executeMiddleware = async () => {
-    await validateExecutableCapability(
+  const executeMiddleware = () => {
+    validateExecutableCapability(
       mockReq as Request,
       mockRes as Response,
       mockNext
@@ -54,18 +54,18 @@ describe("validateExecutableCapability", () => {
     vi.clearAllMocks();
   });
 
-  it("should validate successfully and call next()", async () => {
-    await executeMiddleware();
+  it("should validate successfully and call next()", () => {
+    executeMiddleware();
 
     expect(executeCapabilityInputSchema.parse).toHaveBeenCalledWith(mockReq);
     expect(mockRes.locals!.capabilityConfig).toBe(capabilities["parse-task"]);
     expect(mockNext).toHaveBeenCalledWith();
   });
 
-  it("should call next() with NotFoundError when capability does not exist", async () => {
+  it("should call next() with NotFoundError when capability does not exist", () => {
     (capabilities as any)["parse-task"] = undefined;
 
-    await executeMiddleware();
+    executeMiddleware();
 
     expect(executeCapabilityInputSchema.parse).toHaveBeenCalledWith(mockReq);
     expect(mockNext).toHaveBeenCalledWith(expect.any(NotFoundError));
