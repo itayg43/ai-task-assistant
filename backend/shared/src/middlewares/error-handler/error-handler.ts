@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes, getReasonPhrase } from "http-status-codes";
-import z from "zod";
+import { ZodError } from "zod";
 
 import { createLogger } from "../../config/create-logger";
 import { BaseError } from "../../errors";
@@ -36,7 +36,7 @@ function extractErrorInfo(error: unknown) {
     };
   }
 
-  if (error instanceof z.ZodError) {
+  if (error instanceof ZodError) {
     return {
       status: StatusCodes.BAD_REQUEST,
       message: formatZodErrors(error),
@@ -56,7 +56,7 @@ function extractErrorInfo(error: unknown) {
   };
 }
 
-function formatZodErrors(error: z.ZodError) {
+function formatZodErrors(error: ZodError) {
   return error.issues
     .map((issue) => `${issue.path.join(".")} - ${issue.message}`)
     .join("; ");

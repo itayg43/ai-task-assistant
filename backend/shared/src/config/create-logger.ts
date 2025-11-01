@@ -21,12 +21,26 @@ function log(
   const base = `[${getDateISO()}] [${level.toUpperCase()}] [${tag}]: ${message}`;
 
   let args: unknown[] = [];
-  if (error) args.push(error);
-  if (context) args.push(JSON.stringify(context, null, 2));
+  if (error) {
+    args.push(serializeError(error));
+  }
+  if (context) {
+    args.push(JSON.stringify(context, null, 2));
+  }
 
   exhaustiveSwitch(level, {
     info: () => console.log(base, ...args),
     error: () => console.error(base, ...args),
     warn: () => console.warn(base, ...args),
   });
+}
+
+function serializeError(error: unknown) {
+  if (error instanceof Error) {
+    const stack = error.stack || "";
+
+    return `${error.name}: ${error.message}\n${stack}`;
+  }
+
+  return String(error);
 }
