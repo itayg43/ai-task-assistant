@@ -4,6 +4,7 @@ declare global {
   namespace Express {
     interface Locals {
       authenticationContext?: AuthenticationContext;
+      requestId?: string;
     }
   }
 }

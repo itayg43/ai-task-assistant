@@ -16,6 +16,7 @@ export const requestResponseMetadata = (
     const start = getStartTimestamp();
 
     const requestMetadata = {
+      requestId: res.locals.requestId,
       method: req.method,
       originalUrl: req.originalUrl,
       userAgent: req.get("User-Agent"),

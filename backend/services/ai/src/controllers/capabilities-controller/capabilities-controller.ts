@@ -20,9 +20,11 @@ export const executeCapability = async (
 ) => {
   const { capability } = req.params;
   const { pattern } = req.query;
+  const requestId = res.locals.requestId;
 
   try {
     logger.info("executeCapability - starting", {
+      requestId,
       capability,
       pattern,
       input: req.body,
@@ -36,21 +38,28 @@ export const executeCapability = async (
       params: req.params,
       query: req.query,
     };
-    const { result, durationMs } = await patternExecutor(
+
+    const executorResult = await patternExecutor(
       config,
-      executeCapabilityInput
+      executeCapabilityInput,
+      requestId
     );
 
     logger.info("executeCapability - succeeded", {
+      requestId,
       capability,
       pattern,
-      result,
-      totalDurationMs: durationMs,
+      result: executorResult.result,
+      totalDurationMs: executorResult.durationMs,
     });
 
-    res.status(StatusCodes.OK).json(result);
+    res.status(StatusCodes.OK).json({
+      ...executorResult.result,
+      requestId,
+    });
   } catch (error) {
     logger.error("executeCapability - failed", error, {
+      requestId,
       capability,
       pattern,
       input: req.body,

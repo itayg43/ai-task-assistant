@@ -8,7 +8,8 @@ import { executeParse } from "@clients/openai";
 import { CapabilityResponse } from "@types";
 
 export const parseTaskHandler = async (
-  input: ParseTaskInput
+  input: ParseTaskInput,
+  requestId: string
 ): Promise<CapabilityResponse<typeof parseTaskOutputSchema>> => {
   const { naturalLanguage, config } = input.body;
 
@@ -16,7 +17,8 @@ export const parseTaskHandler = async (
   const coreResponse = await executeParse<ParseTaskOutputCore>(
     "parse-task",
     naturalLanguage,
-    corePrompt
+    corePrompt,
+    requestId
   );
 
   return {

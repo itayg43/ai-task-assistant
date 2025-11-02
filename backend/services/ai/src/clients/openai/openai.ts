@@ -15,10 +15,12 @@ export const openai = new OpenAI({
 export const executeParse = async <TOutput>(
   capability: Capability,
   input: string,
-  prompt: ResponseCreateParamsNonStreaming
+  prompt: ResponseCreateParamsNonStreaming,
+  requestId: string
 ) => {
   try {
     logger.info("executeParse - start", {
+      requestId,
       capability,
       input,
     });
@@ -45,6 +47,7 @@ export const executeParse = async <TOutput>(
     };
 
     logger.info("executeParse - succeeded", {
+      requestId,
       capability,
       input,
       result,
@@ -53,6 +56,7 @@ export const executeParse = async <TOutput>(
     return result;
   } catch (error) {
     logger.error("executeParse - failed", error, {
+      requestId,
       capability,
       input,
     });

@@ -19,6 +19,7 @@ describe("errorHandler", () => {
     mockResponse = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
+      locals: {},
     };
     mockNextFunction = vi.fn();
   });
@@ -44,6 +45,7 @@ describe("errorHandler", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Test base error",
+        requestId: undefined,
       });
     });
   });
@@ -72,6 +74,7 @@ describe("errorHandler", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: expect.any(String),
+        requestId: undefined,
       });
     });
   });
@@ -101,6 +104,7 @@ describe("errorHandler", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.NOT_FOUND);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Resource not found",
+        requestId: undefined,
       });
     });
 
@@ -119,6 +123,7 @@ describe("errorHandler", () => {
       );
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
+        requestId: undefined,
       });
     });
   });
@@ -139,6 +144,7 @@ describe("errorHandler", () => {
       );
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Test error",
+        requestId: undefined,
       });
     });
   });
@@ -159,6 +165,7 @@ describe("errorHandler", () => {
       );
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
+        requestId: undefined,
       });
     });
   });

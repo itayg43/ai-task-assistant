@@ -35,6 +35,7 @@ describe("executeSyncPattern", () => {
     success: true,
   };
   const mockDuration = 100;
+  const mockRequestId = "test-request-id";
 
   beforeEach(() => {
     mockSafeParse = vi.fn();
@@ -43,7 +44,9 @@ describe("executeSyncPattern", () => {
     } as any;
 
     mockedWithRetry = vi.mocked(withRetry);
-    mockedWithRetry.mockResolvedValue(mockResult);
+    mockedWithRetry.mockImplementation(async (_retryConfig, fn) => {
+      return await fn();
+    });
 
     mockedWithDurationAsync = vi.mocked(withDurationAsync);
     mockedWithDurationAsync.mockImplementation(async (callback) => {
@@ -54,6 +57,8 @@ describe("executeSyncPattern", () => {
         durationMs: mockDuration,
       };
     });
+
+    mockConfig.handler = vi.fn().mockResolvedValue(mockResult);
   });
 
   afterEach(() => {
@@ -66,13 +71,18 @@ describe("executeSyncPattern", () => {
       data: mockResult,
     });
 
-    const result = await executeSyncPattern(mockConfig, mockInput);
+    const result = await executeSyncPattern(
+      mockConfig,
+      mockInput,
+      mockRequestId
+    );
 
     expect(withDurationAsync).toHaveBeenCalled();
     expect(withRetry).toHaveBeenCalledWith(
       DEFAULT_RETRY_CONFIG,
       expect.any(Function)
     );
+    expect(mockConfig.handler).toHaveBeenCalledWith(mockInput, mockRequestId);
     expect(mockSafeParse).toHaveBeenCalledWith(mockResult);
     expect(result).toEqual({
       result: mockResult,
@@ -90,8 +100,8 @@ describe("executeSyncPattern", () => {
       },
     });
 
-    await expect(executeSyncPattern(mockConfig, mockInput)).rejects.toThrow(
-      expect.any(Error)
-    );
+    await expect(
+      executeSyncPattern(mockConfig, mockInput, mockRequestId)
+    ).rejects.toThrow(expect.any(Error));
   });
 });

@@ -45,12 +45,16 @@ describe("requestResponseMetadata", () => {
   const createMockResponse = () => ({
     statusCode: 200,
     end: vi.fn(),
+    locals: {
+      requestId: "test-request-id",
+    },
   });
 
   const createExpectedRequestMetadata = (
     originalUrl: string,
     authenticationContext?: AuthenticationContext
   ) => ({
+    requestId: "test-request-id",
     method: "GET",
     originalUrl,
     userAgent: "Mozilla/5.0 (Test Browser)",

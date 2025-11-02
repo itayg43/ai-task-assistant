@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+
 import { mockParseTaskInputConfig } from "@capabilities/parse-task/parse-task-mocks";
 import { ParseTaskOutputCore } from "@capabilities/parse-task/parse-task-types";
 import { parseTaskCorePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
@@ -16,7 +18,8 @@ export const executeParseTask = async (naturalLanguage: string) => {
   return await executeParse<ParseTaskOutputCore>(
     "parse-task",
     naturalLanguage,
-    prompt
+    prompt,
+    randomUUID()
   );
 };
 
@@ -30,5 +33,10 @@ export const executeJudgeOutput = async (
     mockParseTaskInputConfig
   );
 
-  return await executeParse<Judge>("parse-task", naturalLanguage, prompt);
+  return await executeParse<Judge>(
+    "parse-task",
+    naturalLanguage,
+    prompt,
+    randomUUID()
+  );
 };
