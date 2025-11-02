@@ -20,23 +20,28 @@ describe("executeSyncPattern", () => {
   let mockedWithRetry: Mocked<typeof withRetry>;
   let mockedWithDurationAsync: Mocked<typeof withDurationAsync>;
 
+  let mockSafeParse: ReturnType<typeof vi.fn>;
+
   const mockConfig: CapabilityConfig<any, any> = {
     name: CAPABILITY.PARSE_TASK,
     handler: vi.fn(),
     inputSchema: {} as any,
     outputSchema: {} as any,
   };
-
   const mockInput = {
     test: "input",
   };
-
   const mockResult = {
     success: true,
   };
   const mockDuration = 100;
 
   beforeEach(() => {
+    mockSafeParse = vi.fn();
+    mockConfig.outputSchema = {
+      safeParse: mockSafeParse,
+    } as any;
+
     mockedWithRetry = vi.mocked(withRetry);
     mockedWithRetry.mockResolvedValue(mockResult);
 
@@ -56,6 +61,11 @@ describe("executeSyncPattern", () => {
   });
 
   it("should execute handler with retry and duration tracking", async () => {
+    mockSafeParse.mockReturnValue({
+      success: true,
+      data: mockResult,
+    });
+
     const result = await executeSyncPattern(mockConfig, mockInput);
 
     expect(withDurationAsync).toHaveBeenCalled();
@@ -63,9 +73,25 @@ describe("executeSyncPattern", () => {
       DEFAULT_RETRY_CONFIG,
       expect.any(Function)
     );
+    expect(mockSafeParse).toHaveBeenCalledWith(mockResult);
     expect(result).toEqual({
       result: mockResult,
       durationMs: mockDuration,
     });
+  });
+
+  it("should throw when output schema validation fails", async () => {
+    const mockErrorMessage = "invalid output";
+
+    mockSafeParse.mockReturnValue({
+      success: false,
+      error: {
+        message: mockErrorMessage,
+      },
+    });
+
+    await expect(executeSyncPattern(mockConfig, mockInput)).rejects.toThrow(
+      expect.any(Error)
+    );
   });
 });
