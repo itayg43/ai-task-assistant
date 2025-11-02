@@ -7,6 +7,7 @@ import { healthRouter } from "@routers/health-router";
 import { HEALTH_ROUTE } from "@shared/constants";
 import { authentication } from "@shared/middlewares/authentication";
 import { errorHandler } from "@shared/middlewares/error-handler";
+import { requestId } from "@shared/middlewares/request-id";
 import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
 
 export const app = express();
@@ -19,10 +20,10 @@ app.use(
     extended: true,
   })
 );
-app.use(HEALTH_ROUTE, [requestResponseMetadata], healthRouter);
+app.use(HEALTH_ROUTE, [requestId, requestResponseMetadata], healthRouter);
 app.use(
   "/api/v1/ai/capabilities",
-  [authentication, requestResponseMetadata],
+  [requestId, authentication, requestResponseMetadata],
   capabilitiesRouter
 );
 app.use(errorHandler);

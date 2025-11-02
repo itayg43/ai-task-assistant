@@ -5,10 +5,13 @@ import { CapabilityConfig } from "@types";
 
 export const executeSyncPattern = async <TInput, TOutput>(
   config: CapabilityConfig<TInput, TOutput>,
-  input: TInput
+  input: TInput,
+  requestId: string
 ) => {
   const { result, durationMs } = await withDurationAsync(async () => {
-    return await withRetry(DEFAULT_RETRY_CONFIG, () => config.handler(input));
+    return await withRetry(DEFAULT_RETRY_CONFIG, () =>
+      config.handler(input, requestId)
+    );
   });
 
   const parsedResult = config.outputSchema.safeParse(result);

@@ -44,6 +44,7 @@ describe("executeParse", () => {
     output_tokens: 135,
   };
   const mockDurationMs = 250;
+  const mockRequestId = "test-request-id";
 
   beforeEach(async () => {
     const { openai } = await import("./openai");
@@ -69,7 +70,12 @@ describe("executeParse", () => {
   });
 
   it("should execute parse successfully and return structured result", async () => {
-    const result = await executeParse(mockCapability, mockInput, mockPrompt);
+    const result = await executeParse(
+      mockCapability,
+      mockInput,
+      mockPrompt,
+      mockRequestId
+    );
 
     expect(mockedWithDurationAsync).toHaveBeenCalledWith(expect.any(Function));
     expect(mockedOpenaiParse).toHaveBeenCalledWith(mockPrompt);
@@ -91,7 +97,12 @@ describe("executeParse", () => {
       usage: undefined,
     });
 
-    const result = await executeParse(mockCapability, mockInput, mockPrompt);
+    const result = await executeParse(
+      mockCapability,
+      mockInput,
+      mockPrompt,
+      mockRequestId
+    );
 
     expect(result.usage.tokens.input).toBe(0);
     expect(result.usage.tokens.output).toBe(0);
@@ -104,7 +115,7 @@ describe("executeParse", () => {
     });
 
     await expect(
-      executeParse(mockCapability, mockInput, mockPrompt)
+      executeParse(mockCapability, mockInput, mockPrompt, mockRequestId)
     ).rejects.toThrow(expect.any(Error));
   });
 
@@ -113,7 +124,7 @@ describe("executeParse", () => {
     mockedOpenaiParse.mockRejectedValue(apiError);
 
     await expect(
-      executeParse(mockCapability, mockInput, mockPrompt)
+      executeParse(mockCapability, mockInput, mockPrompt, mockRequestId)
     ).rejects.toThrow(apiError);
   });
 });

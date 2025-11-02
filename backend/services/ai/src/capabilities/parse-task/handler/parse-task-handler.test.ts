@@ -37,20 +37,24 @@ describe("parseTaskHandler", () => {
     },
     durationMs: 250,
   };
+  const mockRequestId = "test-request-id";
 
   const executeHandler = async () => {
-    return await parseTaskHandler({
-      body: {
-        naturalLanguage: mockNaturalLanguage,
-        config: mockParseTaskInputConfig,
+    return await parseTaskHandler(
+      {
+        body: {
+          naturalLanguage: mockNaturalLanguage,
+          config: mockParseTaskInputConfig,
+        },
+        params: {
+          capability: CAPABILITY.PARSE_TASK,
+        },
+        query: {
+          pattern: CAPABILITY_PATTERN.SYNC,
+        },
       },
-      params: {
-        capability: CAPABILITY.PARSE_TASK,
-      },
-      query: {
-        pattern: CAPABILITY_PATTERN.SYNC,
-      },
-    });
+      mockRequestId
+    );
   };
 
   beforeEach(() => {
@@ -76,7 +80,8 @@ describe("parseTaskHandler", () => {
     expect(mockedExecuteParse).toHaveBeenCalledWith(
       CAPABILITY.PARSE_TASK,
       mockNaturalLanguage,
-      mockPrompt
+      mockPrompt,
+      mockRequestId
     );
     expect(metadata.tokens.input).toBe(150);
     expect(metadata.tokens.output).toBe(135);

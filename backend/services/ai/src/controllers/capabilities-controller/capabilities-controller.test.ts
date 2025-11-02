@@ -73,22 +73,26 @@ describe("capabilitiesController", () => {
         }
       );
 
-      expect(mockedHandler).toHaveBeenCalledWith({
-        body: {
-          naturalLanguage: mockNaturalLanguage,
-          config: mockParseTaskInputConfig,
+      expect(mockedHandler).toHaveBeenCalledWith(
+        {
+          body: {
+            naturalLanguage: mockNaturalLanguage,
+            config: mockParseTaskInputConfig,
+          },
+          params: {
+            capability: CAPABILITY.PARSE_TASK,
+          },
+          query: {
+            pattern: CAPABILITY_PATTERN.SYNC,
+          },
         },
-        params: {
-          capability: CAPABILITY.PARSE_TASK,
-        },
-        query: {
-          pattern: CAPABILITY_PATTERN.SYNC,
-        },
-      });
+        response.body.requestId
+      );
 
       expect(response.status).toBe(StatusCodes.OK);
       expect(response.body.metadata).toEqual(mockHandlerResponse.metadata);
       expect(response.body.result).toEqual(mockHandlerResponse.result);
+      expect(response.body.requestId).toEqual(expect.any(String));
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid capability`, async () => {
@@ -105,6 +109,7 @@ describe("capabilitiesController", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
+      expect(response.body.requestId).toEqual(expect.any(String));
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid pattern`, async () => {
@@ -119,6 +124,7 @@ describe("capabilitiesController", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
+      expect(response.body.requestId).toEqual(expect.any(String));
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid input`, async () => {
@@ -135,6 +141,7 @@ describe("capabilitiesController", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
+      expect(response.body.requestId).toEqual(expect.any(String));
     });
 
     it(`should handle unexpected error and return ${StatusCodes.INTERNAL_SERVER_ERROR}`, async () => {
@@ -153,6 +160,7 @@ describe("capabilitiesController", () => {
 
       expect(response.status).toBe(StatusCodes.INTERNAL_SERVER_ERROR);
       expect(response.body.message).toBeDefined();
+      expect(response.body.requestId).toEqual(expect.any(String));
     });
   });
 });

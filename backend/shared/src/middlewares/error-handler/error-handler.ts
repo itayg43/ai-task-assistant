@@ -21,10 +21,13 @@ export const errorHandler = (
 ) => {
   const { status, message } = extractErrorInfo(error);
 
-  logger.error(message, error);
+  const requestId = res.locals.requestId;
+
+  logger.error(message, error, { requestId });
 
   res.status(status).json({
     message,
+    requestId,
   });
 };
 
