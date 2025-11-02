@@ -11,8 +11,16 @@ export const executeSyncPattern = async <TInput, TOutput>(
     return await withRetry(DEFAULT_RETRY_CONFIG, () => config.handler(input));
   });
 
+  const parsedResult = config.outputSchema.safeParse(result);
+
+  if (!parsedResult.success) {
+    throw new Error(
+      `Capability ${config.name} returned invalid output: ${parsedResult.error.message}`
+    );
+  }
+
   return {
-    result,
+    result: parsedResult.data,
     durationMs,
   };
 };
