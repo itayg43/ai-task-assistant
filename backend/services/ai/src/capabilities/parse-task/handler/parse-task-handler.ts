@@ -23,6 +23,7 @@ export const parseTaskHandler = async (
 
   return {
     metadata: {
+      openaiResponseId: coreResponse.openaiResponseId,
       tokens: {
         input: coreResponse.usage.tokens.input,
         output: coreResponse.usage.tokens.output,

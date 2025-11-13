@@ -5,6 +5,7 @@ export const createCapabilityResponseSchema = <T extends z.ZodTypeAny>(
 ) =>
   z.object({
     metadata: z.object({
+      openaiResponseId: z.string(),
       tokens: z.object({
         input: z.number(),
         output: z.number(),
