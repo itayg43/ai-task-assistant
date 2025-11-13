@@ -36,6 +36,7 @@ export const executeParse = async <TOutput>(
     }
 
     const result = {
+      openaiResponseId: response.result.id,
       output: response.result.output_parsed,
       usage: {
         tokens: {
