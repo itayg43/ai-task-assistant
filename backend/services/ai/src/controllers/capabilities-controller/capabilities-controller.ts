@@ -55,16 +55,9 @@ export const executeCapability = async (
 
     res.status(StatusCodes.OK).json({
       ...executorResult.result,
-      requestId,
+      aiServiceRequestId: requestId,
     });
   } catch (error) {
-    logger.error("executeCapability - failed", error, {
-      requestId,
-      capability,
-      pattern,
-      input: req.body,
-    });
-
     next(error);
   }
 };
