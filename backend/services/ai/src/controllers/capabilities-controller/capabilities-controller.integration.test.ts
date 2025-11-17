@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseTaskHandler } from "@capabilities/parse-task/handler";
 import {
+  mockNaturalLanguage,
   mockParseTaskCapabilityResponse,
   mockParseTaskInputConfig,
 } from "@capabilities/parse-task/parse-task-mocks";
@@ -40,8 +41,6 @@ describe("capabilitiesController (integration)", () => {
     let mockedParseTaskHandler: Mocked<typeof parseTaskHandler>;
 
     const parseTaskCapabilityUrl = "/api/v1/ai/capabilities/parse-task";
-
-    const mockNaturalLanguage = "Submit Q2 report by next Friday";
 
     beforeEach(() => {
       mockedParseTaskHandler = vi.mocked(parseTaskHandler);

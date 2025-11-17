@@ -13,6 +13,8 @@ import { mockOpenaiResponseId } from "@mocks/openai-mocks";
 import { createCapabilityResponseSchema } from "@schemas";
 import { CapabilityConfig, CapabilityResponse } from "@types";
 
+export const mockNaturalLanguage = "Submit Q2 report by next Friday";
+
 export const mockParseTaskInputConfig: ParseTaskInputConfig = {
   categories: ["work", "personal", "health", "finance", "errand"],
   priorities: {
@@ -65,7 +67,7 @@ export const mockParseTaskValidatedInput: ParseTaskInput = {
     pattern: CAPABILITY_PATTERN.SYNC,
   },
   body: {
-    naturalLanguage: "Test",
+    naturalLanguage: mockNaturalLanguage,
     config: mockParseTaskInputConfig,
   },
 };

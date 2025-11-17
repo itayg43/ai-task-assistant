@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseTaskHandler } from "@capabilities/parse-task/handler";
 import {
+  mockNaturalLanguage,
   mockParseTaskInputConfig,
   mockParseTaskOutput,
   mockParseTaskValidatedInput,
@@ -22,7 +23,6 @@ describe("parseTaskHandler", () => {
   let mockedCreateCorePrompt: Mocked<typeof createParseTaskCorePrompt>;
   let mockedExecuteParse: Mocked<typeof executeParse>;
 
-  const mockNaturalLanguage = "Submit Q2 report by next Friday";
   const mockExecuteParseResponse = {
     openaiResponseId: mockOpenaiResponseId,
     output: mockParseTaskOutput,
