@@ -3,6 +3,13 @@ import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/res
 export const mockOpenaiRequestId = "openai-request-id";
 export const mockOpenaiResponseId = "openai-response-id";
 
+export const mockOpenaiTokenUsage = {
+  input: 150,
+  output: 135,
+};
+
+export const mockOpenaiDurationMs = 250;
+
 export const mockPrompt: ResponseCreateParamsNonStreaming = {
   model: "gpt-4.1-mini",
   instructions: "instructions",

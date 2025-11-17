@@ -7,8 +7,10 @@ import {
 } from "@capabilities/parse-task/parse-task-mocks";
 import { CAPABILITY, CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
 import {
+  mockOpenaiDurationMs,
   mockOpenaiRequestId,
   mockOpenaiResponseId,
+  mockOpenaiTokenUsage,
   mockPrompt,
 } from "@mocks/openai-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
@@ -54,11 +56,6 @@ describe("executeParse", () => {
   let mockedWithDurationAsync: Mocked<typeof withDurationAsync>;
 
   const mockCapability = CAPABILITY.PARSE_TASK;
-  const mockUsage = {
-    input_tokens: 150,
-    output_tokens: 135,
-  };
-  const mockDurationMs = 250;
 
   beforeEach(async () => {
     const { openai } = await import("./openai");
@@ -67,7 +64,10 @@ describe("executeParse", () => {
       id: mockOpenaiResponseId,
       status: "completed",
       output_parsed: mockParseTaskOutput,
-      usage: mockUsage,
+      usage: {
+        input_tokens: mockOpenaiTokenUsage.input,
+        output_tokens: mockOpenaiTokenUsage.output,
+      },
     } as any);
 
     mockedWithDurationAsync = vi.mocked(withDurationAsync);
@@ -76,7 +76,7 @@ describe("executeParse", () => {
 
       return {
         result,
-        durationMs: mockDurationMs,
+        durationMs: mockOpenaiDurationMs,
       };
     });
   });
@@ -99,12 +99,9 @@ describe("executeParse", () => {
       openaiResponseId: mockOpenaiResponseId,
       output: mockParseTaskOutput,
       usage: {
-        tokens: {
-          input: mockUsage.input_tokens,
-          output: mockUsage.output_tokens,
-        },
+        tokens: mockOpenaiTokenUsage,
       },
-      durationMs: mockDurationMs,
+      durationMs: mockOpenaiDurationMs,
     });
   });
 
@@ -142,7 +139,10 @@ describe("executeParse", () => {
       id: mockOpenaiResponseId,
       status: "in_progress",
       output_parsed: mockParseTaskOutput,
-      usage: mockUsage,
+      usage: {
+        input_tokens: mockOpenaiTokenUsage.input,
+        output_tokens: mockOpenaiTokenUsage.output,
+      },
     } as any);
 
     try {
@@ -169,7 +169,10 @@ describe("executeParse", () => {
       id: mockOpenaiResponseId,
       status: "completed",
       output_parsed: null,
-      usage: mockUsage,
+      usage: {
+        input_tokens: mockOpenaiTokenUsage.input,
+        output_tokens: mockOpenaiTokenUsage.output,
+      },
     } as any);
 
     try {

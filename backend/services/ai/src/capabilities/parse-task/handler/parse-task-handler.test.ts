@@ -9,7 +9,12 @@ import {
 } from "@capabilities/parse-task/parse-task-mocks";
 import { createParseTaskCorePrompt } from "@capabilities/parse-task/prompts";
 import { executeParse } from "@clients/openai";
-import { mockOpenaiResponseId, mockPrompt } from "@mocks/openai-mocks";
+import {
+  mockOpenaiDurationMs,
+  mockOpenaiResponseId,
+  mockOpenaiTokenUsage,
+  mockPrompt,
+} from "@mocks/openai-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { Mocked } from "@shared/types";
 
@@ -27,12 +32,9 @@ describe("parseTaskHandler", () => {
     openaiResponseId: mockOpenaiResponseId,
     output: mockParseTaskOutput,
     usage: {
-      tokens: {
-        input: 150,
-        output: 135,
-      },
+      tokens: mockOpenaiTokenUsage,
     },
-    durationMs: 250,
+    durationMs: mockOpenaiDurationMs,
   };
 
   const executeHandler = async () => {
@@ -75,9 +77,13 @@ describe("parseTaskHandler", () => {
       mockAiServiceRequestId
     );
     expect(response.openaiMetadata.responseId).toBe(mockOpenaiResponseId);
-    expect(response.openaiMetadata.tokens.input).toBe(150);
-    expect(response.openaiMetadata.tokens.output).toBe(135);
-    expect(response.openaiMetadata.durationMs).toBe(250);
+    expect(response.openaiMetadata.tokens.input).toBe(
+      mockOpenaiTokenUsage.input
+    );
+    expect(response.openaiMetadata.tokens.output).toBe(
+      mockOpenaiTokenUsage.output
+    );
+    expect(response.openaiMetadata.durationMs).toBe(mockOpenaiDurationMs);
     expect(response.result).toEqual(mockParseTaskOutput);
   });
 

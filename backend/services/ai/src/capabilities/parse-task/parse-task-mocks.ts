@@ -9,7 +9,11 @@ import {
   ParseTaskOutputCore,
 } from "@capabilities/parse-task/parse-task-types";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
-import { mockOpenaiResponseId } from "@mocks/openai-mocks";
+import {
+  mockOpenaiDurationMs,
+  mockOpenaiResponseId,
+  mockOpenaiTokenUsage,
+} from "@mocks/openai-mocks";
 import { createCapabilityResponseSchema } from "@schemas";
 import { CapabilityConfig, CapabilityResponse } from "@types";
 
@@ -50,11 +54,8 @@ export const mockParseTaskCapabilityResponse: CapabilityResponse<
 > = {
   openaiMetadata: {
     responseId: mockOpenaiResponseId,
-    tokens: {
-      input: 150,
-      output: 135,
-    },
-    durationMs: 250,
+    tokens: mockOpenaiTokenUsage,
+    durationMs: mockOpenaiDurationMs,
   },
   result: mockParseTaskOutput,
 };
