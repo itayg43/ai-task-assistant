@@ -1,9 +1,16 @@
-import { CapabilityConfig } from "@types";
+import z from "zod";
+
+import { AnyCapabilityConfig } from "@types";
 
 declare global {
   namespace Express {
     interface Locals {
-      capabilityConfig?: CapabilityConfig<any, Record<string, unknown>>;
+      capabilityConfig?: AnyCapabilityConfig;
+      capabilityValidatedInput?: AnyCapabilityConfig["inputSchema"] extends z.ZodSchema<
+        infer T
+      >
+        ? T
+        : never;
       requestId: string;
     }
   }

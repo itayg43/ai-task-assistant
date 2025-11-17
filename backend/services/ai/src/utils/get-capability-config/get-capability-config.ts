@@ -1,10 +1,8 @@
 import { Response } from "express";
 
-import { CapabilityConfig } from "@types";
+import { AnyCapabilityConfig } from "@types";
 
-export const getCapabilityConfig = (
-  res: Response
-): CapabilityConfig<any, Record<string, unknown>> => {
+export const getCapabilityConfig = (res: Response): AnyCapabilityConfig => {
   const config = res.locals.capabilityConfig;
 
   if (!config) {

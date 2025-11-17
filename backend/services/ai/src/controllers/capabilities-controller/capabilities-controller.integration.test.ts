@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseTaskHandler } from "@capabilities/parse-task/handler";
 import {
+  mockParseTaskCapabilityResponse,
   mockParseTaskInputConfig,
-  mockParseTaskOutput,
 } from "@capabilities/parse-task/parse-task-mocks";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { Mocked } from "@shared/types";
@@ -21,7 +21,7 @@ vi.mock("@middlewares/cors", () => {
   return import("../../middlewares/cors/__mocks__/cors");
 });
 
-describe("capabilitiesController", () => {
+describe("capabilitiesController (integration)", () => {
   const executeRequest = async (
     url: string,
     body: string | object | undefined,
@@ -37,30 +37,18 @@ describe("capabilitiesController", () => {
   });
 
   describe("parseTask", () => {
-    let mockedHandler: Mocked<typeof parseTaskHandler>;
+    let mockedParseTaskHandler: Mocked<typeof parseTaskHandler>;
 
     const parseTaskCapabilityUrl = "/api/v1/ai/capabilities/parse-task";
 
     const mockNaturalLanguage = "Submit Q2 report by next Friday";
 
     beforeEach(() => {
-      mockedHandler = vi.mocked(parseTaskHandler);
+      mockedParseTaskHandler = vi.mocked(parseTaskHandler);
     });
 
     it(`should return ${StatusCodes.OK} with parsed task for valid input`, async () => {
-      const mockMetadata = {
-        tokens: {
-          input: 150,
-          output: 135,
-        },
-        durationMs: 250,
-      };
-      const mockHandlerResponse = {
-        metadata: mockMetadata,
-        result: mockParseTaskOutput,
-      };
-
-      mockedHandler.mockResolvedValue(mockHandlerResponse);
+      mockedParseTaskHandler.mockResolvedValue(mockParseTaskCapabilityResponse);
 
       const response = await executeRequest(
         parseTaskCapabilityUrl,
@@ -73,7 +61,7 @@ describe("capabilitiesController", () => {
         }
       );
 
-      expect(mockedHandler).toHaveBeenCalledWith(
+      expect(mockedParseTaskHandler).toHaveBeenCalledWith(
         {
           body: {
             naturalLanguage: mockNaturalLanguage,
@@ -86,13 +74,17 @@ describe("capabilitiesController", () => {
             pattern: CAPABILITY_PATTERN.SYNC,
           },
         },
-        response.body.requestId
+        response.body.aiServiceRequestId
       );
 
       expect(response.status).toBe(StatusCodes.OK);
-      expect(response.body.metadata).toEqual(mockHandlerResponse.metadata);
-      expect(response.body.result).toEqual(mockHandlerResponse.result);
-      expect(response.body.requestId).toEqual(expect.any(String));
+      expect(response.body.openaiMetadata).toEqual(
+        mockParseTaskCapabilityResponse.openaiMetadata
+      );
+      expect(response.body.result).toEqual(
+        mockParseTaskCapabilityResponse.result
+      );
+      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid capability`, async () => {
@@ -109,7 +101,6 @@ describe("capabilitiesController", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
-      expect(response.body.requestId).toEqual(expect.any(String));
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid pattern`, async () => {
@@ -124,7 +115,6 @@ describe("capabilitiesController", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
-      expect(response.body.requestId).toEqual(expect.any(String));
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid input`, async () => {
@@ -141,11 +131,10 @@ describe("capabilitiesController", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
-      expect(response.body.requestId).toEqual(expect.any(String));
     });
 
     it(`should handle unexpected error and return ${StatusCodes.INTERNAL_SERVER_ERROR}`, async () => {
-      mockedHandler.mockRejectedValue(new Error("Unexpected error"));
+      mockedParseTaskHandler.mockRejectedValue(new Error("Unexpected error"));
 
       const response = await executeRequest(
         parseTaskCapabilityUrl,
@@ -160,7 +149,6 @@ describe("capabilitiesController", () => {
 
       expect(response.status).toBe(StatusCodes.INTERNAL_SERVER_ERROR);
       expect(response.body.message).toBeDefined();
-      expect(response.body.requestId).toEqual(expect.any(String));
     });
   });
 });

@@ -48,6 +48,93 @@ describe("errorHandler", () => {
         requestId: undefined,
       });
     });
+
+    it("should filter sensitive fields from BaseError context", () => {
+      const mockBaseError = new BaseError(
+        "Test base error",
+        StatusCodes.BAD_REQUEST,
+        {
+          password: "secret123",
+          apiKey: "key123",
+          token: "token123",
+          secret: "secret",
+          message: "should be filtered",
+          requestId: "test-id",
+          openaiRequestId: "openai-id",
+        }
+      );
+
+      errorHandler(
+        mockBaseError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNextFunction
+      );
+
+      const responseCall = mockResponse.json as ReturnType<typeof vi.fn>;
+      const responseData = responseCall.mock.calls[0][0];
+
+      // context.message should be filtered, but error.message should remain
+      // (message property exists but it's the error message, not context.message)
+      expect(responseData.message).toBe("Test base error");
+      // Sensitive fields from context should be filtered
+      expect(responseData).not.toHaveProperty("password");
+      expect(responseData).not.toHaveProperty("apiKey");
+      expect(responseData).not.toHaveProperty("token");
+      expect(responseData).not.toHaveProperty("secret");
+    });
+
+    it("should preserve safe fields in BaseError context", () => {
+      const mockBaseError = new BaseError(
+        "Test base error",
+        StatusCodes.BAD_REQUEST,
+        {
+          requestId: "test-id",
+          openaiRequestId: "openai-id",
+          capability: "parse-task",
+          aiServiceRequestId: "ai-service-id",
+        }
+      );
+
+      errorHandler(
+        mockBaseError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNextFunction
+      );
+
+      const responseCall = mockResponse.json as ReturnType<typeof vi.fn>;
+      const responseData = responseCall.mock.calls[0][0];
+
+      expect(responseData.message).toBe("Test base error");
+      expect(responseData.requestId).toBe("test-id");
+      expect(responseData.openaiRequestId).toBe("openai-id");
+      expect(responseData.capability).toBe("parse-task");
+      expect(responseData.aiServiceRequestId).toBe("ai-service-id");
+    });
+
+    it("should not allow context.message to overwrite error message", () => {
+      const mockBaseError = new BaseError(
+        "Error message",
+        StatusCodes.BAD_REQUEST,
+        {
+          message: "Context message",
+          requestId: "test",
+        }
+      );
+
+      errorHandler(
+        mockBaseError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNextFunction
+      );
+
+      const responseCall = mockResponse.json as ReturnType<typeof vi.fn>;
+      const responseData = responseCall.mock.calls[0][0];
+
+      expect(responseData.message).toBe("Error message");
+    });
   });
 
   describe("ZodError", () => {

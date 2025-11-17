@@ -4,6 +4,7 @@ import { StatusCodes, getReasonPhrase } from "http-status-codes";
 import { ZodError } from "zod";
 
 import { createLogger } from "../../config/create-logger";
+import { SENSITIVE_FIELDS } from "../../constants/sensitive-fields";
 import { BaseError } from "../../errors";
 
 const logger = createLogger("errorHandler");
@@ -19,15 +20,21 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ) => {
-  const { status, message } = extractErrorInfo(error);
+  const { status, message, context } = extractErrorInfo(error);
 
-  const requestId = res.locals.requestId;
+  const safeContext = context
+    ? Object.fromEntries(
+        Object.entries(context).filter(
+          ([key]) => !SENSITIVE_FIELDS.includes(key)
+        )
+      )
+    : {};
 
-  logger.error(message, error, { requestId });
+  logger.error(message, error, safeContext);
 
   res.status(status).json({
     message,
-    requestId,
+    ...safeContext,
   });
 };
 
@@ -36,6 +43,7 @@ function extractErrorInfo(error: unknown) {
     return {
       status: error.statusCode,
       message: error.message,
+      context: error.context,
     };
   }
 
@@ -50,6 +58,7 @@ function extractErrorInfo(error: unknown) {
     return {
       status: error.response?.status || DEFAULT_ERROR_STATUS,
       message: error.response?.data?.message || DEFAULT_ERROR_MESSAGE,
+      context: error.response?.data,
     };
   }
 

@@ -1,9 +1,14 @@
 import OpenAI from "openai";
-import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockParseTaskOutput } from "@capabilities/parse-task/parse-task-mocks";
 import { CAPABILITY, CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
+import {
+  mockOpenaiRequestId,
+  mockOpenaiResponseId,
+  mockPrompt,
+} from "@mocks/openai-mocks";
+import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { InternalError } from "@shared/errors";
 import { Mocked } from "@shared/types";
 import { withDurationAsync } from "@shared/utils/with-duration";
@@ -47,19 +52,11 @@ describe("executeParse", () => {
 
   const mockCapability = CAPABILITY.PARSE_TASK;
   const mockInput = "Submit Q2 report by next Friday";
-  const mockPrompt: ResponseCreateParamsNonStreaming = {
-    model: "gpt-4.1-mini",
-    instructions: "Parse this task",
-    input: mockInput,
-    temperature: 0,
-  };
   const mockUsage = {
     input_tokens: 150,
     output_tokens: 135,
   };
   const mockDurationMs = 250;
-  const mockAiServiceRequestId = "ai-service-request-id";
-  const mockOpenaiResponseId = "openai-response-id";
 
   beforeEach(async () => {
     const { openai } = await import("./openai");
@@ -110,7 +107,6 @@ describe("executeParse", () => {
   });
 
   it("should throw error when OpenAI API error occurs", async () => {
-    const mockOpenaiRequestId = "openai-request-id";
     const mockErrorMessage = "Incorrect API key provided";
 
     const apiError = new (OpenAI.APIError as any)(mockErrorMessage);
