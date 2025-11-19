@@ -21,7 +21,8 @@
       "@controllers/*": ["src/controllers/*"],
       "@capabilities": ["src/capabilities"],
       "@capabilities/*": ["src/capabilities/*"],
-      "@utils/*": ["src/utils/*"]
+      "@utils/*": ["src/utils/*"],
+      "@mocks/*": ["src/mocks/*"]
     }
   },
   "include": ["src/"],

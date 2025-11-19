@@ -1,8 +1,20 @@
-import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
+import OpenAI from "openai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { mockParseTaskOutput } from "@capabilities/parse-task/parse-task-mocks";
-import { CAPABILITY } from "@constants";
+import {
+  mockNaturalLanguage,
+  mockParseTaskOutput,
+} from "@capabilities/parse-task/parse-task-mocks";
+import { CAPABILITY, CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
+import {
+  mockOpenaiDurationMs,
+  mockOpenaiRequestId,
+  mockOpenaiResponseId,
+  mockOpenaiTokenUsage,
+  mockPrompt,
+} from "@mocks/openai-mocks";
+import { mockAiServiceRequestId } from "@mocks/request-ids";
+import { InternalError } from "@shared/errors";
 import { Mocked } from "@shared/types";
 import { withDurationAsync } from "@shared/utils/with-duration";
 import { executeParse } from "./openai";
@@ -15,13 +27,25 @@ vi.mock("@config/env", () => ({
   },
 }));
 
-vi.mock("openai", () => ({
-  default: vi.fn().mockImplementation(() => ({
-    responses: {
+vi.mock("openai", () => {
+  class MockAPIError extends Error {
+    requestID?: string;
+    error?: { message?: string };
+    status?: number;
+  }
+
+  class MockOpenAI {
+    responses = {
       parse: vi.fn(),
-    },
-  })),
-}));
+    };
+
+    static APIError = MockAPIError;
+  }
+
+  return {
+    default: MockOpenAI,
+  };
+});
 
 vi.mock("@shared/utils/with-duration", () => ({
   withDurationAsync: vi.fn(),
@@ -32,26 +56,18 @@ describe("executeParse", () => {
   let mockedWithDurationAsync: Mocked<typeof withDurationAsync>;
 
   const mockCapability = CAPABILITY.PARSE_TASK;
-  const mockInput = "Submit Q2 report by next Friday";
-  const mockPrompt: ResponseCreateParamsNonStreaming = {
-    model: "gpt-4.1-mini",
-    instructions: "Parse this task",
-    input: mockInput,
-    temperature: 0,
-  };
-  const mockUsage = {
-    input_tokens: 150,
-    output_tokens: 135,
-  };
-  const mockDurationMs = 250;
-  const mockRequestId = "test-request-id";
 
   beforeEach(async () => {
     const { openai } = await import("./openai");
     mockedOpenaiParse = vi.mocked(openai.responses.parse);
     mockedOpenaiParse.mockResolvedValue({
+      id: mockOpenaiResponseId,
+      status: "completed",
       output_parsed: mockParseTaskOutput,
-      usage: mockUsage,
+      usage: {
+        input_tokens: mockOpenaiTokenUsage.input,
+        output_tokens: mockOpenaiTokenUsage.output,
+      },
     } as any);
 
     mockedWithDurationAsync = vi.mocked(withDurationAsync);
@@ -60,7 +76,7 @@ describe("executeParse", () => {
 
       return {
         result,
-        durationMs: mockDurationMs,
+        durationMs: mockOpenaiDurationMs,
       };
     });
   });
@@ -72,59 +88,109 @@ describe("executeParse", () => {
   it("should execute parse successfully and return structured result", async () => {
     const result = await executeParse(
       mockCapability,
-      mockInput,
+      mockNaturalLanguage,
       mockPrompt,
-      mockRequestId
+      mockAiServiceRequestId
     );
 
     expect(mockedWithDurationAsync).toHaveBeenCalledWith(expect.any(Function));
     expect(mockedOpenaiParse).toHaveBeenCalledWith(mockPrompt);
     expect(result).toEqual({
+      openaiResponseId: mockOpenaiResponseId,
       output: mockParseTaskOutput,
       usage: {
-        tokens: {
-          input: mockUsage.input_tokens,
-          output: mockUsage.output_tokens,
-        },
+        tokens: mockOpenaiTokenUsage,
       },
-      durationMs: mockDurationMs,
+      durationMs: mockOpenaiDurationMs,
     });
   });
 
-  it("should handle missing usage tokens gracefully", async () => {
-    mockedOpenaiParse.mockResolvedValue({
-      output_parsed: mockParseTaskOutput,
-      usage: undefined,
-    });
+  it("should throw error when OpenAI API error occurs", async () => {
+    const mockErrorMessage = "Incorrect API key provided";
 
-    const result = await executeParse(
-      mockCapability,
-      mockInput,
-      mockPrompt,
-      mockRequestId
-    );
+    const apiError = new (OpenAI.APIError as any)(mockErrorMessage);
+    apiError.requestID = mockOpenaiRequestId;
+    apiError.error = { message: mockErrorMessage };
+    apiError.status = 401;
 
-    expect(result.usage.tokens.input).toBe(0);
-    expect(result.usage.tokens.output).toBe(0);
-  });
-
-  it("should throw error when output_parsed is missing", async () => {
-    mockedOpenaiParse.mockResolvedValue({
-      output_parsed: null,
-      usage: mockUsage,
-    });
-
-    await expect(
-      executeParse(mockCapability, mockInput, mockPrompt, mockRequestId)
-    ).rejects.toThrow(expect.any(Error));
-  });
-
-  it("should propagate OpenAI API errors", async () => {
-    const apiError = new Error("OpenAI API Error");
     mockedOpenaiParse.mockRejectedValue(apiError);
 
-    await expect(
-      executeParse(mockCapability, mockInput, mockPrompt, mockRequestId)
-    ).rejects.toThrow(apiError);
+    try {
+      await executeParse(
+        mockCapability,
+        mockNaturalLanguage,
+        mockPrompt,
+        mockAiServiceRequestId
+      );
+    } catch (error) {
+      expect(error).toBeInstanceOf(InternalError);
+      expect((error as InternalError).message).toBe(
+        CAPABILITY_EXECUTION_ERROR_MESSAGE
+      );
+      expect((error as InternalError).context).toEqual({
+        aiServiceRequestId: mockAiServiceRequestId,
+        openaiRequestId: mockOpenaiRequestId,
+      });
+    }
+  });
+
+  it("should throw error when status is not completed", async () => {
+    mockedOpenaiParse.mockResolvedValue({
+      id: mockOpenaiResponseId,
+      status: "in_progress",
+      output_parsed: mockParseTaskOutput,
+      usage: {
+        input_tokens: mockOpenaiTokenUsage.input,
+        output_tokens: mockOpenaiTokenUsage.output,
+      },
+    } as any);
+
+    try {
+      await executeParse(
+        mockCapability,
+        mockNaturalLanguage,
+        mockPrompt,
+        mockAiServiceRequestId
+      );
+    } catch (error) {
+      expect(error).toBeInstanceOf(InternalError);
+      expect((error as InternalError).message).toBe(
+        CAPABILITY_EXECUTION_ERROR_MESSAGE
+      );
+      expect((error as InternalError).context).toEqual({
+        aiServiceRequestId: mockAiServiceRequestId,
+        openaiResponseId: mockOpenaiResponseId,
+      });
+    }
+  });
+
+  it("should throw error when output_parsed is null", async () => {
+    mockedOpenaiParse.mockResolvedValue({
+      id: mockOpenaiResponseId,
+      status: "completed",
+      output_parsed: null,
+      usage: {
+        input_tokens: mockOpenaiTokenUsage.input,
+        output_tokens: mockOpenaiTokenUsage.output,
+      },
+    } as any);
+
+    try {
+      await executeParse(
+        mockCapability,
+        mockNaturalLanguage,
+        mockPrompt,
+        mockAiServiceRequestId
+      );
+    } catch (error) {
+      expect(error).toBeInstanceOf(InternalError);
+      expect((error as InternalError).message).toBe(
+        CAPABILITY_EXECUTION_ERROR_MESSAGE
+      );
+      expect((error as InternalError).context).toEqual({
+        aiServiceRequestId: mockAiServiceRequestId,
+        openaiResponseId: mockOpenaiResponseId,
+      });
+    }
   });
 });

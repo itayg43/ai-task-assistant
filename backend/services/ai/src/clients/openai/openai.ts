@@ -2,7 +2,9 @@ import OpenAI from "openai";
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
 import { env } from "@config/env";
+import { CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
 import { createLogger } from "@shared/config/create-logger";
+import { InternalError } from "@shared/errors";
 import { withDurationAsync } from "@shared/utils/with-duration";
 import { Capability } from "@types";
 
@@ -18,25 +20,33 @@ export const executeParse = async <TOutput>(
   prompt: ResponseCreateParamsNonStreaming,
   requestId: string
 ) => {
+  const baseLogContext = {
+    requestId,
+    capability,
+    input,
+  };
+
+  let openaiResponseId: string | undefined;
+
   try {
-    logger.info("executeParse - start", {
-      requestId,
-      capability,
-      input,
-    });
+    logger.info("executeParse - start", baseLogContext);
 
     const response = await withDurationAsync(() =>
       openai.responses.parse<any, TOutput>(prompt)
     );
 
+    openaiResponseId = response.result.id;
+
+    if (response.result.status !== "completed") {
+      throw new InternalError("OpenAI returned an uncompleted response.");
+    }
+
     if (!response.result.output_parsed) {
-      throw new Error(
-        `OpenAI failed to parse output for ${capability} capability`
-      );
+      throw new InternalError("OpenAI failed to parse the output correctly.");
     }
 
     const result = {
-      openaiResponseId: response.result.id,
+      openaiResponseId,
       output: response.result.output_parsed,
       usage: {
         tokens: {
@@ -48,20 +58,36 @@ export const executeParse = async <TOutput>(
     };
 
     logger.info("executeParse - succeeded", {
-      requestId,
-      capability,
-      input,
+      ...baseLogContext,
       result,
     });
 
     return result;
   } catch (error) {
+    if (error instanceof OpenAI.APIError) {
+      const openaiRequestId = error.requestID;
+
+      logger.error("executeParse - failed", error, {
+        ...baseLogContext,
+        openaiRequestId,
+        openaiErrorMessage: error.error?.message,
+        openaiErrorStatusCode: error.status,
+      });
+
+      throw new InternalError(CAPABILITY_EXECUTION_ERROR_MESSAGE, {
+        aiServiceRequestId: requestId,
+        openaiRequestId,
+      });
+    }
+
     logger.error("executeParse - failed", error, {
-      requestId,
-      capability,
-      input,
+      ...baseLogContext,
+      openaiResponseId,
     });
 
-    throw error;
+    throw new InternalError(CAPABILITY_EXECUTION_ERROR_MESSAGE, {
+      aiServiceRequestId: requestId,
+      openaiResponseId,
+    });
   }
 };

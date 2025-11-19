@@ -1,59 +1,52 @@
-import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseTaskHandler } from "@capabilities/parse-task/handler";
 import {
+  mockNaturalLanguage,
   mockParseTaskInputConfig,
   mockParseTaskOutput,
+  mockParseTaskValidatedInput,
 } from "@capabilities/parse-task/parse-task-mocks";
 import { createParseTaskCorePrompt } from "@capabilities/parse-task/prompts";
 import { executeParse } from "@clients/openai";
-import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import {
+  mockOpenaiDurationMs,
+  mockOpenaiResponseId,
+  mockOpenaiTokenUsage,
+  mockPrompt,
+} from "@mocks/openai-mocks";
+import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { Mocked } from "@shared/types";
 
 vi.mock("@clients/openai", () => ({
   executeParse: vi.fn(),
 }));
+
 vi.mock("@capabilities/parse-task/prompts");
 
 describe("parseTaskHandler", () => {
   let mockedCreateCorePrompt: Mocked<typeof createParseTaskCorePrompt>;
   let mockedExecuteParse: Mocked<typeof executeParse>;
 
-  const mockNaturalLanguage = "Submit Q2 report by next Friday";
-  const mockPrompt: ResponseCreateParamsNonStreaming = {
-    model: "gpt-4.1-mini",
-    instructions: "instructions",
-    input: "input",
-    temperature: 0,
-  };
   const mockExecuteParseResponse = {
+    openaiResponseId: mockOpenaiResponseId,
     output: mockParseTaskOutput,
     usage: {
-      tokens: {
-        input: 150,
-        output: 135,
-      },
+      tokens: mockOpenaiTokenUsage,
     },
-    durationMs: 250,
+    durationMs: mockOpenaiDurationMs,
   };
-  const mockRequestId = "test-request-id";
 
   const executeHandler = async () => {
     return await parseTaskHandler(
       {
+        ...mockParseTaskValidatedInput,
         body: {
+          ...mockParseTaskValidatedInput.body,
           naturalLanguage: mockNaturalLanguage,
-          config: mockParseTaskInputConfig,
-        },
-        params: {
-          capability: CAPABILITY.PARSE_TASK,
-        },
-        query: {
-          pattern: CAPABILITY_PATTERN.SYNC,
         },
       },
-      mockRequestId
+      mockAiServiceRequestId
     );
   };
 
@@ -70,7 +63,7 @@ describe("parseTaskHandler", () => {
   });
 
   it("should handle success", async () => {
-    const { metadata, result } = await executeHandler();
+    const response = await executeHandler();
 
     expect(mockedCreateCorePrompt).toHaveBeenCalledWith(
       "v1",
@@ -78,15 +71,20 @@ describe("parseTaskHandler", () => {
       mockParseTaskInputConfig
     );
     expect(mockedExecuteParse).toHaveBeenCalledWith(
-      CAPABILITY.PARSE_TASK,
+      mockParseTaskValidatedInput.params.capability,
       mockNaturalLanguage,
       mockPrompt,
-      mockRequestId
+      mockAiServiceRequestId
     );
-    expect(metadata.tokens.input).toBe(150);
-    expect(metadata.tokens.output).toBe(135);
-    expect(metadata.durationMs).toBe(250);
-    expect(result).toEqual(mockParseTaskOutput);
+    expect(response.openaiMetadata.responseId).toBe(mockOpenaiResponseId);
+    expect(response.openaiMetadata.tokens.input).toBe(
+      mockOpenaiTokenUsage.input
+    );
+    expect(response.openaiMetadata.tokens.output).toBe(
+      mockOpenaiTokenUsage.output
+    );
+    expect(response.openaiMetadata.durationMs).toBe(mockOpenaiDurationMs);
+    expect(response.result).toEqual(mockParseTaskOutput);
   });
 
   it("should handle error", async () => {

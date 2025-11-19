@@ -12,7 +12,7 @@ export const validateCapabilityInput = async (
 
     const validatedInput = config.inputSchema.parse(req);
 
-    Object.assign(req.body, validatedInput.body);
+    res.locals.capabilityValidatedInput = validatedInput;
 
     next();
   } catch (error) {

@@ -1,26 +1,18 @@
 import { Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import z from "zod";
 
+import { mockParseTaskCapabilityConfig } from "@capabilities/parse-task/parse-task-mocks";
+import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { getCapabilityConfig } from "@utils/get-capability-config";
 
 describe("getCapabilityConfig", () => {
   let mockResponse: Partial<Response>;
 
   beforeEach(() => {
-    const mockInputSchema = z.object({}) as z.ZodSchema<any>;
-    vi.spyOn(mockInputSchema, "parse").mockImplementation(vi.fn());
-    const mockOutputSchema = z.object({}) as z.ZodSchema<any>;
-    vi.spyOn(mockOutputSchema, "parse").mockImplementation(vi.fn());
-
     mockResponse = {
       locals: {
-        capabilityConfig: {
-          name: "parse-task",
-          handler: vi.fn(),
-          inputSchema: mockInputSchema,
-          outputSchema: mockOutputSchema,
-        },
+        requestId: mockAiServiceRequestId,
+        capabilityConfig: mockParseTaskCapabilityConfig,
       },
     };
   });
@@ -41,6 +33,7 @@ describe("getCapabilityConfig", () => {
   it("should throw an error when the capability config not defined", () => {
     mockResponse = {
       locals: {
+        requestId: mockAiServiceRequestId,
         capabilityConfig: undefined,
       },
     };

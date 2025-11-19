@@ -1,8 +1,23 @@
 import {
+  parseTaskInputSchema,
+  parseTaskOutputSchema,
+} from "@capabilities/parse-task/parse-task-schemas";
+import {
+  ParseTaskInput,
   ParseTaskInputConfig,
   ParseTaskOutput,
   ParseTaskOutputCore,
 } from "@capabilities/parse-task/parse-task-types";
+import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import {
+  mockOpenaiDurationMs,
+  mockOpenaiResponseId,
+  mockOpenaiTokenUsage,
+} from "@mocks/openai-mocks";
+import { createCapabilityResponseSchema } from "@schemas";
+import { CapabilityConfig, CapabilityResponse } from "@types";
+
+export const mockNaturalLanguage = "Submit Q2 report by next Friday";
 
 export const mockParseTaskInputConfig: ParseTaskInputConfig = {
   categories: ["work", "personal", "health", "finance", "errand"],
@@ -32,4 +47,35 @@ const mockParseTaskOutputCore: ParseTaskOutputCore = {
 
 export const mockParseTaskOutput: ParseTaskOutput = {
   ...mockParseTaskOutputCore,
+};
+
+export const mockParseTaskCapabilityResponse: CapabilityResponse<
+  typeof parseTaskOutputSchema
+> = {
+  openaiMetadata: {
+    responseId: mockOpenaiResponseId,
+    tokens: mockOpenaiTokenUsage,
+    durationMs: mockOpenaiDurationMs,
+  },
+  result: mockParseTaskOutput,
+};
+
+export const mockParseTaskValidatedInput: ParseTaskInput = {
+  params: {
+    capability: CAPABILITY.PARSE_TASK,
+  },
+  query: {
+    pattern: CAPABILITY_PATTERN.SYNC,
+  },
+  body: {
+    naturalLanguage: mockNaturalLanguage,
+    config: mockParseTaskInputConfig,
+  },
+};
+
+export const mockParseTaskCapabilityConfig: CapabilityConfig<any, any> = {
+  name: CAPABILITY.PARSE_TASK,
+  handler: async () => mockParseTaskCapabilityResponse,
+  inputSchema: parseTaskInputSchema,
+  outputSchema: createCapabilityResponseSchema(parseTaskOutputSchema),
 };

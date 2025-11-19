@@ -3,68 +3,51 @@ import { StatusCodes } from "http-status-codes";
 
 import { getPatternExecutor } from "@controllers/capabilities-controller/executors/get-pattern-executor";
 import { createLogger } from "@shared/config/create-logger";
-import { ExecuteCapabilityInput } from "@types";
 import { getCapabilityConfig } from "@utils/get-capability-config";
+import { getCapabilityValidatedInput } from "@utils/get-capability-validated-input";
 
 const logger = createLogger("capabilitiesController");
 
 export const executeCapability = async (
-  req: Request<
-    ExecuteCapabilityInput["params"],
-    unknown,
-    unknown,
-    ExecuteCapabilityInput["query"]
-  >,
+  _req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const { capability } = req.params;
-  const { pattern } = req.query;
-  const requestId = res.locals.requestId;
-
   try {
-    logger.info("executeCapability - starting", {
-      requestId,
-      capability,
-      pattern,
-      input: req.body,
-    });
+    const requestId = res.locals.requestId;
 
     const config = getCapabilityConfig(res);
+    const validatedInput = getCapabilityValidatedInput(res);
+
+    const {
+      params: { capability },
+      query: { pattern },
+    } = validatedInput;
+
+    logger.info("executeCapability - starting", {
+      requestId,
+      validatedInput,
+    });
+
     const patternExecutor = getPatternExecutor(pattern);
-
-    const executeCapabilityInput: ExecuteCapabilityInput = {
-      body: req.body as Record<string, unknown>,
-      params: req.params,
-      query: req.query,
-    };
-
-    const executorResult = await patternExecutor(
+    const { result, durationMs } = await patternExecutor(
       config,
-      executeCapabilityInput,
+      validatedInput,
       requestId
     );
 
     logger.info("executeCapability - succeeded", {
       requestId,
       capability,
-      pattern,
-      result: executorResult.result,
-      totalDurationMs: executorResult.durationMs,
+      result,
+      totalDurationMs: durationMs,
     });
 
     res.status(StatusCodes.OK).json({
-      ...executorResult.result,
-      requestId,
+      ...result,
+      aiServiceRequestId: requestId,
     });
   } catch (error) {
-    logger.error("executeCapability - failed", error, {
-      requestId,
-      capability,
-      pattern,
-      input: req.body,
-    });
-
     next(error);
   }
 };
