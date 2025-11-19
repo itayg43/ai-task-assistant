@@ -30,7 +30,7 @@ export const executeCapability = async (
     });
 
     const patternExecutor = getPatternExecutor(pattern);
-    const executorResult = await patternExecutor(
+    const { result, durationMs } = await patternExecutor(
       config,
       validatedInput,
       requestId
@@ -39,12 +39,12 @@ export const executeCapability = async (
     logger.info("executeCapability - succeeded", {
       requestId,
       capability,
-      result: executorResult.result,
-      totalDurationMs: executorResult.durationMs,
+      result,
+      totalDurationMs: durationMs,
     });
 
     res.status(StatusCodes.OK).json({
-      ...executorResult.result,
+      ...result,
       aiServiceRequestId: requestId,
     });
   } catch (error) {
