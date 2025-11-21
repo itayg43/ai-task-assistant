@@ -10,6 +10,8 @@ export const mockOpenaiTokenUsage = {
 
 export const mockOpenaiDurationMs = 250;
 
+export const mockPromptVersion = "v1";
+
 export const mockPrompt: ResponseCreateParamsNonStreaming = {
   model: "gpt-4.1-mini",
   instructions: "instructions",

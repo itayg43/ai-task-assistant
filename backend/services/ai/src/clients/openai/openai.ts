@@ -18,12 +18,14 @@ export const executeParse = async <TOutput>(
   capability: Capability,
   input: string,
   prompt: ResponseCreateParamsNonStreaming,
+  promptVersion: string,
   requestId: string
 ) => {
   const baseLogContext = {
     requestId,
     capability,
     input,
+    promptVersion,
   };
 
   let openaiResponseId: string | undefined;
