@@ -58,3 +58,9 @@ export const parseTaskOutputSchema = parseTaskOutputCoreSchema.extend({
 //   .nullable();
 
 // const subtasksSchema = z.array(z.string().trim()).nullable();
+
+export const parseTaskOutputJudgeSchema = z.object({
+  overallPass: z.boolean(),
+  explanation: z.string().nullable(),
+  suggestedPromptImprovements: z.array(z.string()).nullable(),
+});
