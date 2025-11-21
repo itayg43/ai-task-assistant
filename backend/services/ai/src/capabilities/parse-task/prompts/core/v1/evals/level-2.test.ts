@@ -85,9 +85,17 @@ const createJudgePrompt = (
   5. **Priority Reason**: Clear, specific, well-justified
   
   ### Output Format
-  - **overallPass**: boolean - true if the output meets all criteria, false otherwise
-  - **explanation**: string | null - ONLY provide if overallPass is false. Concise failure explanation (2-3 sentences max) focusing on the most critical issues. Prioritize the most impactful problems and avoid repetitive analysis.
-  - **suggestedPromptImprovements**: string[] | null - ONLY provide if overallPass is false. Max 3 prompt improvement suggestions.
+  The output must follow one of two structures based on the evaluation result:
+  
+  **If overallPass is true:**
+  - **overallPass**: true
+  - **explanation**: null (must be explicitly set to null)
+  - **suggestedPromptImprovements**: null (must be explicitly set to null)
+  
+  **If overallPass is false:**
+  - **overallPass**: false
+  - **explanation**: string (REQUIRED) - Concise failure explanation (2-3 sentences max) focusing on the most critical issues. Prioritize the most impactful problems and avoid repetitive analysis.
+  - **suggestedPromptImprovements**: string[] (REQUIRED) - Array of 1-3 prompt improvement suggestions. Must contain at least 1 and at most 3 items.
   `;
 
   return {
@@ -149,15 +157,10 @@ describe("corePromptV1 - Level2Tests", () => {
         `Overall: ${judgeOutput.overallPass ? "✅ PASS" : "❌ FAIL"}`
       );
 
-      if (judgeOutput.explanation) {
+      if (!judgeOutput.overallPass) {
         console.log("Explanation:", judgeOutput.explanation);
-      }
 
-      if (
-        judgeOutput.suggestedPromptImprovements &&
-        judgeOutput.suggestedPromptImprovements.length > 0
-      ) {
-        console.log(`Prompt Improvements:`);
+        console.log(`Suggested Prompt Improvements:`);
         judgeOutput.suggestedPromptImprovements.forEach(
           (improvement, index) => {
             console.log(`${index + 1}. ${improvement}`);
