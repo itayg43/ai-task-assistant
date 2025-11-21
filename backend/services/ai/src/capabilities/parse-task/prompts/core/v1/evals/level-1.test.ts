@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { mockParseTaskInputConfig } from "@capabilities/parse-task/parse-task-mocks";
 import { parseTaskOutputCoreSchema } from "@capabilities/parse-task/parse-task-schemas";
-import { executeParseTask } from "@capabilities/parse-task/prompts/core/v1/evals/utils/execute-llm-calls";
+import { ParseTaskOutputCore } from "@capabilities/parse-task/parse-task-types";
+import { parseTaskCorePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
+import { executeParse } from "@clients/openai";
+import { randomUUID } from "crypto";
 
 const testCases = [
   {
@@ -126,6 +130,20 @@ const testCases = [
     },
   },
 ] as const;
+
+const executeParseTask = async (naturalLanguage: string) => {
+  const prompt = parseTaskCorePromptV1(
+    naturalLanguage,
+    mockParseTaskInputConfig
+  );
+
+  return await executeParse<ParseTaskOutputCore>(
+    "parse-task",
+    naturalLanguage,
+    prompt,
+    randomUUID()
+  );
+};
 
 describe("corePromptV1 - Level1Tests", () => {
   beforeEach(() => {
