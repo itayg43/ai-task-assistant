@@ -1,14 +1,17 @@
 import { ParseTaskInputConfig } from "@capabilities/parse-task/parse-task-types";
 import { parseTaskCorePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
 
-const PROMPT_VERSIONS = {
+export const PARSE_TASK_CORE_PROMPT_VERSIONS = {
   v1: parseTaskCorePromptV1,
-};
+} as const;
+
+export type ParseTaskCorePromptVersion =
+  keyof typeof PARSE_TASK_CORE_PROMPT_VERSIONS;
 
 export const createParseTaskCorePrompt = (
-  version: keyof typeof PROMPT_VERSIONS,
+  version: ParseTaskCorePromptVersion,
   naturalLanguage: string,
   config: ParseTaskInputConfig
 ) => {
-  return PROMPT_VERSIONS[version](naturalLanguage, config);
+  return PARSE_TASK_CORE_PROMPT_VERSIONS[version](naturalLanguage, config);
 };

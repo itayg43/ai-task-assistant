@@ -5,6 +5,7 @@ import {
 } from "@capabilities/parse-task/parse-task-types";
 import { createParseTaskCorePrompt } from "@capabilities/parse-task/prompts";
 import { executeParse } from "@clients/openai";
+import { env } from "@config/env";
 import { CapabilityResponse } from "@types";
 
 export const parseTaskHandler = async (
@@ -13,7 +14,11 @@ export const parseTaskHandler = async (
 ): Promise<CapabilityResponse<typeof parseTaskOutputSchema>> => {
   const { naturalLanguage, config } = input.body;
 
-  const corePrompt = createParseTaskCorePrompt("v1", naturalLanguage, config);
+  const corePrompt = createParseTaskCorePrompt(
+    env.PARSE_TASK_CORE_PROMPT_VERSION,
+    naturalLanguage,
+    config
+  );
   const coreResponse = await executeParse<ParseTaskOutputCore>(
     "parse-task",
     naturalLanguage,
