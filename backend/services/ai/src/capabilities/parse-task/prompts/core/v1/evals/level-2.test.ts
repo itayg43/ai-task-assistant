@@ -48,55 +48,72 @@ const createJudgePrompt = (
   output: ParseTaskOutputCore,
   config: ParseTaskInputConfig
 ): ResponseCreateParamsNonStreaming => {
-  const prompt = `
-  ## Role
-  You are an expert AI evaluation judge that critiques task parsing outputs for quality and correctness.
-  
-  ## Task
-  Evaluate the parse task output and provide a single pass/fail determination with detailed analysis and improvement suggestions.
-  
-  ## Context
-  
-  ### Input
-  Natural Language: "${naturalLanguage}"
-  
-  ### Configuration
-  Categories: ${config.categories.join(", ")}
-  Priority Levels: ${config.priorities.levels.join(" | ")}
-  Priority Score Ranges: ${Object.entries(config.priorities.scores)
+  const categoriesList = config.categories.join(", ");
+
+  const priorityLevelsList = config.priorities.levels.join(" | ");
+
+  const scoreRangesEntries = Object.entries(config.priorities.scores);
+
+  const scoreRangesList = scoreRangesEntries
+    .map(([level, range]) => `  - ${level}: ${range.min}-${range.max}`)
+    .join("\n");
+
+  const scoreRangesInline = scoreRangesEntries
     .map(([level, range]) => `${level}: ${range.min}-${range.max}`)
-    .join(", ")}
-  
-  ### Generated Output
-  Title: "${output.title}"
-  Due Date: ${output.dueDate || null}
-  Category: "${output.category}"
-  Priority Level: "${output.priority.level}"
-  Priority Score: ${output.priority.score}
-  Priority Reason: "${output.priority.reason}"
-  
-  ## Evaluation Instructions
-  
-  ### Evaluation Criteria
-  1. **Title Quality**: Concise, actionable, title case
-  2. **Category Correctness**: Semantically matches task content
-  3. **Priority Level**: Level appropriate for consequences/importance
-  4. **Priority Score**: Consistent with level and reasoning
-  5. **Priority Reason**: Clear, specific, well-justified
-  
-  ### Output Format
-  The output must follow one of two structures based on the evaluation result:
-  
-  **If overallPass is true:**
-  - **overallPass**: true
-  - **explanation**: null (must be explicitly set to null)
-  - **suggestedPromptImprovements**: null (must be explicitly set to null)
-  
-  **If overallPass is false:**
-  - **overallPass**: false
-  - **explanation**: string (REQUIRED) - Concise failure explanation (2-3 sentences max) focusing on the most critical issues. Prioritize the most impactful problems and avoid repetitive analysis.
-  - **suggestedPromptImprovements**: string[] (REQUIRED) - Array of 1-3 prompt improvement suggestions. Must contain at least 1 and at most 3 items.
-  `;
+    .join(", ");
+
+  const prompt = `
+## Role
+You are an expert AI evaluation judge responsible for assessing the quality and correctness of task parsing outputs.
+
+## Task
+Review the parsed task output and render a single pass/fail verdict, accompanied by detailed analysis and actionable improvement recommendations.
+
+Begin with a concise checklist (3-7 bullets) of the main evaluation steps; keep items conceptual.
+
+## Context
+
+### Input
+Natural Language: "${naturalLanguage}"
+
+### Configuration
+- **Categories**: ${categoriesList}
+- **Priority Levels**: ${priorityLevelsList}
+- **Priority Score Ranges**:
+${scoreRangesList}
+
+### Generated Output
+- **Title**: "${output.title}"
+- **Due Date**: ${output.dueDate || null}
+- **Category**: "${output.category}"
+- **Priority Level**: "${output.priority.level}"
+- **Priority Score**: ${output.priority.score}
+- **Priority Reason**: "${output.priority.reason}"
+
+## Evaluation Instructions
+
+### Evaluation Criteria
+1. **Title Quality**: Should be concise, actionable, and use title case.
+2. **Category Correctness**: Must semantically match the task content and be one of the valid categories: ${categoriesList}.
+3. **Priority Level**: Should align with the task's consequences and importance, and must be one of: ${priorityLevelsList}.
+4. **Priority Score**: Must be consistent with the assigned level and justification, and must fall within the score range for the selected level (${scoreRangesInline}).
+5. **Priority Reason**: Needs to be clear, specific, and well-justified.
+
+After your assessment and before rendering the final output, validate your verdict by checking that each criterion has been covered. If any are not fully addressed or conflicting, self-correct before finalizing.
+
+### Output Format
+The output must follow one of two structures based on the evaluation result:
+
+**If overallPass is true:**
+- **overallPass**: true
+- **explanation**: null (must be explicitly set to null)
+- **suggestedPromptImprovements**: null (must be explicitly set to null)
+
+**If overallPass is false:**
+- **overallPass**: false
+- **explanation**: string (REQUIRED) - Concise failure explanation (2-3 sentences max) focusing on the most critical issues. Prioritize the most impactful problems and avoid repetitive analysis.
+- **suggestedPromptImprovements**: string[] (REQUIRED) - Array of 1-3 prompt improvement suggestions. Must contain at least 1 and at most 3 items.
+`;
 
   return {
     // Use a more powerful model for evaluation to ensure accurate assessment of the
@@ -173,49 +190,3 @@ describe("corePromptV1 - Level2Tests", () => {
     TEST_TIMEOUT
   );
 });
-
-// System: ## Role
-// You are an expert AI evaluation judge responsible for assessing the quality and correctness of task parsing outputs.
-
-// ## Task
-// Review the parsed task output and render a single pass/fail verdict, accompanied by detailed analysis and actionable improvement recommendations.
-
-// Begin with a concise checklist (3-7 bullets) of the main evaluation steps; keep items conceptual.
-
-// ## Context
-// ### Input
-// Natural Language: "Submit Q2 report by next Friday and mark it high priority under Work"
-
-// ### Configuration
-// - **Categories**: work, personal, health, finance, errand
-// - **Priority Levels**: low | medium | high | critical
-// - **Priority Score Ranges**:
-//   - low: 0-3
-//   - medium: 4-6
-//   - high: 7-8
-//   - critical: 9-10
-
-// ### Generated Output
-// - **Title**: "Submit Q2 Report"
-// - **Due Date**: 2024-01-19T12:00:00.000Z
-// - **Category**: "work"
-// - **Priority Level**: "high"
-// - **Priority Score**: 7
-// - **Priority Reason**: "Deadline approaching next Friday with high importance for work reporting"
-
-// ## Evaluation Instructions
-// ### Evaluation Criteria
-// 1. **Title Quality**: Should be concise, actionable, and use title case.
-// 2. **Category Correctness**: Must semantically match the task content.
-// 3. **Priority Level**: Should align with the task's consequences and importance.
-// 4. **Priority Score**: Must be consistent with the assigned level and justification.
-// 5. **Priority Reason**: Needs to be clear, specific, and well-justified.
-
-// After your assessment and before rendering the final output, validate your verdict by checking that each criterion has been covered. If any are not fully addressed or conflicting, self-correct before finalizing.
-
-// ### Output Format
-// - **overallPass**: *boolean* — true if all criteria are satisfied; false otherwise.
-// - **explanation**: *string | null* — Only provided if overallPass is false. Give a concise (2–3 sentences), focused explanation highlighting the most critical issues and avoid redundant analysis.
-// - **suggestedPromptImprovements**: *string[] | null* — Only provided if overallPass is false. List up to three prompt improvement suggestions.
-
-// User: Please evaluate the task parsing output.
