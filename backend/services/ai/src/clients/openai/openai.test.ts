@@ -12,6 +12,7 @@ import {
   mockOpenaiResponseId,
   mockOpenaiTokenUsage,
   mockPrompt,
+  mockPromptVersion,
 } from "@mocks/openai-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { InternalError } from "@shared/errors";
@@ -90,6 +91,7 @@ describe("executeParse", () => {
       mockCapability,
       mockNaturalLanguage,
       mockPrompt,
+      mockPromptVersion,
       mockAiServiceRequestId
     );
 
@@ -120,6 +122,7 @@ describe("executeParse", () => {
         mockCapability,
         mockNaturalLanguage,
         mockPrompt,
+        mockPromptVersion,
         mockAiServiceRequestId
       );
     } catch (error) {
@@ -150,6 +153,7 @@ describe("executeParse", () => {
         mockCapability,
         mockNaturalLanguage,
         mockPrompt,
+        mockPromptVersion,
         mockAiServiceRequestId
       );
     } catch (error) {
@@ -180,6 +184,7 @@ describe("executeParse", () => {
         mockCapability,
         mockNaturalLanguage,
         mockPrompt,
+        mockPromptVersion,
         mockAiServiceRequestId
       );
     } catch (error) {

@@ -14,8 +14,9 @@ export const parseTaskHandler = async (
 ): Promise<CapabilityResponse<typeof parseTaskOutputSchema>> => {
   const { naturalLanguage, config } = input.body;
 
+  const corePromptVersion = env.PARSE_TASK_CORE_PROMPT_VERSION;
   const corePrompt = createParseTaskCorePrompt(
-    env.PARSE_TASK_CORE_PROMPT_VERSION,
+    corePromptVersion,
     naturalLanguage,
     config
   );
@@ -23,6 +24,7 @@ export const parseTaskHandler = async (
     "parse-task",
     naturalLanguage,
     corePrompt,
+    corePromptVersion,
     requestId
   );
 

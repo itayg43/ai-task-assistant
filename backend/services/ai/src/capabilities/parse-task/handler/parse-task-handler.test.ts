@@ -14,6 +14,7 @@ import {
   mockOpenaiResponseId,
   mockOpenaiTokenUsage,
   mockPrompt,
+  mockPromptVersion,
 } from "@mocks/openai-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { Mocked } from "@shared/types";
@@ -23,6 +24,12 @@ vi.mock("@clients/openai", () => ({
 }));
 
 vi.mock("@capabilities/parse-task/prompts");
+
+vi.mock("@config/env", () => ({
+  env: {
+    PARSE_TASK_CORE_PROMPT_VERSION: "v1",
+  },
+}));
 
 describe("parseTaskHandler", () => {
   let mockedCreateCorePrompt: Mocked<typeof createParseTaskCorePrompt>;
@@ -66,7 +73,7 @@ describe("parseTaskHandler", () => {
     const response = await executeHandler();
 
     expect(mockedCreateCorePrompt).toHaveBeenCalledWith(
-      "v1",
+      mockPromptVersion,
       mockNaturalLanguage,
       mockParseTaskInputConfig
     );
@@ -74,6 +81,7 @@ describe("parseTaskHandler", () => {
       mockParseTaskValidatedInput.params.capability,
       mockNaturalLanguage,
       mockPrompt,
+      mockPromptVersion,
       mockAiServiceRequestId
     );
     expect(response.openaiMetadata.responseId).toBe(mockOpenaiResponseId);

@@ -141,6 +141,7 @@ const executeParseTask = async (naturalLanguage: string) => {
     "parse-task",
     naturalLanguage,
     prompt,
+    "v1",
     randomUUID()
   );
 };
