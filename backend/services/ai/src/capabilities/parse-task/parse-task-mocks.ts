@@ -34,7 +34,7 @@ export const mockParseTaskInputConfig: ParseTaskInputConfig = {
   frequencies: ["daily", "weekly", "monthly"],
 };
 
-const mockParseTaskOutputCore: ParseTaskOutputCore = {
+export const mockParseTaskOutputCore: ParseTaskOutputCore = {
   title: "Submit Q2 report",
   dueDate: "2024-01-19T23:59:59Z",
   category: "work",
