@@ -16,10 +16,26 @@ import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/res
 
 const TEST_TIMEOUT = 15000;
 
+const JUDGE_OUTPUT_FORMAT_INSTRUCTIONS = `
+### Output Format
+The output must follow one of two structures based on the evaluation result:
+
+**If overallPass is true:**
+- **overallPass**: true
+- **explanation**: null (must be explicitly set to null)
+- **suggestedPromptImprovements**: null (must be explicitly set to null)
+
+**If overallPass is false:**
+- **overallPass**: false
+- **explanation**: string (REQUIRED) - Concise failure explanation (2-3 sentences max) focusing on the most critical issues. Prioritize the most impactful problems and avoid repetitive analysis.
+- **suggestedPromptImprovements**: string[] (REQUIRED) - Array of 1-3 prompt improvement suggestions. Must contain at least 1 and at most 3 items.
+`;
+
 const vagueInputTestCases = [
   { naturalLanguage: "Plan something soon" },
   { naturalLanguage: "Do stuff" },
   { naturalLanguage: "Fix it" },
+  { naturalLanguage: "Update resume and apply for jobs" },
 ] as const;
 
 const clearInputTestCases = [
@@ -28,12 +44,51 @@ const clearInputTestCases = [
   { naturalLanguage: "Book dentist appointment" },
   { naturalLanguage: "Pay electricity bill tomorrow" },
   { naturalLanguage: "Schedule team sync every Monday at 9am" },
-  { naturalLanguage: "Update resume and apply for jobs" },
   {
     naturalLanguage:
       "Submit Q2 report by next Friday and mark it high priority under Work",
   },
 ] as const;
+
+const logJudgeResult = (
+  naturalLanguage: string,
+  judgeOutput: ParseTaskOutputJudge,
+  context?: string
+) => {
+  const prefix = context
+    ? `Judge for ${context}: "${naturalLanguage}"`
+    : `Judge for: "${naturalLanguage}"`;
+
+  console.log(`\n=== ${prefix} ===`);
+  console.log(`Overall: ${judgeOutput.overallPass ? "✅ PASS" : "❌ FAIL"}`);
+
+  if (!judgeOutput.overallPass) {
+    console.log("Explanation:", judgeOutput.explanation);
+
+    console.log(`Suggested Prompt Improvements:`);
+    judgeOutput.suggestedPromptImprovements?.forEach((improvement, index) => {
+      console.log(`${index + 1}. ${improvement}`);
+    });
+  }
+};
+
+const createJudgeResponse = (
+  instructions: string,
+  input: string
+): ResponseCreateParamsNonStreaming => {
+  return {
+    model: "gpt-4.1",
+    instructions,
+    input,
+    temperature: 0,
+    text: {
+      format: zodTextFormat(
+        parseTaskOutputJudgeSchema,
+        "parseTaskOutputJudgeSchema"
+      ),
+    },
+  };
+};
 
 const executeParseTask = async (naturalLanguage: string) => {
   const prompt = parseTaskCorePromptV2(
@@ -86,32 +141,13 @@ Natural Language: "${naturalLanguage}"
 
 After your assessment and before rendering the final output, validate your verdict by checking that each criterion has been covered. If any are not fully addressed or conflicting, self-correct before finalizing.
 
-### Output Format
-The output must follow one of two structures based on the evaluation result:
-
-**If overallPass is true:**
-- **overallPass**: true
-- **explanation**: null (must be explicitly set to null)
-- **suggestedPromptImprovements**: null (must be explicitly set to null)
-
-**If overallPass is false:**
-- **overallPass**: false
-- **explanation**: string (REQUIRED) - Concise failure explanation (2-3 sentences max) focusing on the most critical issues. Prioritize the most impactful problems and avoid repetitive analysis.
-- **suggestedPromptImprovements**: string[] (REQUIRED) - Array of 1-3 prompt improvement suggestions. Must contain at least 1 and at most 3 items.
+${JUDGE_OUTPUT_FORMAT_INSTRUCTIONS}
 `;
 
-  return {
-    model: "gpt-4.1",
-    instructions: prompt,
-    input: "Please evaluate the error response for vague input.",
-    temperature: 0,
-    text: {
-      format: zodTextFormat(
-        parseTaskOutputJudgeSchema,
-        "parseTaskOutputJudgeSchema"
-      ),
-    },
-  };
+  return createJudgeResponse(
+    prompt,
+    "Please evaluate the error response for vague input."
+  );
 };
 
 const createJudgePromptForSuccess = (
@@ -173,32 +209,26 @@ ${scoreRangesList}
 
 After your assessment and before rendering the final output, validate your verdict by checking that each criterion has been covered. If any are not fully addressed or conflicting, self-correct before finalizing.
 
-### Output Format
-The output must follow one of two structures based on the evaluation result:
-
-**If overallPass is true:**
-- **overallPass**: true
-- **explanation**: null (must be explicitly set to null)
-- **suggestedPromptImprovements**: null (must be explicitly set to null)
-
-**If overallPass is false:**
-- **overallPass**: false
-- **explanation**: string (REQUIRED) - Concise failure explanation (2-3 sentences max) focusing on the most critical issues. Prioritize the most impactful problems and avoid repetitive analysis.
-- **suggestedPromptImprovements**: string[] (REQUIRED) - Array of 1-3 prompt improvement suggestions. Must contain at least 1 and at most 3 items.
+${JUDGE_OUTPUT_FORMAT_INSTRUCTIONS}
 `;
 
-  return {
-    model: "gpt-4.1",
-    instructions: prompt,
-    input: "Please evaluate the task parsing output.",
-    temperature: 0,
-    text: {
-      format: zodTextFormat(
-        parseTaskOutputJudgeSchema,
-        "parseTaskOutputJudgeSchema"
-      ),
-    },
-  };
+  return createJudgeResponse(
+    prompt,
+    "Please evaluate the task parsing output."
+  );
+};
+
+const executeJudge = async (
+  naturalLanguage: string,
+  prompt: ResponseCreateParamsNonStreaming
+) => {
+  return await executeParse<ParseTaskOutputJudge>(
+    "parse-task",
+    naturalLanguage,
+    prompt,
+    "v2",
+    randomUUID()
+  );
 };
 
 const executeJudgeOutputForError = async (
@@ -211,13 +241,7 @@ const executeJudgeOutputForError = async (
     mockParseTaskInputConfig
   );
 
-  return await executeParse<ParseTaskOutputJudge>(
-    "parse-task",
-    naturalLanguage,
-    prompt,
-    "v2",
-    randomUUID()
-  );
+  return executeJudge(naturalLanguage, prompt);
 };
 
 const executeJudgeOutputForSuccess = async (
@@ -230,13 +254,7 @@ const executeJudgeOutputForSuccess = async (
     mockParseTaskInputConfig
   );
 
-  return await executeParse<ParseTaskOutputJudge>(
-    "parse-task",
-    naturalLanguage,
-    prompt,
-    "v2",
-    randomUUID()
-  );
+  return executeJudge(naturalLanguage, prompt);
 };
 
 describe("corePromptV2 - Level2Tests", () => {
@@ -263,21 +281,7 @@ describe("corePromptV2 - Level2Tests", () => {
           parseOutput
         );
 
-        console.log(`\n=== Judge for vague input: "${naturalLanguage}" ===`);
-        console.log(
-          `Overall: ${judgeOutput.overallPass ? "✅ PASS" : "❌ FAIL"}`
-        );
-
-        if (!judgeOutput.overallPass) {
-          console.log("Explanation:", judgeOutput.explanation);
-
-          console.log(`Suggested Prompt Improvements:`);
-          judgeOutput.suggestedPromptImprovements.forEach(
-            (improvement, index) => {
-              console.log(`${index + 1}. ${improvement}`);
-            }
-          );
-        }
+        logJudgeResult(naturalLanguage, judgeOutput, "vague input");
 
         expect(judgeOutput.overallPass).toBe(true);
       },
@@ -299,21 +303,7 @@ describe("corePromptV2 - Level2Tests", () => {
           parseOutput.task!
         );
 
-        console.log(`\n=== Judge for: "${naturalLanguage}" ===`);
-        console.log(
-          `Overall: ${judgeOutput.overallPass ? "✅ PASS" : "❌ FAIL"}`
-        );
-
-        if (!judgeOutput.overallPass) {
-          console.log("Explanation:", judgeOutput.explanation);
-
-          console.log(`Suggested Prompt Improvements:`);
-          judgeOutput.suggestedPromptImprovements.forEach(
-            (improvement, index) => {
-              console.log(`${index + 1}. ${improvement}`);
-            }
-          );
-        }
+        logJudgeResult(naturalLanguage, judgeOutput);
 
         expect(judgeOutput.overallPass).toBe(true);
       },

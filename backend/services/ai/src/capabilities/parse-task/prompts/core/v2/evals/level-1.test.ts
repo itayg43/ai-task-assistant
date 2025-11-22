@@ -23,6 +23,11 @@ const vagueInputTestCases = [
     naturalLanguage: "Fix it",
     description: "missing context about what to fix",
   },
+  {
+    naturalLanguage: "Update resume and apply for jobs",
+    description:
+      "missing specificity about which jobs, industries, or deadline",
+  },
 ] as const;
 
 const clearInputTestCases = [
