@@ -10,5 +10,4 @@ export type ParseTaskConfig = {
     scores: Record<string, ParseTaskConfigScoreRange>;
     overallScoreRange: ParseTaskConfigScoreRange;
   };
-  frequencies: string[];
 };

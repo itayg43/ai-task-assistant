@@ -32,7 +32,6 @@ export const mockParseTaskInputConfig: ParseTaskInputConfig = {
     },
     overallScoreRange: { min: 0, max: 10 },
   },
-  frequencies: ["daily", "weekly", "monthly"],
 };
 
 const mockParseTaskOutputCore: ParseTaskOutputCore = {
