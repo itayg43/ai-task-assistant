@@ -13,6 +13,21 @@ export type ParseTaskInput = z.infer<typeof parseTaskInputSchema>;
 
 export type ParseTaskOutputCore = z.infer<typeof parseTaskOutputCoreSchema>;
 
+export type ParseTaskOutputCoreV2 =
+  | {
+      success: true;
+      task: ParseTaskOutputCore;
+      error: null;
+    }
+  | {
+      success: false;
+      task: null;
+      error: {
+        reason: string;
+        suggestions: string[];
+      };
+    };
+
 export type ParseTaskOutput = z.infer<typeof parseTaskOutputSchema>;
 
 // Discriminated union type for better TypeScript type narrowing.

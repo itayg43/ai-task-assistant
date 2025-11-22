@@ -47,6 +47,46 @@ export const parseTaskOutputSchema = parseTaskOutputCoreSchema.extend({
   // subtasks: subtasksSchema,
 });
 
+const parseTaskOutputCoreV2ErrorSchema = z.object({
+  reason: z.string().trim().nonempty(),
+  suggestions: z.array(z.string().trim().nonempty()).min(1).max(3),
+});
+
+export const parseTaskOutputCoreV2Schema = z
+  .object({
+    success: z.boolean(),
+    task: parseTaskOutputCoreSchema.nullable(),
+    error: parseTaskOutputCoreV2ErrorSchema.nullable(),
+  })
+  .refine(
+    (data) => {
+      // When success is true, task must be non-null and error must be null
+      if (data.success === true) {
+        return data.task !== null && data.error === null;
+      }
+
+      return true;
+    },
+    {
+      message:
+        "When success is true, task must be non-null and error must be null",
+    }
+  )
+  .refine(
+    (data) => {
+      // When success is false, error must be non-null and task must be null
+      if (data.success === false) {
+        return data.error !== null && data.task === null;
+      }
+
+      return true;
+    },
+    {
+      message:
+        "When success is false, error must be non-null and task must be null",
+    }
+  );
+
 // const recurrenceSchema = z
 //   .object({
 //     frequency: z.string().trim(),
@@ -83,6 +123,7 @@ export const parseTaskOutputJudgeSchema = z
           data.explanation === null && data.suggestedPromptImprovements === null
         );
       }
+
       return true;
     },
     {
@@ -101,6 +142,7 @@ export const parseTaskOutputJudgeSchema = z
           data.suggestedPromptImprovements.length <= 3
         );
       }
+
       return true;
     },
     {

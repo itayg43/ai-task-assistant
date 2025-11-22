@@ -1,4 +1,5 @@
 export { AuthenticationError } from "./authentication-error";
+export { BadRequestError } from "./bad-request-error";
 export { BaseError } from "./base-error";
 export { ForbiddenError } from "./forbidden-error";
 export { InternalError } from "./internal-error";
