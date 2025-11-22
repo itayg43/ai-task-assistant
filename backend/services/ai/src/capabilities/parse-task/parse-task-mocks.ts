@@ -7,6 +7,7 @@ import {
   ParseTaskInputConfig,
   ParseTaskOutput,
   ParseTaskOutputCore,
+  ParseTaskOutputCoreV2,
 } from "@capabilities/parse-task/parse-task-types";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import {
@@ -43,6 +44,25 @@ const mockParseTaskOutputCore: ParseTaskOutputCore = {
     score: 88,
     reason: "Marked as high priority with a clear deadline next Friday.",
   },
+};
+
+export const mockParseTaskErrorOutputCoreV2: ParseTaskOutputCoreV2 = {
+  success: false,
+  task: null,
+  error: {
+    reason:
+      "The input is too vague - it doesn't specify what needs to be planned.",
+    suggestions: [
+      "What specifically needs to be planned? (e.g., 'Plan vacation', 'Plan team meeting')",
+      "What is the context or category? (work, personal, etc.)",
+    ],
+  },
+};
+
+export const mockParseTaskSuccessOutputCoreV2: ParseTaskOutputCoreV2 = {
+  success: true,
+  task: mockParseTaskOutputCore,
+  error: null,
 };
 
 export const mockParseTaskOutput: ParseTaskOutput = {
