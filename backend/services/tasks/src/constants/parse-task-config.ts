@@ -41,5 +41,4 @@ export const DEFAULT_PARSE_TASK_CONFIG: ParseTaskConfig = {
       max: DEFAULT_PRIORITIES_SCORES.critical.max,
     },
   },
-  frequencies: ["daily", "weekly", "monthly"],
 };

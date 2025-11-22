@@ -19,7 +19,6 @@ const parseTaskInputConfigPrioritiesSchema = z.object({
 export const parseTaskInputConfigSchema = z.object({
   categories: z.array(z.string().trim().nonempty()),
   priorities: parseTaskInputConfigPrioritiesSchema,
-  frequencies: z.array(z.string().trim().nonempty()),
 });
 
 export const parseTaskInputSchema = executeCapabilityInputSchema.extend({
@@ -43,7 +42,6 @@ export const parseTaskOutputCoreSchema = z.object({
 });
 
 export const parseTaskOutputSchema = parseTaskOutputCoreSchema.extend({
-  // recurrence: recurrenceSchema,
   // subtasks: subtasksSchema,
 });
 
@@ -86,16 +84,6 @@ export const parseTaskOutputCoreV2Schema = z
         "When success is false, error must be non-null and task must be null",
     }
   );
-
-// const recurrenceSchema = z
-//   .object({
-//     frequency: z.string().trim(),
-//     interval: z.number().min(1).default(1),
-//     dayOfWeek: z.number().min(0).max(6).nullable(),
-//     dayOfMonth: z.number().min(1).max(31).nullable(),
-//     endDate: z.iso.datetime().nullable(),
-//   })
-//   .nullable();
 
 // const subtasksSchema = z.array(z.string().trim()).nullable();
 
