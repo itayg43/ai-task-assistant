@@ -1,0 +1,28 @@
+{
+  "name": "ai-task-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend/shared",
+    "backend/services/*"
+  ],
+  "scripts": {
+    "test": "vitest",
+    "test:llm": "npm run test:llm -w backend/services/ai"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "@types/uuid": "^10.0.0",
+    "ts-node-dev": "^2.0.0",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.3",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "zod": "^3.23.8"
+  }
+}

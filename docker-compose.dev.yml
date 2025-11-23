@@ -1,15 +1,16 @@
 services:
   ai:
     build:
-      dockerfile: services/ai/Dockerfile.dev
+      context: .
+      dockerfile: backend/services/ai/Dockerfile.dev
     ports:
       - "3002:3002"
       - "51205:51204"
     env_file:
       - ./backend/services/ai/.env.dev
     volumes:
-      - ./backend/services/ai:/app
-      - ./backend/shared:/shared
+      - ./backend/services/ai:/app/backend/services/ai
+      - ./backend/shared:/app/backend/shared
       - /app/node_modules
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3002/health/healthz"]
@@ -21,25 +22,26 @@ services:
         - action: rebuild
           path: ./backend/services/ai/package.json
         - action: rebuild
-          path: ./backend/services/ai/package-lock.json
-        - action: rebuild
           path: ./backend/services/ai/Dockerfile.dev
         - action: rebuild
           path: ./backend/shared/package.json
         - action: rebuild
-          path: ./backend/shared/package-lock.json
+          path: ./package.json
+        - action: rebuild
+          path: ./package-lock.json
 
   tasks:
     build:
-      dockerfile: services/tasks/Dockerfile.dev
+      context: .
+      dockerfile: backend/services/tasks/Dockerfile.dev
     ports:
       - "3001:3001"
       - "51204:51204"
     env_file:
       - ./backend/services/tasks/.env.dev
     volumes:
-      - ./backend/services/tasks:/app
-      - ./backend/shared:/shared
+      - ./backend/services/tasks:/app/backend/services/tasks
+      - ./backend/shared:/app/backend/shared
       - /app/node_modules
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health/readyz"]
@@ -51,10 +53,10 @@ services:
         - action: rebuild
           path: ./backend/services/tasks/package.json
         - action: rebuild
-          path: ./backend/services/tasks/package-lock.json
-        - action: rebuild
           path: ./backend/services/tasks/Dockerfile.dev
         - action: rebuild
           path: ./backend/shared/package.json
         - action: rebuild
-          path: ./backend/shared/package-lock.json
+          path: ./package.json
+        - action: rebuild
+          path: ./package-lock.json

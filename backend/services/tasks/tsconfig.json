@@ -3,7 +3,7 @@
     "target": "es2016",
     "module": "commonjs",
     "outDir": "dist/",
-    "rootDir": "src/",
+    "rootDirs": ["src", "../../shared/src"],
     "sourceMap": true,
     "strict": true,
     "esModuleInterop": true,
@@ -11,7 +11,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../../shared/dist/*"],
+      "@shared/*": ["../../shared/src/*"],
       "@constants": ["src/constants"],
       "@types": ["src/types"],
       "@clients/*": ["src/clients/*"],

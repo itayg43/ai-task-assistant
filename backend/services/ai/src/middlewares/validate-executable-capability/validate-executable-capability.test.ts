@@ -45,7 +45,9 @@ describe("validateExecutableCapability", () => {
       },
     };
     mockRes = {
-      locals: {},
+      locals: {
+        requestId: "test-request-id",
+      },
     };
     mockNext = vi.fn();
   });
