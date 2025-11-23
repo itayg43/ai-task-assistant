@@ -5,5 +5,7 @@ export const createTaskHandler = async (
   naturalLanguage: string,
   config: ParseTaskConfig
 ) => {
-  return await parseTask(naturalLanguage, config);
+  const response = await parseTask(naturalLanguage, config);
+
+  return response.result;
 };

@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
+import { DEFAULT_PARSE_TASK_CONFIG } from "@constants";
 import { CreateTaskInput } from "@schemas/tasks-schemas";
 import { createTaskHandler } from "@services/tasks-service";
-import { DEFAULT_PARSE_TASK_CONFIG } from "@constants";
 
 export const createTask = async (
   req: Request<{}, unknown, CreateTaskInput["body"]>,

@@ -7,4 +7,5 @@ export type ParsedTask = {
     score: number;
     reason: string;
   };
+  subtasks: string[] | null;
 };
