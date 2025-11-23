@@ -4,21 +4,28 @@ import {
   ParseTaskInputConfig,
   ParseTaskOutputCore,
   ParseTaskOutputCoreV2,
+  ParseTaskOutputSubtasks,
 } from "@capabilities/parse-task/parse-task-types";
-import { createParseTaskCorePrompt } from "@capabilities/parse-task/prompts";
+import {
+  createParseTaskCorePrompt,
+  createParseTaskSubtasksPrompt,
+} from "@capabilities/parse-task/prompts";
 import { executeParse } from "@clients/openai";
 import { env } from "@config/env";
+import { createLogger } from "@shared/config/create-logger";
 import { BadRequestError } from "@shared/errors";
 import { exhaustiveSwitch } from "@shared/utils/exhaustive-switch";
 import { CapabilityResponse } from "@types";
+import {
+  PARSE_TASK_CAPABILITY,
+  PARSE_TASK_CORE_OPERATION,
+  PARSE_TASK_SUBTASKS_OPERATION,
+} from "../parse-task-constants";
 import { ParseTaskCorePromptVersion } from "../prompts/core";
+import { ParseTaskSubtasksPromptVersion } from "../prompts/subtasks";
 
-/**
- * Core handler that processes parse task requests based on prompt version.
- * Normalizes v1 and v2 responses to a consistent shape:
- * - v1: Returns executeParse result directly (output is ParseTaskOutputCore)
- * - v2: Normalizes response (extracts task from success, throws BadRequestError on error)
- */
+const logger = createLogger("parseTaskHandler");
+
 const coreHandler = async (
   promptVersion: ParseTaskCorePromptVersion,
   naturalLanguage: string,
@@ -34,7 +41,8 @@ const coreHandler = async (
   return exhaustiveSwitch(promptVersion, {
     v1: async () => {
       return await executeParse<ParseTaskOutputCore>(
-        "parse-task",
+        PARSE_TASK_CAPABILITY,
+        PARSE_TASK_CORE_OPERATION,
         naturalLanguage,
         prompt,
         promptVersion,
@@ -44,7 +52,8 @@ const coreHandler = async (
     v2: async () => {
       const { openaiResponseId, usage, output, durationMs } =
         await executeParse<ParseTaskOutputCoreV2>(
-          "parse-task",
+          PARSE_TASK_CAPABILITY,
+          PARSE_TASK_CORE_OPERATION,
           naturalLanguage,
           prompt,
           promptVersion,
@@ -71,6 +80,39 @@ const coreHandler = async (
   });
 };
 
+const subtasksHandler = async (
+  promptVersion: ParseTaskSubtasksPromptVersion,
+  naturalLanguage: string,
+  requestId: string
+) => {
+  try {
+    const prompt = createParseTaskSubtasksPrompt(
+      promptVersion,
+      naturalLanguage
+    );
+
+    const response = await executeParse<ParseTaskOutputSubtasks>(
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_SUBTASKS_OPERATION,
+      naturalLanguage,
+      prompt,
+      promptVersion,
+      requestId
+    );
+
+    return {
+      ...response,
+      output: response.output.subtasks,
+    };
+  } catch (error) {
+    logger.warn("Create subtasks failed, will be set with default null.", {
+      requestId,
+    });
+
+    return null;
+  }
+};
+
 export const parseTaskHandler = async (
   input: ParseTaskInput,
   requestId: string
@@ -85,12 +127,31 @@ export const parseTaskHandler = async (
     requestId
   );
 
+  const subtasksPromptVersion = env.PARSE_TASK_SUBTASKS_PROMPT_VERSION;
+  const subtasksResponse = await subtasksHandler(
+    subtasksPromptVersion,
+    naturalLanguage,
+    requestId
+  );
+
   return {
     openaiMetadata: {
-      responseId: coreResponse.openaiResponseId,
-      tokens: coreResponse.usage.tokens,
-      durationMs: coreResponse.durationMs,
+      core: {
+        responseId: coreResponse.openaiResponseId,
+        tokens: coreResponse.usage.tokens,
+        durationMs: coreResponse.durationMs,
+      },
+      ...(subtasksResponse && {
+        subtasks: {
+          responseId: subtasksResponse.openaiResponseId,
+          tokens: subtasksResponse.usage.tokens,
+          durationMs: subtasksResponse.durationMs,
+        },
+      }),
     },
-    result: coreResponse.output,
+    result: {
+      ...coreResponse.output,
+      subtasks: subtasksResponse?.output || null,
+    },
   };
 };

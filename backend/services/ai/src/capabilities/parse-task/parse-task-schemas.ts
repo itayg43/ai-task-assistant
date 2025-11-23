@@ -41,8 +41,20 @@ export const parseTaskOutputCoreSchema = z.object({
   priority: parseTaskOutputCorePrioritySchema,
 });
 
+// Internal schema for the actual subtasks array
+const parseTaskOutputSubtasksArraySchema = z
+  .array(z.string().trim().nonempty())
+  .min(3)
+  .max(7)
+  .nullable();
+
+// Wrapper object schema for OpenAI API
+export const parseTaskOutputSubtasksSchema = z.object({
+  subtasks: parseTaskOutputSubtasksArraySchema,
+});
+
 export const parseTaskOutputSchema = parseTaskOutputCoreSchema.extend({
-  // subtasks: subtasksSchema,
+  subtasks: parseTaskOutputSubtasksArraySchema,
 });
 
 const parseTaskOutputCoreV2ErrorSchema = z.object({
@@ -58,7 +70,6 @@ export const parseTaskOutputCoreV2Schema = z
   })
   .refine(
     (data) => {
-      // When success is true, task must be non-null and error must be null
       if (data.success === true) {
         return data.task !== null && data.error === null;
       }
@@ -72,7 +83,6 @@ export const parseTaskOutputCoreV2Schema = z
   )
   .refine(
     (data) => {
-      // When success is false, error must be non-null and task must be null
       if (data.success === false) {
         return data.error !== null && data.task === null;
       }
@@ -85,14 +95,6 @@ export const parseTaskOutputCoreV2Schema = z
     }
   );
 
-// const subtasksSchema = z.array(z.string().trim()).nullable();
-
-// Note: We use a single object schema with nullable fields and refinements instead of
-// a discriminated union (z.discriminatedUnion) because OpenAI's structured output API
-// requires a single object type. Unions (discriminated or regular) are not supported
-// and will result in an error: "schema must be a JSON Schema of 'type: \"object\"'".
-// The refinements enforce the conditional logic: when overallPass is true, both fields
-// must be null; when false, both fields are required (non-null).
 export const parseTaskOutputJudgeSchema = z
   .object({
     overallPass: z.boolean(),
@@ -105,7 +107,6 @@ export const parseTaskOutputJudgeSchema = z
   })
   .refine(
     (data) => {
-      // When overallPass is true, explanation and suggestedPromptImprovements must be null
       if (data.overallPass === true) {
         return (
           data.explanation === null && data.suggestedPromptImprovements === null
@@ -121,7 +122,6 @@ export const parseTaskOutputJudgeSchema = z
   )
   .refine(
     (data) => {
-      // When overallPass is false, explanation and suggestedPromptImprovements are required
       if (data.overallPass === false) {
         return (
           data.explanation !== null &&

@@ -8,6 +8,7 @@ import {
   ParseTaskOutput,
   ParseTaskOutputCore,
   ParseTaskOutputCoreV2,
+  ParseTaskOutputSubtasks,
 } from "@capabilities/parse-task/parse-task-types";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import {
@@ -34,7 +35,7 @@ export const mockParseTaskInputConfig: ParseTaskInputConfig = {
   },
 };
 
-const mockParseTaskOutputCore: ParseTaskOutputCore = {
+export const mockParseTaskOutputCore: ParseTaskOutputCore = {
   title: "Submit Q2 report",
   dueDate: "2024-01-19T23:59:59Z",
   category: "work",
@@ -64,17 +65,24 @@ export const mockParseTaskSuccessOutputCoreV2: ParseTaskOutputCoreV2 = {
   error: null,
 };
 
+export const mockParseTaskOutputSubtasks: ParseTaskOutputSubtasks = {
+  subtasks: null,
+};
+
 export const mockParseTaskOutput: ParseTaskOutput = {
   ...mockParseTaskOutputCore,
+  subtasks: null,
 };
 
 export const mockParseTaskCapabilityResponse: CapabilityResponse<
   typeof parseTaskOutputSchema
 > = {
   openaiMetadata: {
-    responseId: mockOpenaiResponseId,
-    tokens: mockOpenaiTokenUsage,
-    durationMs: mockOpenaiDurationMs,
+    core: {
+      responseId: mockOpenaiResponseId,
+      tokens: mockOpenaiTokenUsage,
+      durationMs: mockOpenaiDurationMs,
+    },
   },
   result: mockParseTaskOutput,
 };

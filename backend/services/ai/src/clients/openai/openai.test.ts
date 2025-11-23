@@ -2,10 +2,14 @@ import OpenAI from "openai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  PARSE_TASK_CAPABILITY,
+  PARSE_TASK_CORE_OPERATION,
+} from "@capabilities/parse-task/parse-task-constants";
+import {
   mockNaturalLanguage,
   mockParseTaskOutput,
 } from "@capabilities/parse-task/parse-task-mocks";
-import { CAPABILITY, CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
+import { CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
 import {
   mockOpenaiDurationMs,
   mockOpenaiRequestId,
@@ -56,8 +60,6 @@ describe("executeParse", () => {
   let mockedOpenaiParse: Mocked<any>;
   let mockedWithDurationAsync: Mocked<typeof withDurationAsync>;
 
-  const mockCapability = CAPABILITY.PARSE_TASK;
-
   beforeEach(async () => {
     const { openai } = await import("./openai");
     mockedOpenaiParse = vi.mocked(openai.responses.parse);
@@ -88,7 +90,8 @@ describe("executeParse", () => {
 
   it("should execute parse successfully and return structured result", async () => {
     const result = await executeParse(
-      mockCapability,
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_CORE_OPERATION,
       mockNaturalLanguage,
       mockPrompt,
       mockPromptVersion,
@@ -119,7 +122,8 @@ describe("executeParse", () => {
 
     try {
       await executeParse(
-        mockCapability,
+        PARSE_TASK_CAPABILITY,
+        PARSE_TASK_CORE_OPERATION,
         mockNaturalLanguage,
         mockPrompt,
         mockPromptVersion,
@@ -150,7 +154,8 @@ describe("executeParse", () => {
 
     try {
       await executeParse(
-        mockCapability,
+        PARSE_TASK_CAPABILITY,
+        PARSE_TASK_CORE_OPERATION,
         mockNaturalLanguage,
         mockPrompt,
         mockPromptVersion,
@@ -181,7 +186,8 @@ describe("executeParse", () => {
 
     try {
       await executeParse(
-        mockCapability,
+        PARSE_TASK_CAPABILITY,
+        PARSE_TASK_CORE_OPERATION,
         mockNaturalLanguage,
         mockPrompt,
         mockPromptVersion,

@@ -16,6 +16,7 @@ export const openai = new OpenAI({
 
 export const executeParse = async <TOutput>(
   capability: Capability,
+  operation: string,
   input: string,
   prompt: ResponseCreateParamsNonStreaming,
   promptVersion: string,
@@ -24,6 +25,7 @@ export const executeParse = async <TOutput>(
   const baseLogContext = {
     requestId,
     capability,
+    operation,
     input,
     promptVersion,
   };
