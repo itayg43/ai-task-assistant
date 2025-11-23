@@ -68,6 +68,44 @@ const testCases = [
       },
     },
   },
+  {
+    naturalLanguage:
+      "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination",
+    expected: {
+      subtasks: {
+        length: { min: 5, max: 7 },
+        contains: ["budget", "venue", "activity", "coordinate", "execute"],
+      },
+    },
+  },
+  {
+    naturalLanguage:
+      "Coordinate a product launch event including marketing campaign, logistics planning, stakeholder presentations, and customer feedback collection",
+    expected: {
+      subtasks: {
+        length: { min: 5, max: 7 },
+        contains: ["develop", "plan", "prepare", "execute", "collect"],
+      },
+    },
+  },
+  {
+    naturalLanguage:
+      "Prepare comprehensive quarterly business review with financial analysis, team performance metrics, strategic recommendations, and board presentation materials",
+    expected: {
+      subtasks: {
+        length: { min: 4, max: 7 },
+        contains: [
+          "gather",
+          "analyze",
+          "collect",
+          "evaluate",
+          "develop",
+          "create",
+          "review",
+        ],
+      },
+    },
+  },
 ] as const;
 
 const executeParseSubtasks = async (naturalLanguage: string) => {

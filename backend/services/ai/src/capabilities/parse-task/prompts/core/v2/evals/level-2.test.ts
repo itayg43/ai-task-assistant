@@ -53,6 +53,18 @@ const clearInputTestCases = [
     naturalLanguage:
       "Submit Q2 report by next Friday and mark it high priority under Work",
   },
+  {
+    naturalLanguage:
+      "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination",
+  },
+  {
+    naturalLanguage:
+      "Coordinate a product launch event including marketing campaign, logistics planning, stakeholder presentations, and customer feedback collection",
+  },
+  {
+    naturalLanguage:
+      "Prepare comprehensive quarterly business review with financial analysis, team performance metrics, strategic recommendations, and board presentation materials",
+  },
 ] as const;
 
 const logJudgeResult = (
