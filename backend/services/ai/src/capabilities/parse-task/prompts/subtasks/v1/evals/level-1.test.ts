@@ -16,7 +16,7 @@ const testCases = [
     expected: {
       subtasks: {
         length: { min: 3, max: 7 },
-        contains: ["book", "reserve", "pack"],
+        contains: ["research", "book", "reserve", "plan", "pack"],
       },
     },
   },
@@ -46,7 +46,7 @@ const testCases = [
     expected: {
       subtasks: {
         length: { min: 3, max: 7 },
-        contains: ["review", "prepare", "send", "book"],
+        contains: ["review", "gather", "prepare", "confirm"],
       },
     },
   },
@@ -64,7 +64,7 @@ const testCases = [
     expected: {
       subtasks: {
         length: { min: 3, max: 7 },
-        contains: ["send", "order", "decorate", "hire"],
+        contains: ["send", "plan", "prepare", "organize"],
       },
     },
   },
