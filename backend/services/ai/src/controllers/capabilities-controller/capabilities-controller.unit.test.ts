@@ -30,7 +30,7 @@ vi.mock(
   })
 );
 
-describe("executeCapability (unit)", () => {
+describe("capabilitiesController (unit)", () => {
   const mockExecutorResult = {
     result: {
       openaiMetadata: {

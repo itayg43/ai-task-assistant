@@ -117,9 +117,6 @@ The output must follow one of two structures based on the evaluation result:
 `;
 
   return {
-    // Use a more powerful model for evaluation to ensure accurate assessment of the
-    // cheaper model's output quality. If the mini model (gpt-4.1-mini) consistently
-    // produces good results, we can confidently use it in production to optimize costs.
     model: "gpt-4.1",
     instructions: prompt,
     input: "Please evaluate the task parsing output.",
