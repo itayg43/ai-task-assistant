@@ -111,6 +111,54 @@ const clearInputTestCases = [
       },
     },
   },
+  {
+    naturalLanguage:
+      "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination",
+    expected: {
+      title: {
+        contains: "plan",
+      },
+      dueDate: "2024-02-15",
+      category: ["work"],
+      priority: {
+        level: ["medium", "high"],
+        minScore: 4,
+        maxScore: 8,
+      },
+    },
+  },
+  {
+    naturalLanguage:
+      "Coordinate a product launch event including marketing campaign, logistics planning, stakeholder presentations, and customer feedback collection",
+    expected: {
+      title: {
+        contains: "coordinate",
+      },
+      dueDate: null,
+      category: ["work"],
+      priority: {
+        level: ["high", "critical"],
+        minScore: 7,
+        maxScore: 10,
+      },
+    },
+  },
+  {
+    naturalLanguage:
+      "Prepare comprehensive quarterly business review with financial analysis, team performance metrics, strategic recommendations, and board presentation materials",
+    expected: {
+      title: {
+        contains: "prepare",
+      },
+      dueDate: null,
+      category: ["work"],
+      priority: {
+        level: ["high", "critical"],
+        minScore: 7,
+        maxScore: 10,
+      },
+    },
+  },
 ] as const;
 
 const executeParseTask = async (naturalLanguage: string) => {
