@@ -6,6 +6,7 @@
     "rootDir": "src",
     "declaration": true,
     "declarationMap": true,
+    "sourceMap": true,
     "emitDeclarationOnly": false,
     "strict": true,
     "esModuleInterop": true,
