@@ -16,6 +16,11 @@ import { createLogger } from "@shared/config/create-logger";
 import { BadRequestError } from "@shared/errors";
 import { exhaustiveSwitch } from "@shared/utils/exhaustive-switch";
 import { CapabilityResponse } from "@types";
+import {
+  PARSE_TASK_CAPABILITY,
+  PARSE_TASK_CORE_OPERATION,
+  PARSE_TASK_SUBTASKS_OPERATION,
+} from "../parse-task-constants";
 import { ParseTaskCorePromptVersion } from "../prompts/core";
 import { ParseTaskSubtasksPromptVersion } from "../prompts/subtasks";
 
@@ -36,7 +41,8 @@ const coreHandler = async (
   return exhaustiveSwitch(promptVersion, {
     v1: async () => {
       return await executeParse<ParseTaskOutputCore>(
-        "parse-task",
+        PARSE_TASK_CAPABILITY,
+        PARSE_TASK_CORE_OPERATION,
         naturalLanguage,
         prompt,
         promptVersion,
@@ -46,7 +52,8 @@ const coreHandler = async (
     v2: async () => {
       const { openaiResponseId, usage, output, durationMs } =
         await executeParse<ParseTaskOutputCoreV2>(
-          "parse-task",
+          PARSE_TASK_CAPABILITY,
+          PARSE_TASK_CORE_OPERATION,
           naturalLanguage,
           prompt,
           promptVersion,
@@ -85,7 +92,8 @@ const subtasksHandler = async (
     );
 
     const response = await executeParse<ParseTaskOutputSubtasks>(
-      "parse-task",
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_SUBTASKS_OPERATION,
       naturalLanguage,
       prompt,
       promptVersion,

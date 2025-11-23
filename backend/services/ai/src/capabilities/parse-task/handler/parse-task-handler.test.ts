@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseTaskHandler } from "@capabilities/parse-task/handler";
 import {
+  PARSE_TASK_CAPABILITY,
+  PARSE_TASK_CORE_OPERATION,
+  PARSE_TASK_SUBTASKS_OPERATION,
+} from "@capabilities/parse-task/parse-task-constants";
+import {
   mockNaturalLanguage,
   mockParseTaskErrorOutputCoreV2,
   mockParseTaskInputConfig,
@@ -124,7 +129,8 @@ describe("parseTaskHandler", () => {
       mockParseTaskInputConfig
     );
     expect(mockedExecuteParse).toHaveBeenCalledWith(
-      mockParseTaskValidatedInput.params.capability,
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_CORE_OPERATION,
       mockNaturalLanguage,
       mockPrompt,
       mockPromptVersion,
@@ -135,7 +141,8 @@ describe("parseTaskHandler", () => {
       mockNaturalLanguage
     );
     expect(mockedExecuteParse).toHaveBeenCalledWith(
-      mockParseTaskValidatedInput.params.capability,
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_SUBTASKS_OPERATION,
       mockNaturalLanguage,
       mockPrompt,
       mockPromptVersion,

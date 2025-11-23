@@ -1,11 +1,15 @@
+import { randomUUID } from "crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  PARSE_TASK_CAPABILITY,
+  PARSE_TASK_CORE_OPERATION,
+} from "@capabilities/parse-task/parse-task-constants";
 import { mockParseTaskInputConfig } from "@capabilities/parse-task/parse-task-mocks";
 import { parseTaskOutputCoreSchema } from "@capabilities/parse-task/parse-task-schemas";
 import { ParseTaskOutputCore } from "@capabilities/parse-task/parse-task-types";
 import { parseTaskCorePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
 import { executeParse } from "@clients/openai";
-import { randomUUID } from "crypto";
 
 const testCases = [
   {
@@ -138,7 +142,8 @@ const executeParseTask = async (naturalLanguage: string) => {
   );
 
   return await executeParse<ParseTaskOutputCore>(
-    "parse-task",
+    PARSE_TASK_CAPABILITY,
+    PARSE_TASK_CORE_OPERATION,
     naturalLanguage,
     prompt,
     "v1",

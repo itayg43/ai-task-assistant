@@ -3,6 +3,10 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  PARSE_TASK_CAPABILITY,
+  PARSE_TASK_SUBTASKS_OPERATION,
+} from "@capabilities/parse-task/parse-task-constants";
 import { parseTaskOutputJudgeSchema } from "@capabilities/parse-task/parse-task-schemas";
 import {
   ParseTaskOutputJudge,
@@ -27,7 +31,8 @@ const executeParseSubtasks = async (naturalLanguage: string) => {
   const prompt = parseTaskSubtasksPromptV1(naturalLanguage);
 
   return await executeParse<ParseTaskOutputSubtasks>(
-    "parse-task",
+    PARSE_TASK_CAPABILITY,
+    PARSE_TASK_SUBTASKS_OPERATION,
     naturalLanguage,
     prompt,
     "v1",
@@ -132,7 +137,8 @@ const executeJudgeOutput = async (
   const prompt = createJudgePrompt(naturalLanguage, output);
 
   return await executeParse<ParseTaskOutputJudge>(
-    "parse-task",
+    PARSE_TASK_CAPABILITY,
+    "judge",
     naturalLanguage,
     prompt,
     "v1",

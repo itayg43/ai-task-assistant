@@ -1,5 +1,11 @@
+import { randomUUID } from "crypto";
+import { zodTextFormat } from "openai/helpers/zod";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  PARSE_TASK_CAPABILITY,
+  PARSE_TASK_CORE_OPERATION,
+} from "@capabilities/parse-task/parse-task-constants";
 import { mockParseTaskInputConfig } from "@capabilities/parse-task/parse-task-mocks";
 import { parseTaskOutputJudgeSchema } from "@capabilities/parse-task/parse-task-schemas";
 import {
@@ -10,8 +16,7 @@ import {
 } from "@capabilities/parse-task/parse-task-types";
 import { parseTaskCorePromptV2 } from "@capabilities/parse-task/prompts/core/v2";
 import { executeParse } from "@clients/openai";
-import { randomUUID } from "crypto";
-import { zodTextFormat } from "openai/helpers/zod";
+
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
 const TEST_TIMEOUT = 15000;
@@ -97,7 +102,8 @@ const executeParseTask = async (naturalLanguage: string) => {
   );
 
   return await executeParse<ParseTaskOutputCoreV2>(
-    "parse-task",
+    PARSE_TASK_CAPABILITY,
+    PARSE_TASK_CORE_OPERATION,
     naturalLanguage,
     prompt,
     "v2",
@@ -223,7 +229,8 @@ const executeJudge = async (
   prompt: ResponseCreateParamsNonStreaming
 ) => {
   return await executeParse<ParseTaskOutputJudge>(
-    "parse-task",
+    PARSE_TASK_CAPABILITY,
+    "judge",
     naturalLanguage,
     prompt,
     "v2",
