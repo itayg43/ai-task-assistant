@@ -97,7 +97,7 @@ const subtasksHandler = async (
       output: response.output.subtasks,
     };
   } catch (error) {
-    logger.warn("Create subtasks failed, will be set with defualt null.", {
+    logger.warn("Create subtasks failed, will be set with default null.", {
       requestId,
     });
 
