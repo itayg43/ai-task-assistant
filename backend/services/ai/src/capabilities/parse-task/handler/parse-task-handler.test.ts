@@ -6,10 +6,15 @@ import {
   mockParseTaskErrorOutputCoreV2,
   mockParseTaskInputConfig,
   mockParseTaskOutput,
+  mockParseTaskOutputCore,
+  mockParseTaskOutputSubtasks,
   mockParseTaskSuccessOutputCoreV2,
   mockParseTaskValidatedInput,
 } from "@capabilities/parse-task/parse-task-mocks";
-import { createParseTaskCorePrompt } from "@capabilities/parse-task/prompts";
+import {
+  createParseTaskCorePrompt,
+  createParseTaskSubtasksPrompt,
+} from "@capabilities/parse-task/prompts";
 import { executeParse } from "@clients/openai";
 import { env } from "@config/env";
 import {
@@ -26,6 +31,7 @@ import { Mocked } from "@shared/types";
 vi.mock("@config/env", () => ({
   env: {
     PARSE_TASK_CORE_PROMPT_VERSION: "v1",
+    PARSE_TASK_SUBTASKS_PROMPT_VERSION: "v1",
   },
 }));
 
@@ -37,13 +43,24 @@ vi.mock("@capabilities/parse-task/prompts");
 
 describe("parseTaskHandler", () => {
   let envCorePromptVersionSpy: ReturnType<typeof vi.spyOn>;
+  let envSubtasksPromptVersionSpy: ReturnType<typeof vi.spyOn>;
 
   let mockedCreateCorePrompt: Mocked<typeof createParseTaskCorePrompt>;
+  let mockedCreateSubtasksPrompt: Mocked<typeof createParseTaskSubtasksPrompt>;
   let mockedExecuteParse: Mocked<typeof executeParse>;
 
-  const mockExecuteParseResponse = {
+  const mockExecuteParseCoreResponse = {
     openaiResponseId: mockOpenaiResponseId,
-    output: mockParseTaskOutput,
+    output: mockParseTaskOutputCore,
+    usage: {
+      tokens: mockOpenaiTokenUsage,
+    },
+    durationMs: mockOpenaiDurationMs,
+  };
+
+  const mockExecuteParseSubtasksResponse = {
+    openaiResponseId: mockOpenaiResponseId,
+    output: mockParseTaskOutputSubtasks,
     usage: {
       tokens: mockOpenaiTokenUsage,
     },
@@ -73,19 +90,32 @@ describe("parseTaskHandler", () => {
     );
     envCorePromptVersionSpy.mockReturnValue("v1");
 
+    envSubtasksPromptVersionSpy = vi.spyOn(
+      env,
+      "PARSE_TASK_SUBTASKS_PROMPT_VERSION",
+      "get"
+    );
+    envSubtasksPromptVersionSpy.mockReturnValue("v1");
+
     mockedCreateCorePrompt = vi.mocked(createParseTaskCorePrompt);
     mockedCreateCorePrompt.mockReturnValue(mockPrompt);
 
+    mockedCreateSubtasksPrompt = vi.mocked(createParseTaskSubtasksPrompt);
+    mockedCreateSubtasksPrompt.mockReturnValue(mockPrompt);
+
     mockedExecuteParse = vi.mocked(executeParse);
-    mockedExecuteParse.mockResolvedValue(mockExecuteParseResponse);
+    mockedExecuteParse
+      .mockResolvedValueOnce(mockExecuteParseCoreResponse)
+      .mockResolvedValueOnce(mockExecuteParseSubtasksResponse);
   });
 
   afterEach(() => {
     envCorePromptVersionSpy.mockRestore();
+    envSubtasksPromptVersionSpy.mockRestore();
     vi.clearAllMocks();
   });
 
-  it("should call create core prompt and execute parse", async () => {
+  it("should call create prompts and execute parse with each prompt", async () => {
     await executeHandler();
 
     expect(mockedCreateCorePrompt).toHaveBeenCalledWith(
@@ -100,39 +130,113 @@ describe("parseTaskHandler", () => {
       mockPromptVersion,
       mockAiServiceRequestId
     );
+    expect(mockedCreateSubtasksPrompt).toHaveBeenCalledWith(
+      mockPromptVersion,
+      mockNaturalLanguage
+    );
+    expect(mockedExecuteParse).toHaveBeenCalledWith(
+      mockParseTaskValidatedInput.params.capability,
+      mockNaturalLanguage,
+      mockPrompt,
+      mockPromptVersion,
+      mockAiServiceRequestId
+    );
   });
 
-  it("should handle error", async () => {
+  it("should return core result with null subtasks without metadata when subtasks call throws error", async () => {
     const apiError = new Error("ExecuteParse Error");
-    mockedExecuteParse.mockRejectedValue(apiError);
 
-    await expect(executeHandler()).rejects.toThrow(apiError);
+    mockedExecuteParse.mockReset();
+    mockedExecuteParse
+      .mockResolvedValueOnce(mockExecuteParseCoreResponse)
+      .mockRejectedValueOnce(apiError);
+
+    const response = await executeHandler();
+
+    expect(response.openaiMetadata.core).toEqual({
+      responseId: mockOpenaiResponseId,
+      tokens: mockOpenaiTokenUsage,
+      durationMs: mockOpenaiDurationMs,
+    });
+    expect(response.openaiMetadata.subtasks).toBeUndefined();
+    expect(response.result).toEqual({
+      ...mockParseTaskOutput,
+      subtasks: null,
+    });
   });
 
   describe("v1 core behavior", () => {
     it("should handle success", async () => {
       const response = await executeHandler();
 
-      expect(response.openaiMetadata.responseId).toBe(mockOpenaiResponseId);
-      expect(response.openaiMetadata.tokens).toEqual(mockOpenaiTokenUsage);
-      expect(response.openaiMetadata.durationMs).toBe(mockOpenaiDurationMs);
-      expect(response.result).toEqual(mockParseTaskOutput);
+      expect(response.openaiMetadata.core).toEqual({
+        responseId: mockOpenaiResponseId,
+        tokens: mockOpenaiTokenUsage,
+        durationMs: mockOpenaiDurationMs,
+      });
+      expect(response.openaiMetadata.subtasks).toEqual({
+        responseId: mockOpenaiResponseId,
+        tokens: mockOpenaiTokenUsage,
+        durationMs: mockOpenaiDurationMs,
+      });
+      expect(response.result).toEqual({
+        ...mockParseTaskOutput,
+        subtasks: null,
+      });
     });
   });
 
   describe("v2 core behavior", () => {
     beforeEach(() => {
       envCorePromptVersionSpy.mockReturnValue("v2");
+
+      mockedExecuteParse.mockReset();
+      mockedExecuteParse
+        .mockResolvedValueOnce({
+          openaiResponseId: mockOpenaiResponseId,
+          output: mockParseTaskSuccessOutputCoreV2,
+          usage: {
+            tokens: mockOpenaiTokenUsage,
+          },
+          durationMs: mockOpenaiDurationMs,
+        })
+        .mockResolvedValueOnce(mockExecuteParseSubtasksResponse);
+    });
+
+    it("should handle success", async () => {
+      const response = await executeHandler();
+
+      expect(response.openaiMetadata.core).toEqual({
+        responseId: mockOpenaiResponseId,
+        tokens: mockOpenaiTokenUsage,
+        durationMs: mockOpenaiDurationMs,
+      });
+      expect(response.openaiMetadata.subtasks).toEqual({
+        responseId: mockOpenaiResponseId,
+        tokens: mockOpenaiTokenUsage,
+        durationMs: mockOpenaiDurationMs,
+      });
+      expect(response.result).toEqual({
+        ...mockParseTaskOutput,
+        subtasks: null,
+      });
     });
 
     it("should throw BadRequestError for vague input", async () => {
-      mockedExecuteParse.mockResolvedValue({
-        ...mockExecuteParseResponse,
+      mockedExecuteParse.mockReset();
+      mockedExecuteParse.mockResolvedValueOnce({
+        openaiResponseId: mockOpenaiResponseId,
         output: mockParseTaskErrorOutputCoreV2,
+        usage: {
+          tokens: mockOpenaiTokenUsage,
+        },
+        durationMs: mockOpenaiDurationMs,
       });
 
       try {
         await executeHandler();
+
+        expect.fail("Should have thrown BadRequestError");
       } catch (error) {
         expect(error).toBeInstanceOf(BadRequestError);
 
@@ -145,20 +249,6 @@ describe("parseTaskHandler", () => {
         expect(context?.aiServiceRequestId).toBe(mockAiServiceRequestId);
         expect(context?.openaiResponseId).toBe(mockOpenaiResponseId);
       }
-    });
-
-    it("should handle success", async () => {
-      mockedExecuteParse.mockResolvedValue({
-        ...mockExecuteParseResponse,
-        output: mockParseTaskSuccessOutputCoreV2,
-      });
-
-      const response = await executeHandler();
-
-      expect(response.openaiMetadata.responseId).toBe(mockOpenaiResponseId);
-      expect(response.openaiMetadata.tokens).toEqual(mockOpenaiTokenUsage);
-      expect(response.openaiMetadata.durationMs).toBe(mockOpenaiDurationMs);
-      expect(response.result).toEqual(mockParseTaskOutput);
     });
   });
 });
