@@ -1,10 +1,15 @@
 export type AiCapabilityResponse<T> = {
-  metadata: {
-    tokens: {
-      input: number;
-      output: number;
-    };
-    durationMs: number;
-  };
+  openaiMetadata: Record<
+    string,
+    {
+      responseId: string;
+      tokens: {
+        input: number;
+        output: number;
+      };
+      durationMs: number;
+    }
+  >;
   result: T;
+  aiServiceRequestId: string;
 };
