@@ -66,15 +66,18 @@ export const mockParseTaskSuccessOutputCoreV2: ParseTaskOutputCoreV2 = {
 
 export const mockParseTaskOutput: ParseTaskOutput = {
   ...mockParseTaskOutputCore,
+  subtasks: null,
 };
 
 export const mockParseTaskCapabilityResponse: CapabilityResponse<
   typeof parseTaskOutputSchema
 > = {
   openaiMetadata: {
-    responseId: mockOpenaiResponseId,
-    tokens: mockOpenaiTokenUsage,
-    durationMs: mockOpenaiDurationMs,
+    core: {
+      responseId: mockOpenaiResponseId,
+      tokens: mockOpenaiTokenUsage,
+      durationMs: mockOpenaiDurationMs,
+    },
   },
   result: mockParseTaskOutput,
 };

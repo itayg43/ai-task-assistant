@@ -5,6 +5,7 @@ import {
   parseTaskInputSchema,
   parseTaskOutputCoreSchema,
   parseTaskOutputSchema,
+  parseTaskOutputSubtasksSchema,
 } from "@capabilities/parse-task/parse-task-schemas";
 
 export type ParseTaskInputConfig = z.infer<typeof parseTaskInputConfigSchema>;
@@ -28,11 +29,12 @@ export type ParseTaskOutputCoreV2 =
       };
     };
 
+export type ParseTaskOutputSubtasks = z.infer<
+  typeof parseTaskOutputSubtasksSchema
+>;
+
 export type ParseTaskOutput = z.infer<typeof parseTaskOutputSchema>;
 
-// Discriminated union type for better TypeScript type narrowing.
-// The schema uses a single object with nullable fields for OpenAI compatibility,
-// but this type provides better type inference and narrowing in TypeScript code.
 export type ParseTaskOutputJudge =
   | {
       overallPass: true;
