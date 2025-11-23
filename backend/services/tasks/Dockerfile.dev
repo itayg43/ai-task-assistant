@@ -6,17 +6,25 @@ WORKDIR /app
 
 RUN apk add --no-cache curl
 
-COPY shared /app/shared
-WORKDIR /app/shared
-RUN npm install && npm run build
+# Copy root package files
+COPY package.json package-lock.json ./
 
-WORKDIR /app
-COPY services/tasks/package.json services/tasks/package-lock.json ./
+# Copy service package files
+COPY backend/shared/package.json backend/shared/
+COPY backend/services/tasks/package.json backend/services/tasks/
+
+# Install dependencies from root
 RUN npm install
 
-COPY services/tasks/ .
+# Copy shared source code and build
+COPY backend/shared backend/shared
+RUN npm run build -w backend/shared
+
+# Copy service source code
+COPY backend/services/tasks backend/services/tasks
 
 EXPOSE 3001
 EXPOSE 51204
 
-CMD ["npm", "run", "start:dev"]
+# Run the service
+CMD ["npm", "run", "start:dev", "-w", "backend/services/tasks"]

@@ -5,20 +5,31 @@
       "name": "Attach to Tasks Service (Docker)",
       "port": 51204,
       "request": "attach",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "type": "node",
       "address": "localhost",
       "localRoot": "${workspaceFolder}/backend/services/tasks",
-      "remoteRoot": "/app",
+      "remoteRoot": "/app/backend/services/tasks",
       "restart": true,
       "sourceMapPathOverrides": {
-        "/app/*": "${workspaceFolder}/backend/services/tasks/*",
-        "/shared/*": "${workspaceFolder}/backend/shared/*"
+        "/app/backend/services/tasks/*": "${workspaceFolder}/backend/services/tasks/*",
+        "/app/backend/shared/*": "${workspaceFolder}/backend/shared/*"
+      }
+    },
+    {
+      "name": "Attach to AI Service (Docker)",
+      "port": 51205,
+      "request": "attach",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node",
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}/backend/services/ai",
+      "remoteRoot": "/app/backend/services/ai",
+      "restart": true,
+      "sourceMapPathOverrides": {
+        "/app/backend/services/ai/*": "${workspaceFolder}/backend/services/ai/*",
+        "/app/backend/shared/*": "${workspaceFolder}/backend/shared/*"
       }
     }
   ]
 }
-
-

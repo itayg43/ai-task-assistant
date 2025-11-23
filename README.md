@@ -2,7 +2,9 @@
 
 A microservices-based system that leverages OpenAI to parse natural language task descriptions into structured, actionable data with priority scoring, categorization, and subtask generation.
 
-## Architecture
+## Overview
+
+### Architecture
 
 ```mermaid
 graph LR
@@ -16,23 +18,113 @@ graph LR
     Tasks -->|Final Response| Client
 ```
 
-### Key Architecture Features
+### Key Features
 
-- **Generic Capabilities Controller**: The AI service implements a flexible, extensible capability system where new AI capabilities can be added without modifying core controller logic. Each capability defines its own handler, input/output schemas, and validation rules, enabling type-safe, maintainable AI functionality.
+- **Microservices Architecture**: Independent, containerized services that communicate over HTTP
+- **Monorepo Code Organization**: NPM Workspaces for simplified dependency management and code sharing
+- **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
+- **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
+- **Distributed Rate Limiting**: Token bucket algorithm with Redis and Redlock
+- **Type Safety**: TypeScript and Zod schemas throughout the stack
 
-## Tech Stack
+### Tech Stack
 
 - **Runtime**: Node.js with TypeScript
 - **Framework**: Express.js
 - **AI**: OpenAI API
 - **Caching/Locking**: Redis with Redlock
 - **Containerization**: Docker & Docker Compose
-- **Testing**: Vitest (unit, integration, LLM evaluation tests)
+- **Monorepo**: NPM Workspaces
+- **Testing**: Vitest (unit, integration, prompt versioning and evaluation)
 - **Validation**: Zod
 
-## Example
+## Getting Started
 
-### Input
+### Prerequisites
+
+- Docker & Docker Compose
+- OpenAI API key
+
+### Quick Start
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd ai-task-assistant
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**
+
+   ```bash
+   # AI Service
+   cd backend/services/ai
+   cp .env.example .env.dev
+   # Edit .env.dev with your OpenAI API key
+   cp .env.example .env.test
+   # Edit .env.test with your OpenAI API key for prompt evaluation tests
+
+   # Tasks Service
+   cd backend/services/tasks
+   cp .env.example .env.dev
+   # Edit .env.dev with service configuration
+   ```
+
+4. **Start services**
+
+   ```bash
+   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+   ```
+
+   Services will be available at:
+
+   - **Tasks Service**: `http://localhost:3001`
+   - **AI Service**: `http://localhost:3002`
+   - **Redis**: `localhost:6379`
+
+### Additional Commands
+
+```bash
+# Type checking (inside container)
+docker exec -it <container_id> sh
+npm run type-check
+
+# Access Redis CLI
+docker exec -it <redis_container_id> redis-cli
+
+# View logs
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f ai
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f tasks
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run prompt evaluation tests (requires .env.test)
+npm run test:llm
+
+# Run tests for specific workspace
+npm test -w backend/services/ai
+npm test -w backend/services/tasks
+npm test -w backend/shared
+```
+
+## API Examples
+
+> **Note**: The examples below show both current and planned API responses. As part of planned improvements (see Future Plans), the Tasks service will return cleaner responses: only the parsed task data on success (200), validation messages without internal IDs (400), and user-friendly error messages (500). Technical metadata and request IDs will be kept in server logs for debugging and monitoring.
+
+### Task Parsing
+
+**Request:**
 
 ```json
 {
@@ -53,25 +145,19 @@ graph LR
 }
 ```
 
-### Output
+**Response (Current):**
 
 ```json
 {
   "openaiMetadata": {
     "core": {
       "responseId": "resp_010e5412599d42a70069227a22ef4881928d5239648da81938",
-      "tokens": {
-        "input": 1017,
-        "output": 72
-      },
+      "tokens": { "input": 1017, "output": 72 },
       "durationMs": 2552.31
     },
     "subtasks": {
-      "responseId": "resp_0a542afcfb46d5250069227a255160819d86263064feb1c920",
-      "tokens": {
-        "input": 944,
-        "output": 38
-      },
+      "responseId": "resp_0a542afcfb46d5250069227a225160819d86263064feb1c920",
+      "tokens": { "input": 944, "output": 38 },
       "durationMs": 2281.7
     }
   },
@@ -98,22 +184,44 @@ graph LR
 }
 ```
 
-### Input Validation Example
+**Response (Planned - cleaner format):**
 
-When the input is too vague or ambiguous, the system returns a helpful validation response:
+```json
+{
+  "title": "Prepare Quarterly Board Presentation",
+  "dueDate": "2025-11-27T14:00:00.000Z",
+  "category": "work",
+  "priority": {
+    "level": "critical",
+    "score": 10,
+    "reason": "Task is critical for budget approval and has a fixed deadline next Thursday 2 PM"
+  },
+  "subtasks": [
+    "Gather Q3 Financial Data",
+    "Compile Performance Metrics",
+    "Conduct Competitive Analysis",
+    "Develop Q4 Strategy",
+    "Create Presentation Slides",
+    "Review Presentation Content",
+    "Finalize And Submit Presentation"
+  ]
+}
+```
 
-**Input:**
+### Input Validation
+
+When input is too vague, the system provides helpful suggestions:
+
+**Request:**
 
 ```json
 {
   "naturalLanguage": "Plan something soon",
-  "config": {
-    ...
-  }
+  "config": { ... }
 }
 ```
 
-**Validation Response (HTTP 400):**
+**Response (HTTP 400 - Current):**
 
 ```json
 {
@@ -128,11 +236,24 @@ When the input is too vague or ambiguous, the system returns a helpful validatio
 }
 ```
 
-### OpenAI API Error Example
+**Response (HTTP 400 - Planned):**
 
-When the OpenAI API key is invalid or the service is unavailable, the system returns a structured error response with request IDs for debugging:
+```json
+{
+  "message": "The input is too vague and generic, lacking a specific task or clear objective to plan.",
+  "suggestions": [
+    "Specify what exactly you want to plan (e.g., a meeting, a trip, an event).",
+    "Provide a timeframe or deadline for the planning.",
+    "Clarify the context or category of the plan (work, personal, etc.)."
+  ]
+}
+```
 
-**Error Response (HTTP 500):**
+### Error Handling
+
+When the OpenAI API encounters an error, the system returns a structured error response:
+
+**Response (HTTP 500 - Current):**
 
 ```json
 {
@@ -142,122 +263,55 @@ When the OpenAI API key is invalid or the service is unavailable, the system ret
 }
 ```
 
-## Future Plans
+**Response (HTTP 500 - Planned):**
 
-- [ ] **PostgreSQL Integration**: Implement PostgreSQL database with Prisma ORM inside Docker for persistent task storage
-- [ ] **Token Usage Rate Limiting**: Add rate limiting based on OpenAI token usage for the "create" endpoint - extract token count from AI response, store in Redis with distributed locking to prevent race conditions
-- [ ] **Async AI Processing**: Implement asynchronous support in AI service using RabbitMQ with callback URLs for long-running AI operations
-- [ ] **Kubernetes Deployment**: Migrate from Docker Compose to Kubernetes using Minikube for local development
-
-## Getting Started
-
-### Prerequisites
-
-- Docker & Docker Compose
-- OpenAI API key
-
-### Setup
-
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd ai-task-assistant
-   ```
-
-2. **Configure environment variables**
-
-   For the AI service:
-
-   ```bash
-   cd backend/services/ai
-   cp .env.example .env.dev
-   # Edit .env.dev with your OpenAI API key and configuration
-   cp .env.example .env.test
-   # Edit .env.test with your OpenAI API key for LLM evaluation tests
-   ```
-
-   For the Tasks service:
-
-   ```bash
-   cd backend/services/tasks
-   cp .env.example .env.dev
-   # Edit .env.dev with service configuration
-   ```
-
-### Running Locally
-
-Start all services with hot-reload:
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+```json
+{
+  "message": "An unexpected error occurred while processing your request. Please try again later."
+}
 ```
 
-This will start:
+## Shared Library
 
-- **Tasks Service** on `http://localhost:3001`
-- **AI Service** on `http://localhost:3002`
-- **Redis** on `localhost:6379`
-
-### Running Tests
-
-#### AI Service Tests
-
-1. Find the container ID and connect to the running AI container:
-
-   ```bash
-   docker ps
-   docker exec -it <ai_container_id> sh
-   ```
-
-2. Run tests:
-
-   ```bash
-   npm run test
-   ```
-
-   Or run LLM evaluation tests (requires `.env.test`):
-
-   ```bash
-   npm run test:llm
-   ```
-
-### Additional Development Commands
-
-#### Type Checking (Watch Mode)
-
-For AI or Tasks service:
-
-```bash
-docker ps
-docker exec -it <service_container_id> sh
-npm run type-check
-```
-
-#### Access Redis CLI
-
-```bash
-docker ps
-docker exec -it <redis_container_id> redis-cli
-```
-
-### Shared Library
-
-The `backend/shared` package provides reusable components used across both services:
+The `backend/shared` package provides reusable components:
 
 - **Clients**: Redis, Redlock, HTTP client
-- **Middlewares**: Authentication, CORS, error handling, rate limiting, request/response metadata, schema validation
-- **Utilities**: Date/time helpers, retry logic, distributed locking, token bucket rate limiter, process event handlers
+- **Middlewares**: Authentication, CORS, error handling, rate limiting, schema validation
+- **Utilities**: Date/time helpers, retry logic, distributed locking, token bucket rate limiter
 - **Error Classes**: Custom error types for consistent error handling
 - **Types & Schemas**: Shared TypeScript types and Zod schemas
 
-The shared library is built as a separate npm package (`@ai-task-assistant/shared`) and is imported by both services, promoting code reuse and consistency.
+## Future Plans
 
-#### Shared Library Tests
+### Near-Term Enhancements
 
-Run tests for the shared library:
+1. **Improve Tasks Service Response Format**
 
-```bash
-cd backend/shared
-npm run test
-```
+   - Return only the parsed task data on success (remove OpenAI metadata from response)
+   - Return validation message with suggestions for vague inputs (HTTP 400)
+   - Return clean error messages for unexpected errors (HTTP 500)
+   - Keep OpenAI metadata in logs for debugging and monitoring
+
+2. **Add Tasks Service Tests**
+
+   - Unit and Integration tests for controller logic
+   - Test rate limiting behavior
+
+3. **PostgreSQL Integration**
+
+   - Add PostgreSQL service to Docker Compose
+   - Implement Prisma ORM with schema and migrations
+   - Create CRUD operations for tasks in Tasks service
+
+4. **Token Usage Rate Limiting**
+
+   - Implement rate limiting on `/tasks` create route based on OpenAI token usage
+   - Track token consumption per request using AI service response metadata
+   - Store token usage in Redis with distributed locking (Redlock) to prevent race conditions
+   - Configure per-user token limits (e.g., 10,000 tokens per hour)
+
+5. **Async AI Processing**
+   - Add message queue (RabbitMQ) to infrastructure
+   - Implement async job processing for AI requests
+   - Return job ID immediately
+   - Support webhook notifications when processing completes

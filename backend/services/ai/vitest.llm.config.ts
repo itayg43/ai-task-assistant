@@ -4,6 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
-    include: ["**/evals/**/*.test.*"],
+    include: ["src/**/evals/**/*.test.ts"],
+    testTimeout: 30000,
   },
 });
