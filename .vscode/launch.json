@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Tasks Service (Docker)",
+      "port": 51204,
+      "request": "attach",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "node",
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}/backend/services/tasks",
+      "remoteRoot": "/app",
+      "restart": true,
+      "sourceMapPathOverrides": {
+        "/app/*": "${workspaceFolder}/backend/services/tasks/*",
+        "/shared/*": "${workspaceFolder}/backend/shared/*"
+      }
+    }
+  ]
+}
+
+
