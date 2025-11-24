@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "test": "vitest",
-    "test:llm": "npm run test:llm -w backend/services/ai"
+    "test:prompts": "npm run test:prompts -w backend/services/ai"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
