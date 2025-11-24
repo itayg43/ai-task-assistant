@@ -110,7 +110,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f tasks
 npm test
 
 # Run prompt evaluation tests (requires .env.test)
-npm run test:llm
+npm run test:prompts
 
 # Run tests for specific workspace
 npm test -w backend/services/ai
