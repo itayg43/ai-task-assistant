@@ -1,3 +1,4 @@
+import { PARSE_TASK_VAGUE_INPUT_ERROR } from "@constants";
 import { TAiCapabilityResponse, TAiErrorData, TParsedTask } from "@types";
 
 export const mockNaturalLanguage = "Submit Q2 report by next Friday";
@@ -34,7 +35,7 @@ export const mockAiCapabilityResponse: TAiCapabilityResponse<TParsedTask> = {
 export const mockAiErrorData: TAiErrorData = {
   message:
     "The input is too vague - it doesn't specify what needs to be planned.",
-  type: "PARSE_TASK_VAGUE_INPUT_ERROR",
+  type: PARSE_TASK_VAGUE_INPUT_ERROR,
   suggestions: [
     "What specifically needs to be planned? (e.g., 'Plan vacation', 'Plan team meeting')",
     "What is the context or category? (work, personal, etc.)",
