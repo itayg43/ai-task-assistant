@@ -343,20 +343,28 @@ The `backend/shared` package provides reusable components:
 
 ### Near-Term Enhancements
 
-1. **PostgreSQL Integration**
+1. **Token Bucket Rate Limiter Refactoring**
+
+   - Verify we get the requestId from `res` and add it to `logContext` in `create-token-bucket-rate-limiter.ts`
+   - Refactor rate limiter to throw errors instead of returning 429 directly, allowing the error handler to properly format responses with requestId
+   - Delete `TokenBucketRateLimiterServiceError` and replace it with a general error class with 503 status code
+   - Update tests in `create-token-bucket-rate-limiter.test.ts` and `tasks-controller.integration.test.ts` to reflect the new error-throwing behavior (429 should now be thrown as an error instead of returned directly, and TokenBucketRateLimiterServiceError references should be updated to the new general error class)
+
+2. **PostgreSQL Integration**
 
    - Add PostgreSQL service to Docker Compose
    - Implement Prisma ORM with schema and migrations
    - Create CRUD operations for tasks in Tasks service
 
-2. **Token Usage Rate Limiting**
+3. **Token Usage Rate Limiting**
 
    - Implement rate limiting on `/tasks` create route based on OpenAI token usage
    - Track token consumption per request using AI service response metadata
    - Store token usage in Redis with distributed locking (Redlock) to prevent race conditions
    - Configure per-user token limits (e.g., 10,000 tokens per hour)
 
-3. **Async AI Processing**
+4. **Async AI Processing**
+
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
    - Return job ID immediately
