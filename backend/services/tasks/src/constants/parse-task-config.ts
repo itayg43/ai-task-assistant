@@ -1,4 +1,4 @@
-import { ParseTaskConfig, ParseTaskConfigScoreRange } from "@types";
+import { TParseTaskConfig, TParseTaskConfigScoreRange } from "@types";
 
 const DEFAULT_PRIORITIES_LEVELS = {
   LOW: "low",
@@ -11,7 +11,7 @@ const DEFAULT_LEVELS_VALUES = Object.values(DEFAULT_PRIORITIES_LEVELS);
 
 const DEFAULT_PRIORITIES_SCORES: Record<
   (typeof DEFAULT_PRIORITIES_LEVELS)[keyof typeof DEFAULT_PRIORITIES_LEVELS],
-  ParseTaskConfigScoreRange
+  TParseTaskConfigScoreRange
 > = {
   low: {
     min: 0,
@@ -31,7 +31,7 @@ const DEFAULT_PRIORITIES_SCORES: Record<
   },
 } as const;
 
-export const DEFAULT_PARSE_TASK_CONFIG: ParseTaskConfig = {
+export const DEFAULT_PARSE_TASK_CONFIG: TParseTaskConfig = {
   categories: ["work", "personal", "health", "finance", "errand"],
   priorities: {
     levels: DEFAULT_LEVELS_VALUES,
