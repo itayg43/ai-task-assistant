@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "test": "vitest",
-    "test:prompts": "npm run test:prompts -w backend/services/ai"
+    "test:prompts": "npm run test:prompts -w backend/services/ai",
+    "type-check": "tsc --noEmit --watch -p backend/shared/tsconfig.json & tsc --noEmit --watch -p backend/services/ai/tsconfig.json & tsc --noEmit --watch -p backend/services/tasks/tsconfig.json & wait"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

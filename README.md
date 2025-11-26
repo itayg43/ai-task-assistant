@@ -91,8 +91,7 @@ graph LR
 ### Additional Commands
 
 ```bash
-# Type checking (inside container)
-docker exec -it <container_id> sh
+# Type checking (runs in watch mode for all workspaces)
 npm run type-check
 
 # Access Redis CLI
@@ -303,9 +302,7 @@ POST /create
 **2. Tasks Service → AI Service Request:**
 
 ```http
-POST /capabilities/parse-task?pattern=sync HTTP/1.1
-Host: localhost:3002
-Content-Type: application/json
+POST /capabilities/parse-task?pattern=sync
 
 {
   "naturalLanguage": "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination",
@@ -346,25 +343,20 @@ The `backend/shared` package provides reusable components:
 
 ### Near-Term Enhancements
 
-1. **Add Tasks Service Tests**
-
-   - Unit and Integration tests for controller logic
-   - Test rate limiting behavior
-
-2. **PostgreSQL Integration**
+1. **PostgreSQL Integration**
 
    - Add PostgreSQL service to Docker Compose
    - Implement Prisma ORM with schema and migrations
    - Create CRUD operations for tasks in Tasks service
 
-3. **Token Usage Rate Limiting**
+2. **Token Usage Rate Limiting**
 
    - Implement rate limiting on `/tasks` create route based on OpenAI token usage
    - Track token consumption per request using AI service response metadata
    - Store token usage in Redis with distributed locking (Redlock) to prevent race conditions
    - Configure per-user token limits (e.g., 10,000 tokens per hour)
 
-4. **Async AI Processing**
+3. **Async AI Processing**
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
    - Return job ID immediately
