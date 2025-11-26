@@ -7,6 +7,7 @@ import { createLogger } from "../../config/create-logger";
 import { DEFAULT_ERROR_MESSAGE } from "../../constants";
 import { SENSITIVE_FIELDS } from "../../constants/sensitive-fields";
 import { BaseError } from "../../errors";
+import { HttpErrorResponseData } from "../../types";
 
 const logger = createLogger("errorHandler");
 
@@ -60,9 +61,7 @@ function extractErrorInfo(error: unknown) {
   }
 
   if (isHttpError(error)) {
-    const responseData = error.response?.data as
-      | { message?: string; [key: string]: unknown }
-      | undefined;
+    const responseData = error.response?.data as HttpErrorResponseData;
 
     return {
       status: error.response?.status || DEFAULT_ERROR_STATUS,

@@ -5,6 +5,7 @@ import { isHttpError } from "@shared/clients/http";
 import { createLogger } from "@shared/config/create-logger";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
 import { BadRequestError, InternalError } from "@shared/errors";
+import { HttpErrorResponseData } from "@shared/types";
 import {
   TAiCapability,
   TAiCapabilityResponse,
@@ -44,25 +45,23 @@ export const executeCapability = async <
     return data;
   } catch (error) {
     if (isHttpError(error)) {
-      const status = error.response?.status;
-      const data = error.response?.data as TAiErrorData | undefined;
+      const responseStatus = error.response?.status;
+      const responseData = error.response?.data as HttpErrorResponseData;
 
-      // Handle network errors or cases where response data is missing
-      if (!error.response || !data) {
-        logger.error(DEFAULT_ERROR_MESSAGE, error, {
-          ...baseLogContext,
-          httpStatus: status,
-        });
+      if (!responseData?.message) {
+        logger.error(DEFAULT_ERROR_MESSAGE, error, baseLogContext);
 
         throw new InternalError(DEFAULT_ERROR_MESSAGE);
       }
+
+      const data = responseData as TAiErrorData;
 
       logger.error(data.message, error, {
         ...baseLogContext,
         errorData: data,
       });
 
-      if (status === StatusCodes.BAD_REQUEST) {
+      if (responseStatus === StatusCodes.BAD_REQUEST) {
         const context =
           data.type === "PARSE_TASK_VAGUE_INPUT_ERROR"
             ? {
