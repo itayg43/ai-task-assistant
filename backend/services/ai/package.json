@@ -7,7 +7,6 @@
     "build": "tsc && tsc-alias",
     "start": "node dist/server.js",
     "start:dev": "ts-node-dev --inspect=0.0.0.0:51204 -r tsconfig-paths/register --respawn src/server.ts",
-    "type-check": "tsc --noEmit --watch",
     "test": "vitest",
     "test:prompts": "dotenv -e .env.test -- vitest --config vitest.prompts.config.ts"
   },

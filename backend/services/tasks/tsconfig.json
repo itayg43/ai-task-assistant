@@ -20,7 +20,8 @@
       "@middlewares/*": ["src/middlewares/*"],
       "@controllers/*": ["src/controllers/*"],
       "@services/*": ["src/services/*"],
-      "@schemas/*": ["src/schemas/*"]
+      "@schemas/*": ["src/schemas/*"],
+      "@mocks/*": ["src/mocks/*"]
     }
   },
   "include": ["src/"],

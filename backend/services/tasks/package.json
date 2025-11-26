@@ -7,7 +7,6 @@
     "build": "tsc && tsc-alias",
     "start": "node dist/server.js",
     "start:dev": "ts-node-dev --inspect=0.0.0.0:51204 -r tsconfig-paths/register --respawn src/server.ts",
-    "type-check": "tsc --noEmit --watch",
     "test": "vitest"
   },
   "keywords": [],
@@ -15,6 +14,8 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.4",
     "vite-tsconfig-paths": "^5.1.4"
   },
   "dependencies": {

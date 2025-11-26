@@ -1,0 +1,2 @@
+export const PARSE_TASK_VAGUE_INPUT_ERROR =
+  "PARSE_TASK_VAGUE_INPUT_ERROR" as const;
