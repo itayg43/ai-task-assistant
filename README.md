@@ -120,15 +120,25 @@ npm test -w backend/shared
 
 ## API Examples
 
-> **Note**: The examples below show both current and planned API responses. As part of planned improvements (see Future Plans), the Tasks service will return cleaner responses: only the parsed task data on success (200), validation messages without internal IDs (400), and user-friendly error messages (500). Technical metadata and request IDs will be kept in server logs for debugging and monitoring.
+### Success Case
 
-### Task Parsing
+**1. Client Request to Tasks Service:**
 
-**Request:**
+```http
+POST /create
 
-```json
 {
-  "naturalLanguage": "Prepare quarterly board presentation by next Thursday 2 PM - include Q3 financials, performance metrics, competitive analysis, and Q4 strategy. Critical for budget approval.",
+  "naturalLanguage": "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination"
+}
+```
+
+**2. Tasks Service → AI Service Request:**
+
+```http
+POST /capabilities/parse-task?pattern=sync
+
+{
+  "naturalLanguage": "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination",
   "config": {
     "categories": ["work", "personal", "health", "finance", "errand"],
     "priorities": {
@@ -145,83 +155,124 @@ npm test -w backend/shared
 }
 ```
 
-**Response (Current):**
+**3. AI Service Response to Tasks Service (HTTP 200):**
 
 ```json
 {
   "openaiMetadata": {
     "core": {
       "responseId": "resp_010e5412599d42a70069227a22ef4881928d5239648da81938",
-      "tokens": { "input": 1017, "output": 72 },
-      "durationMs": 2552.31
+      "tokens": { "input": 1245, "output": 89 },
+      "durationMs": 2852.31
     },
     "subtasks": {
       "responseId": "resp_0a542afcfb46d5250069227a225160819d86263064feb1c920",
-      "tokens": { "input": 944, "output": 38 },
-      "durationMs": 2281.7
+      "tokens": { "input": 1120, "output": 45 },
+      "durationMs": 2181.7
     }
   },
   "result": {
-    "title": "Prepare Quarterly Board Presentation",
-    "dueDate": "2025-11-27T14:00:00.000Z",
+    "title": "Plan Company-Wide Team Building Event",
+    "dueDate": "2025-12-26T20:33:11.049Z",
     "category": "work",
     "priority": {
-      "level": "critical",
-      "score": 10,
-      "reason": "Task is critical for budget approval and has a fixed deadline next Thursday 2 PM"
+      "level": "high",
+      "score": 8,
+      "reason": "Event involves multiple critical steps and coordination for a large group within a fixed timeframe next month"
     },
     "subtasks": [
-      "Gather Q3 Financial Data",
-      "Compile Performance Metrics",
-      "Conduct Competitive Analysis",
-      "Develop Q4 Strategy",
-      "Create Presentation Slides",
-      "Review Presentation Content",
-      "Finalize And Submit Presentation"
+      "Obtain Budget Approval",
+      "Select Suitable Venue",
+      "Book Venue",
+      "Plan Team Building Activities",
+      "Coordinate Activity Logistics",
+      "Communicate Event Details To Employees",
+      "Execute Team Building Event"
     ]
   },
   "aiServiceRequestId": "d5aacb8b-9721-46b5-8085-6b0a7f0ef753"
 }
 ```
 
-**Response (Planned - cleaner format):**
+**4. Tasks Service Response to Client (HTTP 201):**
 
 ```json
 {
-  "title": "Prepare Quarterly Board Presentation",
-  "dueDate": "2025-11-27T14:00:00.000Z",
+  "tasksServiceRequestId": "7fcc9514-4db5-435c-948b-0127b374f435",
+  "title": "Plan Company-Wide Team Building Event",
+  "dueDate": "2025-12-26T20:33:11.049Z",
   "category": "work",
   "priority": {
-    "level": "critical",
-    "score": 10,
-    "reason": "Task is critical for budget approval and has a fixed deadline next Thursday 2 PM"
+    "level": "high",
+    "score": 8,
+    "reason": "Event involves multiple critical steps and coordination for a large group within a fixed timeframe next month"
   },
   "subtasks": [
-    "Gather Q3 Financial Data",
-    "Compile Performance Metrics",
-    "Conduct Competitive Analysis",
-    "Develop Q4 Strategy",
-    "Create Presentation Slides",
-    "Review Presentation Content",
-    "Finalize And Submit Presentation"
+    "Obtain Budget Approval",
+    "Select Suitable Venue",
+    "Book Venue",
+    "Plan Team Building Activities",
+    "Coordinate Activity Logistics",
+    "Communicate Event Details To Employees",
+    "Execute Team Building Event"
   ]
 }
 ```
 
-### Input Validation
+### Vague Input Error
 
 When input is too vague, the system provides helpful suggestions:
 
-**Request:**
+**1. Client Request to Tasks Service:**
 
-```json
+```http
+POST /create
+
 {
-  "naturalLanguage": "Plan something soon",
-  "config": { ... }
+  "naturalLanguage": "Plan something soon"
 }
 ```
 
-**Response (HTTP 400 - Current):**
+**2. Tasks Service → AI Service Request:**
+
+```http
+POST /capabilities/parse-task?pattern=sync
+
+{
+  "naturalLanguage": "Plan something soon",
+  "config": {
+    "categories": ["work", "personal", "health", "finance", "errand"],
+    "priorities": {
+      "levels": ["low", "medium", "high", "critical"],
+      "scores": {
+        "low": { "min": 0, "max": 3 },
+        "medium": { "min": 4, "max": 6 },
+        "high": { "min": 7, "max": 8 },
+        "critical": { "min": 9, "max": 10 }
+      },
+      "overallScoreRange": { "min": 0, "max": 10 }
+    }
+  }
+}
+```
+
+**3. AI Service Error Response to Tasks Service (HTTP 400):**
+
+```json
+{
+  "message": "The input is too vague and generic, lacking a specific task or clear objective to plan.",
+  "type": "PARSE_TASK_VAGUE_INPUT_ERROR",
+  "suggestions": [
+    "Specify what exactly you want to plan (e.g., a meeting, a trip, an event).",
+    "Provide a timeframe or deadline for the planning.",
+    "Clarify the context or category of the plan (work, personal, etc.)."
+  ],
+  "openaiResponseId": "resp_05c3ee527fe8911f00692285967c6c81a2abe22131a92e7453",
+  "aiServiceRequestId": "d0c1cc59-4038-46e8-9e41-78b712eb3a63"
+}
+```
+
+**4. Tasks Service Error Response to Client (HTTP 400):**
 
 ```json
 {
@@ -231,43 +282,53 @@ When input is too vague, the system provides helpful suggestions:
     "Provide a timeframe or deadline for the planning.",
     "Clarify the context or category of the plan (work, personal, etc.)."
   ],
-  "aiServiceRequestId": "d0c1cc59-4038-46e8-9e41-78b712eb3a63",
-  "openaiResponseId": "resp_05c3ee527fe8911f00692285967c6c81a2abe22131a92e7453"
+  "tasksServiceRequestId": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
 }
 ```
 
-**Response (HTTP 400 - Planned):**
+### OpenAI API Error
 
-```json
+When the OpenAI API encounters an error, the system handles it gracefully:
+
+**1. Client Request to Tasks Service:**
+
+```http
+POST /create
+
 {
-  "message": "The input is too vague and generic, lacking a specific task or clear objective to plan.",
-  "suggestions": [
-    "Specify what exactly you want to plan (e.g., a meeting, a trip, an event).",
-    "Provide a timeframe or deadline for the planning.",
-    "Clarify the context or category of the plan (work, personal, etc.)."
-  ]
+  "naturalLanguage": "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination"
 }
 ```
 
-### Error Handling
+**2. Tasks Service → AI Service Request:**
 
-When the OpenAI API encounters an error, the system returns a structured error response:
+```http
+POST /capabilities/parse-task?pattern=sync HTTP/1.1
+Host: localhost:3002
+Content-Type: application/json
 
-**Response (HTTP 500 - Current):**
+{
+  "naturalLanguage": "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination",
+  "config": { ... }
+}
+```
+
+**3. AI Service Error Response to Tasks Service (HTTP 500):**
 
 ```json
 {
   "message": "Could not execute capability. Please use the request IDs for support.",
-  "aiServiceRequestId": "662dbdd5-abb0-499d-bc84-a13bbc06e266",
-  "openaiRequestId": "req_39f99c3b9d314136b0b5a69469e068cb"
+  "openaiRequestId": "req_39f99c3b9d314136b0b5a69469e068cb",
+  "aiServiceRequestId": "662dbdd5-abb0-499d-bc84-a13bbc06e266"
 }
 ```
 
-**Response (HTTP 500 - Planned):**
+**4. Tasks Service Error Response to Client (HTTP 500):**
 
 ```json
 {
-  "message": "An unexpected error occurred while processing your request. Please try again later."
+  "message": "An unexpected error occurred, Please try again or contact support.",
+  "tasksServiceRequestId": "c3d4e5f6-a7b8-9012-cdef-123456789012"
 }
 ```
 
@@ -285,32 +346,25 @@ The `backend/shared` package provides reusable components:
 
 ### Near-Term Enhancements
 
-1. **Improve Tasks Service Response Format**
-
-   - Return only the parsed task data on success (remove OpenAI metadata from response)
-   - Return validation message with suggestions for vague inputs (HTTP 400)
-   - Return clean error messages for unexpected errors (HTTP 500)
-   - Keep OpenAI metadata in logs for debugging and monitoring
-
-2. **Add Tasks Service Tests**
+1. **Add Tasks Service Tests**
 
    - Unit and Integration tests for controller logic
    - Test rate limiting behavior
 
-3. **PostgreSQL Integration**
+2. **PostgreSQL Integration**
 
    - Add PostgreSQL service to Docker Compose
    - Implement Prisma ORM with schema and migrations
    - Create CRUD operations for tasks in Tasks service
 
-4. **Token Usage Rate Limiting**
+3. **Token Usage Rate Limiting**
 
    - Implement rate limiting on `/tasks` create route based on OpenAI token usage
    - Track token consumption per request using AI service response metadata
    - Store token usage in Redis with distributed locking (Redlock) to prevent race conditions
    - Configure per-user token limits (e.g., 10,000 tokens per hour)
 
-5. **Async AI Processing**
+4. **Async AI Processing**
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
    - Return job ID immediately
