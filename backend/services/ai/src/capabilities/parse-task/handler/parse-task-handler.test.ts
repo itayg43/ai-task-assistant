@@ -5,6 +5,7 @@ import {
   PARSE_TASK_CAPABILITY,
   PARSE_TASK_CORE_OPERATION,
   PARSE_TASK_SUBTASKS_OPERATION,
+  PARSE_TASK_VAGUE_INPUT_ERROR,
 } from "@capabilities/parse-task/parse-task-constants";
 import {
   mockNaturalLanguage,
@@ -250,10 +251,10 @@ describe("parseTaskHandler", () => {
         const { message, context } = error as BadRequestError;
 
         expect(message).toBe(mockParseTaskErrorOutputCoreV2.error?.reason);
+        expect(context?.type).toBe(PARSE_TASK_VAGUE_INPUT_ERROR);
         expect(context?.suggestions).toEqual(
           mockParseTaskErrorOutputCoreV2.error?.suggestions
         );
-        expect(context?.aiServiceRequestId).toBe(mockAiServiceRequestId);
         expect(context?.openaiResponseId).toBe(mockOpenaiResponseId);
       }
     });

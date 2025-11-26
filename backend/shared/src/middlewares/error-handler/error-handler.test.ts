@@ -1,13 +1,16 @@
 import { AxiosError, AxiosResponse } from "axios";
 import { NextFunction, Request, Response } from "express";
-import { StatusCodes, getReasonPhrase } from "http-status-codes";
+import { StatusCodes } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import z from "zod";
 
+import { DEFAULT_ERROR_MESSAGE } from "../../constants";
 import { BaseError } from "../../errors";
-import { errorHandler } from "./error-handler";
+import { createErrorHandler } from "./error-handler";
 
-describe("errorHandler", () => {
+describe("createErrorHandler", () => {
+  const mockRequestId = "test-request-id-123";
+
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let mockNextFunction: NextFunction;
@@ -19,7 +22,9 @@ describe("errorHandler", () => {
     mockResponse = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
-      locals: {},
+      locals: {
+        requestId: mockRequestId,
+      },
     };
     mockNextFunction = vi.fn();
   });
@@ -30,6 +35,7 @@ describe("errorHandler", () => {
 
   describe("BaseError", () => {
     it("should return BaseError status code and message", () => {
+      const errorHandler = createErrorHandler("test");
       const mockBaseError = new BaseError(
         "Test base error",
         StatusCodes.BAD_REQUEST
@@ -45,11 +51,12 @@ describe("errorHandler", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Test base error",
-        requestId: undefined,
+        testServiceRequestId: mockRequestId,
       });
     });
 
     it("should filter sensitive fields from BaseError context", () => {
+      const errorHandler = createErrorHandler("test");
       const mockBaseError = new BaseError(
         "Test base error",
         StatusCodes.BAD_REQUEST,
@@ -85,6 +92,7 @@ describe("errorHandler", () => {
     });
 
     it("should preserve safe fields in BaseError context", () => {
+      const errorHandler = createErrorHandler("test");
       const mockBaseError = new BaseError(
         "Test base error",
         StatusCodes.BAD_REQUEST,
@@ -114,6 +122,7 @@ describe("errorHandler", () => {
     });
 
     it("should not allow context.message to overwrite error message", () => {
+      const errorHandler = createErrorHandler("test");
       const mockBaseError = new BaseError(
         "Error message",
         StatusCodes.BAD_REQUEST,
@@ -139,6 +148,7 @@ describe("errorHandler", () => {
 
   describe("ZodError", () => {
     it("should return BAD_REQUEST status with formatted validation errors", () => {
+      const errorHandler = createErrorHandler("test");
       const schema = z.object({
         name: z.string().min(2),
         age: z.number().min(18),
@@ -161,13 +171,14 @@ describe("errorHandler", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: expect.any(String),
-        requestId: undefined,
+        testServiceRequestId: mockRequestId,
       });
     });
   });
 
   describe("AxiosError", () => {
     it("should return response status and message when available", () => {
+      const errorHandler = createErrorHandler("test");
       const mockAxiosError = new AxiosError(
         undefined,
         undefined,
@@ -191,11 +202,12 @@ describe("errorHandler", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.NOT_FOUND);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Resource not found",
-        requestId: undefined,
+        testServiceRequestId: mockRequestId,
       });
     });
 
     it("should fallback to default status and message when response is undefined", () => {
+      const errorHandler = createErrorHandler("test");
       const mockAxiosError = new AxiosError("Network Error");
 
       errorHandler(
@@ -209,14 +221,15 @@ describe("errorHandler", () => {
         StatusCodes.INTERNAL_SERVER_ERROR
       );
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
-        requestId: undefined,
+        message: DEFAULT_ERROR_MESSAGE,
+        testServiceRequestId: mockRequestId,
       });
     });
   });
 
   describe("Error", () => {
     it("should return INTERNAL_SERVER_ERROR status with error message", () => {
+      const errorHandler = createErrorHandler("test");
       const mockError = new Error("Test error");
 
       errorHandler(
@@ -231,13 +244,14 @@ describe("errorHandler", () => {
       );
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Test error",
-        requestId: undefined,
+        testServiceRequestId: mockRequestId,
       });
     });
   });
 
   describe("Unknown error", () => {
     it("should return INTERNAL_SERVER_ERROR status with default message for non-Error objects", () => {
+      const errorHandler = createErrorHandler("test");
       const unknownError = "This is not an Error object";
 
       errorHandler(
@@ -251,8 +265,8 @@ describe("errorHandler", () => {
         StatusCodes.INTERNAL_SERVER_ERROR
       );
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
-        requestId: undefined,
+        message: DEFAULT_ERROR_MESSAGE,
+        testServiceRequestId: mockRequestId,
       });
     });
   });

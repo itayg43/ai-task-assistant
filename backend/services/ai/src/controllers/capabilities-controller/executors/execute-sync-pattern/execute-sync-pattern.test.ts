@@ -131,9 +131,6 @@ describe("executeSyncPattern", () => {
 
       expect(internalError).toBeInstanceOf(InternalError);
       expect(internalError.message).toBe(CAPABILITY_EXECUTION_ERROR_MESSAGE);
-      expect(internalError.context).toEqual({
-        aiServiceRequestId: mockAiServiceRequestId,
-      });
     }
 
     // Verify that validation was called inside retry (should be called maxAttempts times)

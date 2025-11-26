@@ -1,4 +1,5 @@
 export { MS_PER_SECOND } from "./date-time";
+export { DEFAULT_ERROR_MESSAGE } from "./default-error-message";
 export { DEFAULT_RETRY_CONFIG } from "./default-retry-config";
 export { DURATION_UNIT } from "./duration-unit";
 export { DEFAULT_GET_ELAPSED_DURATION_OPTIONS } from "./get-elapsed-duration-options";

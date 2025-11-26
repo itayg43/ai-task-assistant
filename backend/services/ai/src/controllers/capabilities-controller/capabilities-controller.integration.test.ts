@@ -100,6 +100,7 @@ describe("capabilitiesController (integration)", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
+      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid pattern`, async () => {
@@ -114,6 +115,7 @@ describe("capabilitiesController (integration)", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
+      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid input`, async () => {
@@ -130,6 +132,7 @@ describe("capabilitiesController (integration)", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
+      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
     });
 
     it(`should handle unexpected error and return ${StatusCodes.INTERNAL_SERVER_ERROR}`, async () => {
@@ -148,6 +151,7 @@ describe("capabilitiesController (integration)", () => {
 
       expect(response.status).toBe(StatusCodes.INTERNAL_SERVER_ERROR);
       expect(response.body.message).toBeDefined();
+      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
     });
   });
 });

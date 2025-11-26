@@ -79,7 +79,6 @@ export const executeParse = async <TOutput>(
       });
 
       throw new InternalError(CAPABILITY_EXECUTION_ERROR_MESSAGE, {
-        aiServiceRequestId: requestId,
         openaiRequestId,
       });
     }
@@ -90,7 +89,6 @@ export const executeParse = async <TOutput>(
     });
 
     throw new InternalError(CAPABILITY_EXECUTION_ERROR_MESSAGE, {
-      aiServiceRequestId: requestId,
       openaiResponseId,
     });
   }

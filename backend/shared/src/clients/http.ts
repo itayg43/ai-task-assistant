@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 export const createHttpClient = (baseUrl: string, origin: string) => {
   return axios.create({
@@ -7,4 +7,8 @@ export const createHttpClient = (baseUrl: string, origin: string) => {
       Origin: origin,
     },
   });
+};
+
+export const isHttpError = (error: unknown): error is AxiosError => {
+  return error instanceof AxiosError;
 };
