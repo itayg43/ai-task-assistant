@@ -60,7 +60,9 @@ function extractErrorInfo(error: unknown) {
   }
 
   if (isHttpError(error)) {
-    const responseData = error.response?.data as any;
+    const responseData = error.response?.data as
+      | { message?: string; [key: string]: unknown }
+      | undefined;
 
     return {
       status: error.response?.status || DEFAULT_ERROR_STATUS,

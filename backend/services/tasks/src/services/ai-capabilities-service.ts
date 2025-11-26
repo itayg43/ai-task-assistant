@@ -45,7 +45,17 @@ export const executeCapability = async <
   } catch (error) {
     if (isHttpError(error)) {
       const status = error.response?.status;
-      const data = error.response?.data as TAiErrorData;
+      const data = error.response?.data as TAiErrorData | undefined;
+
+      // Handle network errors or cases where response data is missing
+      if (!error.response || !data) {
+        logger.error(DEFAULT_ERROR_MESSAGE, error, {
+          ...baseLogContext,
+          httpStatus: status,
+        });
+
+        throw new InternalError(DEFAULT_ERROR_MESSAGE);
+      }
 
       logger.error(data.message, error, {
         ...baseLogContext,
