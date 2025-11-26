@@ -1,6 +1,11 @@
-export type { AiCapabilityResponse } from "./ai-capability-response";
 export type {
-  ParseTaskConfig,
-  ParseTaskConfigScoreRange,
+  TAiCapability,
+  TAiCapabilityResponse,
+  TExecuteCapabilityConfig,
+} from "./ai-capability";
+export type { TAiErrorData } from "./ai-error-data";
+export type {
+  TParseTaskConfig,
+  TParseTaskConfigScoreRange,
 } from "./parse-task-config";
-export type { ParsedTask } from "./parsed-task";
+export type { TParsedTask } from "./parsed-task";
