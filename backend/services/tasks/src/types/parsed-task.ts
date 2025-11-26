@@ -1,4 +1,4 @@
-export type ParsedTask = {
+export type TParsedTask = {
   title: string;
   dueDate: string | null;
   category: string;

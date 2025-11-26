@@ -135,7 +135,6 @@ describe("executeParse", () => {
         CAPABILITY_EXECUTION_ERROR_MESSAGE
       );
       expect((error as InternalError).context).toEqual({
-        aiServiceRequestId: mockAiServiceRequestId,
         openaiRequestId: mockOpenaiRequestId,
       });
     }
@@ -167,7 +166,6 @@ describe("executeParse", () => {
         CAPABILITY_EXECUTION_ERROR_MESSAGE
       );
       expect((error as InternalError).context).toEqual({
-        aiServiceRequestId: mockAiServiceRequestId,
         openaiResponseId: mockOpenaiResponseId,
       });
     }
@@ -199,7 +197,6 @@ describe("executeParse", () => {
         CAPABILITY_EXECUTION_ERROR_MESSAGE
       );
       expect((error as InternalError).context).toEqual({
-        aiServiceRequestId: mockAiServiceRequestId,
         openaiResponseId: mockOpenaiResponseId,
       });
     }

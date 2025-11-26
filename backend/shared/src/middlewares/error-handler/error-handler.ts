@@ -1,41 +1,47 @@
-import { AxiosError } from "axios";
 import { NextFunction, Request, Response } from "express";
-import { StatusCodes, getReasonPhrase } from "http-status-codes";
+import { StatusCodes } from "http-status-codes";
 import { ZodError } from "zod";
 
+import { isHttpError } from "../../clients/http";
 import { createLogger } from "../../config/create-logger";
+import { DEFAULT_ERROR_MESSAGE } from "../../constants";
 import { SENSITIVE_FIELDS } from "../../constants/sensitive-fields";
 import { BaseError } from "../../errors";
+import { HttpErrorResponseData } from "../../types";
 
 const logger = createLogger("errorHandler");
 
 const DEFAULT_ERROR_STATUS = StatusCodes.INTERNAL_SERVER_ERROR;
-const DEFAULT_ERROR_MESSAGE = getReasonPhrase(
-  StatusCodes.INTERNAL_SERVER_ERROR
-);
 
-export const errorHandler = (
-  error: unknown,
-  _req: Request,
-  res: Response,
-  _next: NextFunction
-) => {
-  const { status, message, context } = extractErrorInfo(error);
+export const createErrorHandler = (serviceName: string) => {
+  return (
+    error: unknown,
+    _req: Request,
+    res: Response,
+    _next: NextFunction
+  ) => {
+    const { status, message, context } = extractErrorInfo(error);
 
-  const safeContext = context
-    ? Object.fromEntries(
-        Object.entries(context).filter(
-          ([key]) => !SENSITIVE_FIELDS.includes(key)
+    const safeContext = context
+      ? Object.fromEntries(
+          Object.entries(context).filter(
+            ([key]) => !SENSITIVE_FIELDS.includes(key)
+          )
         )
-      )
-    : {};
+      : {};
 
-  logger.error(message, error, safeContext);
+    const finalContext = {
+      ...safeContext,
+      [`${serviceName}ServiceRequestId`]: res.locals.requestId,
+    };
 
-  res.status(status).json({
-    message,
-    ...safeContext,
-  });
+    logger.error(message, error, finalContext);
+
+    res.status(status).json({
+      message,
+      ...finalContext,
+    });
+  };
 };
 
 function extractErrorInfo(error: unknown) {
@@ -54,11 +60,13 @@ function extractErrorInfo(error: unknown) {
     };
   }
 
-  if (error instanceof AxiosError) {
+  if (isHttpError(error)) {
+    const responseData = error.response?.data as HttpErrorResponseData;
+
     return {
       status: error.response?.status || DEFAULT_ERROR_STATUS,
-      message: error.response?.data?.message || DEFAULT_ERROR_MESSAGE,
-      context: error.response?.data,
+      message: responseData?.message || DEFAULT_ERROR_MESSAGE,
+      context: responseData,
     };
   }
 

@@ -2,6 +2,7 @@ export type { AuthenticationContext } from "./authentication-context";
 export type { CloseServerCleanupCallbacks } from "./close-server-cleanup-callbacks";
 export type { DurationUnit } from "./duration-unit";
 export type { GetElapsedDurationOptions } from "./get-elpased-duration-options";
+export type { HttpErrorResponseData } from "./http-error-response-data";
 export type { LoggerLogContext } from "./logger-log-context";
 export type { LoggerLogLevel } from "./logger-log-level";
 export type { Mocked } from "./mocked";

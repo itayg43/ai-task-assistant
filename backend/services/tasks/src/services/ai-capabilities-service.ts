@@ -1,20 +1,80 @@
-import { ai } from "@clients/ai";
-import { env } from "@config/env";
-import { AiCapabilityResponse, ParsedTask, ParseTaskConfig } from "@types";
+import { StatusCodes } from "http-status-codes";
 
-const AI_CAPABILITIES_ROUTE = `${env.AI_SERVICE_URL}/capabilities`;
+import { aiClient } from "@clients/ai";
+import { isHttpError } from "@shared/clients/http";
+import { createLogger } from "@shared/config/create-logger";
+import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
+import { BadRequestError, InternalError } from "@shared/errors";
+import { HttpErrorResponseData } from "@shared/types";
+import {
+  TAiCapability,
+  TAiCapabilityResponse,
+  TAiErrorData,
+  TExecuteCapabilityConfig,
+} from "@types";
 
-export const parseTask = async (
-  naturalLanguage: string,
-  config: ParseTaskConfig
-): Promise<AiCapabilityResponse<ParsedTask>> => {
-  const { data } = await ai.post(
-    `${AI_CAPABILITIES_ROUTE}/parse-task?pattern=sync`,
-    {
-      naturalLanguage,
-      config,
+const logger = createLogger("aiCapabilitiesService");
+
+export const executeCapability = async <
+  TCapability extends TAiCapability,
+  TCapabilityResult
+>(
+  requestId: string,
+  config: TExecuteCapabilityConfig<TCapability>
+): Promise<TAiCapabilityResponse<TCapabilityResult>> => {
+  const baseLogContext = {
+    requestId,
+    config,
+  };
+
+  try {
+    logger.info("Execute capability - starting", baseLogContext);
+
+    const { data } = await aiClient.post<
+      TAiCapabilityResponse<TCapabilityResult>
+    >(
+      `/capabilities/${config.capability}?pattern=${config.pattern}`,
+      config.params
+    );
+
+    logger.info("Execute capability - succeeded", {
+      ...baseLogContext,
+      response: data,
+    });
+
+    return data;
+  } catch (error) {
+    if (isHttpError(error)) {
+      const responseStatus = error.response?.status;
+      const responseData = error.response?.data as HttpErrorResponseData;
+
+      if (!responseData?.message) {
+        logger.error(DEFAULT_ERROR_MESSAGE, error, baseLogContext);
+
+        throw new InternalError(DEFAULT_ERROR_MESSAGE);
+      }
+
+      const data = responseData as TAiErrorData;
+
+      logger.error(data.message, error, {
+        ...baseLogContext,
+        errorData: data,
+      });
+
+      if (responseStatus === StatusCodes.BAD_REQUEST) {
+        const context =
+          data.type === "PARSE_TASK_VAGUE_INPUT_ERROR"
+            ? {
+                suggestions: data.suggestions,
+              }
+            : undefined;
+
+        throw new BadRequestError(data.message, context);
+      }
+
+      throw new InternalError(DEFAULT_ERROR_MESSAGE);
     }
-  );
 
-  return data;
+    throw error;
+  }
 };

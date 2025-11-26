@@ -1,12 +1,14 @@
 import express from "express";
 import helmet from "helmet";
 
+import { env } from "@config/env";
 import { tokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter";
 import { healthRouter } from "@routers/health-router";
 import { tasksRouter } from "@routers/tasks-router";
 import { HEALTH_ROUTE } from "@shared/constants";
 import { authentication } from "@shared/middlewares/authentication";
-import { errorHandler } from "@shared/middlewares/error-handler";
+import { createErrorHandler } from "@shared/middlewares/error-handler";
+import { requestId } from "@shared/middlewares/request-id";
 import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
 
 export const app = express();
@@ -18,10 +20,15 @@ app.use(
     extended: true,
   })
 );
-app.use(HEALTH_ROUTE, [requestResponseMetadata], healthRouter);
+app.use(HEALTH_ROUTE, [requestId, requestResponseMetadata], healthRouter);
 app.use(
   "/api/v1/tasks",
-  [authentication, requestResponseMetadata, tokenBucketRateLimiter.global],
+  [
+    requestId,
+    authentication,
+    requestResponseMetadata,
+    tokenBucketRateLimiter.global,
+  ],
   tasksRouter
 );
-app.use(errorHandler);
+app.use(createErrorHandler(env.SERVICE_NAME));

@@ -1,12 +1,13 @@
 import express from "express";
 import helmet from "helmet";
 
+import { env } from "@config/env";
 import { cors } from "@middlewares/cors";
 import { capabilitiesRouter } from "@routers/capabilities-router";
 import { healthRouter } from "@routers/health-router";
 import { HEALTH_ROUTE } from "@shared/constants";
 import { authentication } from "@shared/middlewares/authentication";
-import { errorHandler } from "@shared/middlewares/error-handler";
+import { createErrorHandler } from "@shared/middlewares/error-handler";
 import { requestId } from "@shared/middlewares/request-id";
 import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
 
@@ -26,4 +27,4 @@ app.use(
   [requestId, authentication, requestResponseMetadata],
   capabilitiesRouter
 );
-app.use(errorHandler);
+app.use(createErrorHandler(env.SERVICE_NAME));

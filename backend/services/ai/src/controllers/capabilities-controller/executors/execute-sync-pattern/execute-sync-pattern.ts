@@ -17,13 +17,6 @@ export const executeSyncPattern = async <TInput, TOutput>(
 ) => {
   return await withDurationAsync(async () => {
     try {
-      // Validation is inside retry because handlers call external AI services (e.g., OpenAI)
-      // that can return partial or invalid responses due to:
-      // - Insufficient output tokens (truncated responses)
-      // - AI refusal to generate content
-      // - Transient parsing/structure issues
-      // These are retryable failures, not bugs in our handler implementation.
-      // Retrying allows the AI service to potentially return a complete, valid response.
       return await withRetry(
         DEFAULT_RETRY_CONFIG,
         async () => {
@@ -46,9 +39,7 @@ export const executeSyncPattern = async <TInput, TOutput>(
           }
         );
 
-        throw new InternalError(CAPABILITY_EXECUTION_ERROR_MESSAGE, {
-          aiServiceRequestId: requestId,
-        });
+        throw new InternalError(CAPABILITY_EXECUTION_ERROR_MESSAGE);
       }
 
       throw error;

@@ -1,13 +1,13 @@
-export type ParseTaskConfigScoreRange = {
+export type TParseTaskConfigScoreRange = {
   min: number;
   max: number;
 };
 
-export type ParseTaskConfig = {
+export type TParseTaskConfig = {
   categories: string[];
   priorities: {
     levels: string[];
-    scores: Record<string, ParseTaskConfigScoreRange>;
-    overallScoreRange: ParseTaskConfigScoreRange;
+    scores: Record<string, TParseTaskConfigScoreRange>;
+    overallScoreRange: TParseTaskConfigScoreRange;
   };
 };
