@@ -30,8 +30,8 @@ export const createErrorHandler = (serviceName: string) => {
       : {};
 
     const finalContext = {
-      [`${serviceName}ServiceRequestId`]: res.locals.requestId,
       ...safeContext,
+      [`${serviceName}ServiceRequestId`]: res.locals.requestId,
     };
 
     logger.error(message, error, finalContext);
