@@ -52,7 +52,7 @@ export const executeCapability = async <
       if (!responseData?.message) {
         logger.error(DEFAULT_ERROR_MESSAGE, error, baseLogContext);
 
-        throw new InternalError(DEFAULT_ERROR_MESSAGE);
+        throw new InternalError();
       }
 
       const data = responseData as TAiErrorData;
@@ -73,7 +73,7 @@ export const executeCapability = async <
         throw new BadRequestError(data.message, context);
       }
 
-      throw new InternalError(DEFAULT_ERROR_MESSAGE);
+      throw new InternalError();
     }
 
     throw error;
