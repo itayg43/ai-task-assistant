@@ -117,6 +117,17 @@ npm test -w backend/services/tasks
 npm test -w backend/shared
 ```
 
+## Continuous Integration
+
+Usage of GitHub Actions for automated testing and quality assurance:
+
+- **Automatic Testing**: Tests run automatically on all pull requests targeting `main` and on all pushes to `main`
+- **Branch Protection**: The `main` branch is protected with the following rules:
+  - All tests must pass before merging
+  - Branches must be up to date with `main` before merging
+  - Status checks are required and cannot be bypassed
+- **Test Coverage**: The CI workflow runs all unit and integration tests
+
 ## API Examples
 
 ### Success Case
