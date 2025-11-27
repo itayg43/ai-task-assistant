@@ -8,9 +8,11 @@ import {
   mockParsedTask,
 } from "@mocks/tasks-mocks";
 import { executeCapability } from "@services/ai-capabilities-service";
+import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
 import {
   BadRequestError,
-  TokenBucketRateLimiterServiceError,
+  ServiceUnavailableError,
+  TooManyRequestsError,
 } from "@shared/errors";
 import { Mocked } from "@shared/types";
 import { app } from "../../app";
@@ -124,10 +126,8 @@ describe("tasksController (integration)", () => {
   });
 
   it("should return 429 when rate limit is exceeded", async () => {
-    mockTokenBucketRateLimiter.mockImplementation((_req, res, _next) => {
-      res.status(StatusCodes.TOO_MANY_REQUESTS).json({
-        message: "Rate limit exceeded, please try again later.",
-      });
+    mockTokenBucketRateLimiter.mockImplementation((_req, _res, next) => {
+      next(new TooManyRequestsError());
     });
 
     const response = await request(app).post(createTaskUrl).send({
@@ -138,10 +138,11 @@ describe("tasksController (integration)", () => {
     expect(response.body.message).toBe(
       "Rate limit exceeded, please try again later."
     );
+    expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
   });
 
   it("should return 503 when token bucket rate limiter service error occurs", async () => {
-    const rateLimiterError = new TokenBucketRateLimiterServiceError();
+    const rateLimiterError = new ServiceUnavailableError();
     mockTokenBucketRateLimiter.mockImplementation((_req, _res, next) => {
       next(rateLimiterError);
     });
@@ -151,9 +152,7 @@ describe("tasksController (integration)", () => {
     });
 
     expect(response.status).toBe(StatusCodes.SERVICE_UNAVAILABLE);
-    expect(response.body.message).toBe(
-      "Unexpected error occurred, please try again later."
-    );
+    expect(response.body.message).toBe(DEFAULT_ERROR_MESSAGE);
     expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
   });
 });

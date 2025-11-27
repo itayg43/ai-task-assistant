@@ -1,10 +1,13 @@
 import { NextFunction, Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
 import Redis from "ioredis";
 import Redlock from "redlock";
 
 import { createLogger } from "../../../config/create-logger";
-import { TokenBucketRateLimiterServiceError } from "../../../errors";
+import {
+  BaseError,
+  ServiceUnavailableError,
+  TooManyRequestsError,
+} from "../../../errors";
 import { TokenBucketRateLimiterConfig } from "../../../types";
 import { getAuthenticationContext } from "../../../utils/authentication-context";
 import { getTokenBucketLockKey } from "../../../utils/token-bucket/key-utils";
@@ -30,6 +33,7 @@ export const createTokenBucketRateLimiter =
       );
 
       const logContext = {
+        requestId: res.locals.requestId,
         rateLimiterName: config.rateLimiterName,
         method: req.method,
         originalUrl: req.originalUrl,
@@ -51,11 +55,7 @@ export const createTokenBucketRateLimiter =
             logContext
           );
 
-          res.status(StatusCodes.TOO_MANY_REQUESTS).json({
-            message: "Rate limit exceeded, please try again later.",
-          });
-
-          return;
+          throw new TooManyRequestsError();
         }
 
         logger.info(
@@ -65,7 +65,11 @@ export const createTokenBucketRateLimiter =
 
         next();
       } catch (error) {
-        next(new TokenBucketRateLimiterServiceError());
+        if (error instanceof BaseError) {
+          next(error);
+        } else {
+          next(new ServiceUnavailableError());
+        }
       }
     } catch (error) {
       next(error);

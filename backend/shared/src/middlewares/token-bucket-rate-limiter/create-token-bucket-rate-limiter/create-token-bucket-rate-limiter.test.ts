@@ -1,12 +1,12 @@
 import { NextFunction, Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
 import Redis from "ioredis";
 import Redlock from "redlock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   AuthenticationError,
-  TokenBucketRateLimiterServiceError,
+  ServiceUnavailableError,
+  TooManyRequestsError,
 } from "../../../errors";
 import { createRedisClientMock } from "../../../mocks/redis-mock";
 import { createRedlockClientMock } from "../../../mocks/redlock-mock";
@@ -83,6 +83,9 @@ describe("createTokenBucketRateLimiter", () => {
     mockResponse = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
+      locals: {
+        requestId: "test-request-id",
+      },
     };
     mockNextFunction = vi.fn();
 
@@ -120,7 +123,7 @@ describe("createTokenBucketRateLimiter", () => {
     expect(mockNextFunction).toHaveBeenCalledWith(mockAuthenticationError);
   });
 
-  it("should handle TokenBucketRateLimiterServiceError thrown by withLock/processTokenBucket", async () => {
+  it("should handle ServiceUnavailableError thrown by withLock/processTokenBucket", async () => {
     mockedProcessTokenBucket.mockRejectedValue(new Error(""));
 
     await executeMiddleware();
@@ -128,11 +131,11 @@ describe("createTokenBucketRateLimiter", () => {
     expect(mockResponse.status).not.toHaveBeenCalled();
     expect(mockResponse.json).not.toHaveBeenCalled();
     expect(mockNextFunction).toHaveBeenCalledWith(
-      expect.any(TokenBucketRateLimiterServiceError)
+      expect.any(ServiceUnavailableError)
     );
   });
 
-  it(`should return response with ${StatusCodes.TOO_MANY_REQUESTS} status when request is not allowed`, async () => {
+  it(`should throw TooManyRequestsError when request is not allowed`, async () => {
     mockedProcessTokenBucket.mockResolvedValue({
       allowed: false,
       tokensLeft: 0,
@@ -140,11 +143,10 @@ describe("createTokenBucketRateLimiter", () => {
 
     await executeMiddleware();
 
-    expect(mockResponse.status).toHaveBeenCalledWith(
-      StatusCodes.TOO_MANY_REQUESTS
+    expect(mockResponse.status).not.toHaveBeenCalled();
+    expect(mockResponse.json).not.toHaveBeenCalled();
+    expect(mockNextFunction).toHaveBeenCalledWith(
+      expect.any(TooManyRequestsError)
     );
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      message: expect.any(String),
-    });
   });
 });
