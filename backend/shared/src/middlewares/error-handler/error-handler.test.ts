@@ -6,7 +6,10 @@ import z from "zod";
 
 import { DEFAULT_ERROR_MESSAGE } from "../../constants";
 import { BaseError } from "../../errors";
-import { createErrorHandler } from "./error-handler";
+import {
+  createErrorHandler,
+  ZOD_SCHEMA_VALIDATION_ERROR,
+} from "./error-handler";
 
 describe("createErrorHandler", () => {
   const mockRequestId = "test-request-id-123";
@@ -171,6 +174,7 @@ describe("createErrorHandler", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: expect.any(String),
+        type: ZOD_SCHEMA_VALIDATION_ERROR,
         testServiceRequestId: mockRequestId,
       });
     });

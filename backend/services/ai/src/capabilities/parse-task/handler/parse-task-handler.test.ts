@@ -5,7 +5,6 @@ import {
   PARSE_TASK_CAPABILITY,
   PARSE_TASK_CORE_OPERATION,
   PARSE_TASK_SUBTASKS_OPERATION,
-  PARSE_TASK_VAGUE_INPUT_ERROR,
 } from "@capabilities/parse-task/parse-task-constants";
 import {
   mockNaturalLanguage,
@@ -23,6 +22,7 @@ import {
 } from "@capabilities/parse-task/prompts";
 import { executeParse } from "@clients/openai";
 import { env } from "@config/env";
+import { AI_ERROR_TYPE } from "@constants";
 import {
   mockOpenaiDurationMs,
   mockOpenaiResponseId,
@@ -251,7 +251,7 @@ describe("parseTaskHandler", () => {
         const { message, context } = error as BadRequestError;
 
         expect(message).toBe(mockParseTaskErrorOutputCoreV2.error?.reason);
-        expect(context?.type).toBe(PARSE_TASK_VAGUE_INPUT_ERROR);
+        expect(context?.type).toBe(AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR);
         expect(context?.suggestions).toEqual(
           mockParseTaskErrorOutputCoreV2.error?.suggestions
         );

@@ -2,7 +2,6 @@ import {
   PARSE_TASK_CAPABILITY,
   PARSE_TASK_CORE_OPERATION,
   PARSE_TASK_SUBTASKS_OPERATION,
-  PARSE_TASK_VAGUE_INPUT_ERROR,
 } from "@capabilities/parse-task/parse-task-constants";
 import { parseTaskOutputSchema } from "@capabilities/parse-task/parse-task-schemas";
 import {
@@ -20,6 +19,7 @@ import { ParseTaskCorePromptVersion } from "@capabilities/parse-task/prompts/cor
 import { ParseTaskSubtasksPromptVersion } from "@capabilities/parse-task/prompts/subtasks";
 import { executeParse } from "@clients/openai";
 import { env } from "@config/env";
+import { AI_ERROR_TYPE } from "@constants";
 import { createLogger } from "@shared/config/create-logger";
 import { BadRequestError } from "@shared/errors";
 import { exhaustiveSwitch } from "@shared/utils/exhaustive-switch";
@@ -65,7 +65,7 @@ const coreHandler = async (
         const { error } = output;
 
         throw new BadRequestError(error.reason, {
-          type: PARSE_TASK_VAGUE_INPUT_ERROR,
+          type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
           suggestions: error.suggestions,
           openaiResponseId,
         });

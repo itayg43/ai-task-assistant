@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
 import { env } from "@config/env";
-import { CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
+import { AI_ERROR_TYPE, CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
 import { createLogger } from "@shared/config/create-logger";
 import { InternalError } from "@shared/errors";
 import { withDurationAsync } from "@shared/utils/with-duration";
@@ -80,6 +80,7 @@ export const executeParse = async <TOutput>(
 
       throw new InternalError(CAPABILITY_EXECUTION_ERROR_MESSAGE, {
         openaiRequestId,
+        type: AI_ERROR_TYPE.OPENAI_API_ERROR,
       });
     }
 

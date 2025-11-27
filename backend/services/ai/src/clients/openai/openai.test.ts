@@ -9,7 +9,7 @@ import {
   mockNaturalLanguage,
   mockParseTaskOutput,
 } from "@capabilities/parse-task/parse-task-mocks";
-import { CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
+import { AI_ERROR_TYPE, CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
 import {
   mockOpenaiDurationMs,
   mockOpenaiRequestId,
@@ -136,6 +136,7 @@ describe("executeParse", () => {
       );
       expect((error as InternalError).context).toEqual({
         openaiRequestId: mockOpenaiRequestId,
+        type: AI_ERROR_TYPE.OPENAI_API_ERROR,
       });
     }
   });
