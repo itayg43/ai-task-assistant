@@ -38,7 +38,9 @@ vi.mock("@services/ai-capabilities-service", () => ({
   executeCapability: vi.fn(),
 }));
 
-const mockTokenBucketRateLimiter = vi.fn((_req, _res, next) => next());
+const { mockTokenBucketRateLimiter } = vi.hoisted(() => ({
+  mockTokenBucketRateLimiter: vi.fn((_req, _res, next) => next()),
+}));
 
 vi.mock("@middlewares/token-bucket-rate-limiter", () => ({
   tokenBucketRateLimiter: {
