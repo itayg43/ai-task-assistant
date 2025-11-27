@@ -12,6 +12,8 @@ import { HttpErrorResponseData } from "../../types";
 const logger = createLogger("errorHandler");
 
 const DEFAULT_ERROR_STATUS = StatusCodes.INTERNAL_SERVER_ERROR;
+export const ZOD_SCHEMA_VALIDATION_ERROR =
+  "ZOD_SCHEMA_VALIDATION_ERROR" as const;
 
 export const createErrorHandler = (serviceName: string) => {
   return (
@@ -57,6 +59,9 @@ function extractErrorInfo(error: unknown) {
     return {
       status: StatusCodes.BAD_REQUEST,
       message: formatZodErrors(error),
+      context: {
+        type: ZOD_SCHEMA_VALIDATION_ERROR,
+      },
     };
   }
 
