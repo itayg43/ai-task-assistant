@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { mockParsedTask, mockTask } from "@mocks/tasks-mocks";
-import { createTask, type Task } from "@repositories/tasks-repository";
+import {
+  mockNaturalLanguage,
+  mockParsedTask,
+  mockTask,
+  mockUserId,
+} from "@mocks/tasks-mocks";
+import { createTask } from "@repositories/tasks-repository";
 import { PrismaClient } from "@shared/clients/prisma";
 
 describe("tasksRepository", () => {
@@ -25,22 +30,19 @@ describe("tasksRepository", () => {
 
   describe("createTask", () => {
     it("should create a task with correct data transformation", async () => {
-      const userId = mockTask.userId;
-      const naturalLanguage = mockTask.naturalLanguage;
-
       mockPrismaClient.task.create.mockResolvedValue(mockTask);
 
       const result = await createTask(
         mockPrismaClient as unknown as PrismaClient,
-        userId,
-        naturalLanguage,
+        mockUserId,
+        mockNaturalLanguage,
         mockParsedTask
       );
 
       expect(mockPrismaClient.task.create).toHaveBeenCalledWith({
         data: {
-          userId,
-          naturalLanguage,
+          userId: mockUserId,
+          naturalLanguage: mockNaturalLanguage,
           title: mockParsedTask.title,
           dueDate: mockParsedTask.dueDate
             ? new Date(mockParsedTask.dueDate)
@@ -55,39 +57,28 @@ describe("tasksRepository", () => {
     });
 
     it("should handle null dueDate correctly", async () => {
-      const userId = 1;
-      const naturalLanguage = "Submit Q2 report";
       const parsedTaskWithoutDueDate = {
         ...mockParsedTask,
         dueDate: null,
       };
-      const mockTask: Task = {
-        id: 1,
-        userId,
-        naturalLanguage,
-        title: parsedTaskWithoutDueDate.title,
+      const mockTaskWithoutDueDate = {
+        ...mockTask,
         dueDate: null,
-        category: parsedTaskWithoutDueDate.category,
-        priorityLevel: parsedTaskWithoutDueDate.priority.level,
-        priorityScore: parsedTaskWithoutDueDate.priority.score,
-        priorityReason: parsedTaskWithoutDueDate.priority.reason,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       };
 
-      mockPrismaClient.task.create.mockResolvedValue(mockTask);
+      mockPrismaClient.task.create.mockResolvedValue(mockTaskWithoutDueDate);
 
       const result = await createTask(
         mockPrismaClient as unknown as PrismaClient,
-        userId,
-        naturalLanguage,
+        mockUserId,
+        mockNaturalLanguage,
         parsedTaskWithoutDueDate
       );
 
       expect(mockPrismaClient.task.create).toHaveBeenCalledWith({
         data: {
-          userId,
-          naturalLanguage,
+          userId: mockUserId,
+          naturalLanguage: mockNaturalLanguage,
           title: parsedTaskWithoutDueDate.title,
           dueDate: null,
           category: parsedTaskWithoutDueDate.category,
@@ -96,7 +87,7 @@ describe("tasksRepository", () => {
           priorityReason: parsedTaskWithoutDueDate.priority.reason,
         },
       });
-      expect(result).toEqual(mockTask);
+      expect(result).toEqual(mockTaskWithoutDueDate);
     });
   });
 });

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { mockTask, mockUserId } from "@mocks/tasks-mocks";
 import { createManySubtasks } from "@repositories/subtasks-repository";
 import { PrismaClient } from "@shared/clients/prisma";
 
@@ -24,8 +25,8 @@ describe("subtasksRepository", () => {
 
   describe("createManySubtasks", () => {
     it("should create multiple subtasks with correct order and userId", async () => {
-      const taskId = 1;
-      const userId = 1;
+      const taskId = mockTask.id;
+      const userId = mockUserId;
       const subtasks = [
         "Gather Data For Report",
         "Write Q2 Report",
@@ -58,8 +59,8 @@ describe("subtasksRepository", () => {
     });
 
     it("should handle empty subtasks array", async () => {
-      const taskId = 1;
-      const userId = 1;
+      const taskId = mockTask.id;
+      const userId = mockUserId;
       const subtasks: string[] = [];
 
       const mockResult = {
@@ -82,8 +83,8 @@ describe("subtasksRepository", () => {
     });
 
     it("should handle single subtask", async () => {
-      const taskId = 1;
-      const userId = 1;
+      const taskId = mockTask.id;
+      const userId = mockUserId;
       const subtasks = ["Buy groceries"];
 
       const mockResult = {
