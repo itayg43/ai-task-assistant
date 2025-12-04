@@ -4,7 +4,7 @@ ENV NODE_ENV=development
 
 WORKDIR /app
 
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl openssl libc6-compat
 
 # Copy root package files
 COPY package.json package-lock.json ./
@@ -22,6 +22,9 @@ RUN npm run build -w backend/shared
 
 # Copy service source code
 COPY backend/services/tasks backend/services/tasks
+
+# Generate Prisma client
+RUN npm run prisma:generate -w backend/services/tasks
 
 EXPOSE 3001
 EXPOSE 51204
