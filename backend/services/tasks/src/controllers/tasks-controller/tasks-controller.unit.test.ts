@@ -7,6 +7,8 @@ import {
   mockNaturalLanguage,
   mockParsedTask,
   mockRequestId,
+  mockTaskWithSubtasks,
+  mockUserId,
 } from "@mocks/tasks-mocks";
 import { createTaskHandler } from "@services/tasks-service";
 import { Mocked } from "@shared/types";
@@ -19,8 +21,6 @@ describe("tasksController (unit)", () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let mockNext: NextFunction;
-
-  const mockUserId = 1;
 
   beforeEach(() => {
     mockResponse = {
@@ -52,7 +52,7 @@ describe("tasksController (unit)", () => {
       };
 
       mockedCreateTaskHandler = vi.mocked(createTaskHandler);
-      mockedCreateTaskHandler.mockResolvedValue(mockParsedTask);
+      mockedCreateTaskHandler.mockResolvedValue(mockTaskWithSubtasks);
     });
 
     it("should successfully create task and return 201 with correct response structure", async () => {
@@ -70,7 +70,7 @@ describe("tasksController (unit)", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.CREATED);
       expect(mockResponse.json).toHaveBeenCalledWith({
         tasksServiceRequestId: mockRequestId,
-        ...mockParsedTask,
+        ...mockTaskWithSubtasks,
       });
       expect(mockNext).not.toHaveBeenCalled();
     });

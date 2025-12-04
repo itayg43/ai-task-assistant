@@ -6,9 +6,14 @@ import {
   mockNaturalLanguage,
   mockParsedTask,
   mockRequestId,
+  mockTask,
+  mockTaskWithSubtasks,
+  mockTaskWithSubtasksWithItems,
+  mockSubtasks,
+  mockUserId,
 } from "@mocks/tasks-mocks";
 import { createManySubtasks } from "@repositories/subtasks-repository";
-import { createTask, type Task } from "@repositories/tasks-repository";
+import { createTask, findTaskById } from "@repositories/tasks-repository";
 import { executeCapability } from "@services/ai-capabilities-service";
 import { createTaskHandler } from "@services/tasks-service";
 import { Mocked } from "@shared/types";
@@ -19,6 +24,7 @@ vi.mock("@services/ai-capabilities-service", () => ({
 
 vi.mock("@repositories/tasks-repository", () => ({
   createTask: vi.fn(),
+  findTaskById: vi.fn(),
 }));
 
 vi.mock("@repositories/subtasks-repository", () => ({
@@ -34,11 +40,10 @@ vi.mock("@clients/prisma", () => ({
 describe("createTaskHandler", () => {
   let mockedExecuteCapability: Mocked<typeof executeCapability>;
   let mockedCreateTask: Mocked<typeof createTask>;
+  let mockedFindTaskById: Mocked<typeof findTaskById>;
   let mockedCreateManySubtasks: Mocked<typeof createManySubtasks>;
 
   let mockTransaction: ReturnType<typeof vi.fn>;
-
-  const mockUserId = 1;
 
   const executeHandler = async () => {
     return await createTaskHandler(
@@ -51,9 +56,13 @@ describe("createTaskHandler", () => {
   beforeEach(async () => {
     mockedExecuteCapability = vi.mocked(executeCapability);
     mockedCreateTask = vi.mocked(createTask);
+    mockedFindTaskById = vi.mocked(findTaskById);
     mockedCreateManySubtasks = vi.mocked(createManySubtasks);
 
     mockedExecuteCapability.mockResolvedValue(mockAiCapabilityResponse);
+
+    mockedCreateTask.mockResolvedValue(mockTask);
+    mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasks);
 
     mockTransaction = vi.fn(async (callback) => {
       return await callback({});
@@ -61,21 +70,6 @@ describe("createTaskHandler", () => {
 
     const { prisma } = await import("@clients/prisma");
     vi.mocked(prisma.$transaction).mockImplementation(mockTransaction);
-
-    const mockTask: Task = {
-      id: 1,
-      userId: mockUserId,
-      naturalLanguage: mockNaturalLanguage,
-      title: mockParsedTask.title,
-      dueDate: mockParsedTask.dueDate ? new Date(mockParsedTask.dueDate) : null,
-      category: mockParsedTask.category,
-      priorityLevel: mockParsedTask.priority.level,
-      priorityScore: mockParsedTask.priority.score,
-      priorityReason: mockParsedTask.priority.reason,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    mockedCreateTask.mockResolvedValue(mockTask);
   });
 
   afterEach(() => {
@@ -95,10 +89,21 @@ describe("createTaskHandler", () => {
     });
   });
 
-  it("should return parsed task result from AI capability response", async () => {
+  it("should return task with subtasks from database", async () => {
     const result = await executeHandler();
 
-    expect(result).toEqual(mockParsedTask);
+    expect(result).toMatchObject({
+      id: 1,
+      userId: mockUserId,
+      naturalLanguage: mockNaturalLanguage,
+      title: mockParsedTask.title,
+      category: mockParsedTask.category,
+      priorityLevel: mockParsedTask.priority.level,
+      priorityScore: mockParsedTask.priority.score,
+      priorityReason: mockParsedTask.priority.reason,
+      subtasks: [],
+    });
+    expect(result.subtasks).toBeDefined();
   });
 
   it("should persist task to database using transaction", async () => {
@@ -124,14 +129,19 @@ describe("createTaskHandler", () => {
       result: parsedTaskWithSubtasks,
     });
 
-    await executeHandler();
+    mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasksWithItems);
+
+    const result = await executeHandler();
 
     expect(mockedCreateManySubtasks).toHaveBeenCalledWith(
-      {},
+      expect.any(Object),
       1,
       mockUserId,
       parsedTaskWithSubtasks.subtasks
     );
+    expect(result.subtasks).toHaveLength(2);
+    expect(result.subtasks[0].title).toBe("Subtask 1");
+    expect(result.subtasks[1].title).toBe("Subtask 2");
   });
 
   it("should not persist subtasks when they are null", async () => {
@@ -145,9 +155,12 @@ describe("createTaskHandler", () => {
       result: parsedTaskWithoutSubtasks,
     });
 
-    await executeHandler();
+    mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasks);
+
+    const result = await executeHandler();
 
     expect(mockedCreateManySubtasks).not.toHaveBeenCalled();
+    expect(result.subtasks).toEqual([]);
   });
 
   it("should not persist subtasks when they are empty array", async () => {
@@ -161,9 +174,12 @@ describe("createTaskHandler", () => {
       result: parsedTaskWithEmptySubtasks,
     });
 
-    await executeHandler();
+    mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasks);
+
+    const result = await executeHandler();
 
     expect(mockedCreateManySubtasks).not.toHaveBeenCalled();
+    expect(result.subtasks).toEqual([]);
   });
 
   it("should propagate errors from executeCapability", async () => {

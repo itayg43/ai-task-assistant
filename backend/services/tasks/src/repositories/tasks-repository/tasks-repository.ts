@@ -4,6 +4,12 @@ import { TParsedTask } from "@types";
 
 export type Task = Prisma.TaskGetPayload<{}>;
 
+export type TaskWithSubtasks = Prisma.TaskGetPayload<{
+  include: {
+    subtasks: true;
+  };
+}>;
+
 export const createTask = async (
   client: PrismaClient | PrismaTransactionClient,
   userId: number,
@@ -22,6 +28,20 @@ export const createTask = async (
       priorityLevel: priority.level,
       priorityScore: priority.score,
       priorityReason: priority.reason,
+    },
+  });
+};
+
+export const findTaskById = async (
+  client: PrismaClient | PrismaTransactionClient,
+  taskId: number
+): Promise<TaskWithSubtasks | null> => {
+  return await client.task.findUnique({
+    where: {
+      id: taskId,
+    },
+    include: {
+      subtasks: true,
     },
   });
 };

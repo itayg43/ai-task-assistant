@@ -6,8 +6,9 @@ import {
   mockAiCapabilityResponse,
   mockNaturalLanguage,
   mockParsedTask,
+  mockTask,
+  mockTaskWithSubtasks,
 } from "@mocks/tasks-mocks";
-import { type Task } from "@repositories/tasks-repository";
 import { executeCapability } from "@services/ai-capabilities-service";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
 import {
@@ -31,6 +32,7 @@ vi.mock("@services/ai-capabilities-service", () => ({
 
 vi.mock("@repositories/tasks-repository", () => ({
   createTask: vi.fn(),
+  findTaskById: vi.fn(),
 }));
 
 vi.mock("@repositories/subtasks-repository", () => ({
@@ -71,13 +73,6 @@ describe("tasksController (integration)", () => {
     mockedExecuteCapability = vi.mocked(executeCapability);
 
     mockTokenBucketRateLimiter.mockImplementation((_req, _res, next) => next());
-
-    mockTransaction = vi.fn(async (callback) => {
-      return await callback({});
-    });
-
-    const { prisma } = await import("@clients/prisma");
-    vi.mocked(prisma.$transaction).mockImplementation(mockTransaction);
   });
 
   afterEach(() => {
@@ -88,28 +83,22 @@ describe("tasksController (integration)", () => {
     const createTaskUrl = "/api/v1/tasks/create";
 
     beforeEach(async () => {
-      const { createTask: createTaskRepository } = await import(
-        "@repositories/tasks-repository"
-      );
-      const mockTask: Task = {
-        id: 1,
-        userId: 1,
-        naturalLanguage: mockNaturalLanguage,
-        title: mockParsedTask.title,
-        dueDate: mockParsedTask.dueDate
-          ? new Date(mockParsedTask.dueDate)
-          : null,
-        category: mockParsedTask.category,
-        priorityLevel: mockParsedTask.priority.level,
-        priorityScore: mockParsedTask.priority.score,
-        priorityReason: mockParsedTask.priority.reason,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const {
+        createTask: createTaskRepository,
+        findTaskById: findTaskByIdRepository,
+      } = await import("@repositories/tasks-repository");
       vi.mocked(createTaskRepository).mockResolvedValue(mockTask);
+      vi.mocked(findTaskByIdRepository).mockResolvedValue(mockTaskWithSubtasks);
+
+      mockTransaction = vi.fn(async (callback) => {
+        return await callback({});
+      });
+
+      const { prisma } = await import("@clients/prisma");
+      vi.mocked(prisma.$transaction).mockImplementation(mockTransaction);
     });
 
-    it("should return 201 with parsed task for valid input", async () => {
+    it("should return 201 with task including subtasks for valid input", async () => {
       mockedExecuteCapability.mockResolvedValue(mockAiCapabilityResponse);
 
       const response = await request(app).post(createTaskUrl).send({
@@ -120,8 +109,18 @@ describe("tasksController (integration)", () => {
       expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
       expect(response.body).toMatchObject({
         tasksServiceRequestId: expect.any(String),
-        ...mockParsedTask,
+        id: 1,
+        userId: 1,
+        naturalLanguage: mockNaturalLanguage,
+        title: mockParsedTask.title,
+        category: mockParsedTask.category,
+        priorityLevel: mockParsedTask.priority.level,
+        priorityScore: mockParsedTask.priority.score,
+        priorityReason: mockParsedTask.priority.reason,
+        subtasks: [],
       });
+      expect(response.body.subtasks).toBeDefined();
+      expect(Array.isArray(response.body.subtasks)).toBe(true);
     });
 
     it("should return 400 for invalid input (empty naturalLanguage)", async () => {

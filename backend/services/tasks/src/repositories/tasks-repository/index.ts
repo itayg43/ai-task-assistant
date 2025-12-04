@@ -1,1 +1,6 @@
-export { createTask, type Task } from "./tasks-repository";
+export {
+  createTask,
+  findTaskById,
+  type Task,
+  type TaskWithSubtasks,
+} from "./tasks-repository";

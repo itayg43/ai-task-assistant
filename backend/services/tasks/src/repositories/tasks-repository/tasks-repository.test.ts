@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { mockParsedTask } from "@mocks/tasks-mocks";
-import { createTask, type Task } from "@repositories/tasks-repository";
+import { mockParsedTask, mockTask } from "@mocks/tasks-mocks";
+import { createTask } from "@repositories/tasks-repository";
 import { PrismaClient } from "@shared/clients/prisma";
 
 describe("tasksRepository", () => {
@@ -25,23 +25,8 @@ describe("tasksRepository", () => {
 
   describe("createTask", () => {
     it("should create a task with correct data transformation", async () => {
-      const userId = 1;
-      const naturalLanguage = "Submit Q2 report by next Friday";
-      const mockTask: Task = {
-        id: 1,
-        userId,
-        naturalLanguage,
-        title: mockParsedTask.title,
-        dueDate: mockParsedTask.dueDate
-          ? new Date(mockParsedTask.dueDate)
-          : null,
-        category: mockParsedTask.category,
-        priorityLevel: mockParsedTask.priority.level,
-        priorityScore: mockParsedTask.priority.score,
-        priorityReason: mockParsedTask.priority.reason,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const userId = mockTask.userId;
+      const naturalLanguage = mockTask.naturalLanguage;
 
       mockPrismaClient.task.create.mockResolvedValue(mockTask);
 
