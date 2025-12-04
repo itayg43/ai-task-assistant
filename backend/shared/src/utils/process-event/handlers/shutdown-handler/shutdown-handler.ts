@@ -74,7 +74,7 @@ async function processShutdown(
   } catch (error) {
     logger.error(`Error while closing the server:`, error);
 
-    closeServerCleanupCallbacks.afterFailure();
+    await closeServerCleanupCallbacks.afterFailure();
 
     processExitCallback(PROCESS_EXIT_CODE.ERROR);
   }

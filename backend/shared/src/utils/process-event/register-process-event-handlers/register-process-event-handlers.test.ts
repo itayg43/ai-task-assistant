@@ -51,8 +51,8 @@ describe("registerProcessEventHandlers", () => {
     };
     mockProcessExitCallback = vi.fn() as unknown as ProcessExitCallback;
     mockCloseServerCleanupCallbacks = {
-      afterSuccess: vi.fn(),
-      afterFailure: vi.fn(),
+      afterSuccess: vi.fn().mockResolvedValue(undefined),
+      afterFailure: vi.fn().mockResolvedValue(undefined),
     };
 
     processOnSpy = vi.spyOn(process, "on");
