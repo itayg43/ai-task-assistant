@@ -33,4 +33,4 @@ EXPOSE 3001
 EXPOSE 51204
 
 # Run migrations and start the service
-CMD ["backend/services/tasks/scripts/start-dev.sh"]
+CMD ["sh", "backend/services/tasks/scripts/start-dev.sh"]
