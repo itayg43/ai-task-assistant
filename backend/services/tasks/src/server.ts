@@ -1,5 +1,6 @@
 import http from "http";
 
+import { connectPrismaClient, disconnectPrismaClient } from "@clients/prisma";
 import {
   closeRedisClient,
   connectRedisClient,
@@ -20,13 +21,14 @@ const logger = createLogger("server");
 
     const server = http.createServer(app);
 
-    await connectRedisClient();
+    await Promise.all([connectPrismaClient(), connectRedisClient()]);
 
     registerProcessEventHandlers(server, process.exit, {
       afterSuccess: async () => {
-        await closeRedisClient();
+        await Promise.all([disconnectPrismaClient(), closeRedisClient()]);
       },
-      afterFailure: () => {
+      afterFailure: async () => {
+        await disconnectPrismaClient();
         destroyRedisClient();
       },
     });
