@@ -26,8 +26,11 @@ COPY backend/services/tasks backend/services/tasks
 # Generate Prisma client
 RUN npm run prisma:generate -w backend/services/tasks
 
+# Make startup script executable
+RUN chmod +x backend/services/tasks/scripts/start-dev.sh
+
 EXPOSE 3001
 EXPOSE 51204
 
-# Run the service
-CMD ["npm", "run", "start:dev", "-w", "backend/services/tasks"]
+# Run migrations and start the service
+CMD ["backend/services/tasks/scripts/start-dev.sh"]
