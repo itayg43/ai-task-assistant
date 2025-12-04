@@ -5,13 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTask } from "@controllers/tasks-controller";
 import {
   mockNaturalLanguage,
-  mockParsedTask,
   mockRequestId,
   mockTaskWithSubtasks,
   mockUserId,
 } from "@mocks/tasks-mocks";
 import { createTaskHandler } from "@services/tasks-service";
 import { Mocked } from "@shared/types";
+import { taskToResponseDto } from "@utils/task-to-response-dto";
 
 vi.mock("@services/tasks-service", () => ({
   createTaskHandler: vi.fn(),
@@ -67,10 +67,11 @@ describe("tasksController (unit)", () => {
         mockUserId,
         mockNaturalLanguage
       );
+
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.CREATED);
       expect(mockResponse.json).toHaveBeenCalledWith({
         tasksServiceRequestId: mockRequestId,
-        ...mockTaskWithSubtasks,
+        task: taskToResponseDto(mockTaskWithSubtasks),
       });
       expect(mockNext).not.toHaveBeenCalled();
     });

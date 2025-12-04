@@ -109,18 +109,18 @@ describe("tasksController (integration)", () => {
       expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
       expect(response.body).toMatchObject({
         tasksServiceRequestId: expect.any(String),
-        id: 1,
-        userId: 1,
-        naturalLanguage: mockNaturalLanguage,
-        title: mockParsedTask.title,
-        category: mockParsedTask.category,
-        priorityLevel: mockParsedTask.priority.level,
-        priorityScore: mockParsedTask.priority.score,
-        priorityReason: mockParsedTask.priority.reason,
-        subtasks: [],
+        task: {
+          id: 1,
+          title: mockParsedTask.title,
+          category: mockParsedTask.category,
+          priority: {
+            level: mockParsedTask.priority.level,
+            score: mockParsedTask.priority.score,
+            reason: mockParsedTask.priority.reason,
+          },
+          subtasks: [],
+        },
       });
-      expect(response.body.subtasks).toBeDefined();
-      expect(Array.isArray(response.body.subtasks)).toBe(true);
     });
 
     it("should return 400 for invalid input (empty naturalLanguage)", async () => {

@@ -5,6 +5,7 @@ import { CreateTaskInput } from "@schemas/tasks-schemas";
 import { createTaskHandler } from "@services/tasks-service";
 import { createLogger } from "@shared/config/create-logger";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
+import { taskToResponseDto } from "@utils/task-to-response-dto";
 
 const logger = createLogger("tasksController");
 
@@ -34,7 +35,7 @@ export const createTask = async (
 
     res.status(StatusCodes.CREATED).json({
       tasksServiceRequestId: requestId,
-      ...result,
+      task: taskToResponseDto(result),
     });
   } catch (error) {
     next(error);

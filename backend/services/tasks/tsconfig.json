@@ -22,7 +22,8 @@
       "@services/*": ["src/services/*"],
       "@schemas/*": ["src/schemas/*"],
       "@repositories/*": ["src/repositories/*"],
-      "@mocks/*": ["src/mocks/*"]
+      "@mocks/*": ["src/mocks/*"],
+      "@utils/*": ["src/utils/*"]
     }
   },
   "include": ["src/"],
