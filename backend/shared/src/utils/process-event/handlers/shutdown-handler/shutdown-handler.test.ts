@@ -117,4 +117,31 @@ describe("shutdownHandler", () => {
     );
     expect(mockProcessExitCallback).toHaveBeenCalledTimes(1);
   });
+
+  it("should handle errors in afterFailure gracefully and still exit", async () => {
+    const mockCloseError = new Error("Close error");
+    const mockCleanupError = new Error("Cleanup error");
+    mockServer.close = vi.fn((cb) => {
+      cb(mockCloseError);
+    }) as any;
+    mockCloseServerCleanupCallbacks.afterFailure = vi
+      .fn()
+      .mockRejectedValue(mockCleanupError);
+
+    await shutdownHandler(
+      mockServer as http.Server,
+      "SIGTERM",
+      undefined,
+      mockShutdownView,
+      mockProcessExitCallback,
+      mockCloseServerCleanupCallbacks
+    );
+
+    expect(mockServer.close).toHaveBeenCalled();
+    expect(mockCloseServerCleanupCallbacks.afterFailure).toHaveBeenCalled();
+    // Process should still exit even if afterFailure throws
+    expect(mockProcessExitCallback).toHaveBeenCalledWith(
+      PROCESS_EXIT_CODE.ERROR
+    );
+  });
 });

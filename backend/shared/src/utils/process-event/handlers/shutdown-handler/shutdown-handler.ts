@@ -74,7 +74,14 @@ async function processShutdown(
   } catch (error) {
     logger.error(`Error while closing the server:`, error);
 
-    await closeServerCleanupCallbacks.afterFailure();
+    try {
+      await closeServerCleanupCallbacks.afterFailure();
+    } catch (cleanupError) {
+      logger.error(
+        `Error during failure cleanup (non-fatal, continuing shutdown):`,
+        cleanupError
+      );
+    }
 
     processExitCallback(PROCESS_EXIT_CODE.ERROR);
   }
