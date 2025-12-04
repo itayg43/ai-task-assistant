@@ -9,7 +9,6 @@ import {
   mockTask,
   mockTaskWithSubtasks,
   mockTaskWithSubtasksWithItems,
-  mockSubtasks,
   mockUserId,
 } from "@mocks/tasks-mocks";
 import { createManySubtasks } from "@repositories/subtasks-repository";

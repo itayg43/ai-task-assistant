@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockParsedTask, mockTask } from "@mocks/tasks-mocks";
-import { createTask } from "@repositories/tasks-repository";
+import { createTask, type Task } from "@repositories/tasks-repository";
 import { PrismaClient } from "@shared/clients/prisma";
 
 describe("tasksRepository", () => {
