@@ -9,6 +9,7 @@
   "scripts": {
     "test": "vitest",
     "test:prompts": "npm run test:prompts -w backend/services/ai",
+    "test:db": "npm run test:db -w backend/services/tasks",
     "type-check": "tsc --noEmit --watch -p backend/shared/tsconfig.json & tsc --noEmit --watch -p backend/services/ai/tsconfig.json & tsc --noEmit --watch -p backend/services/tasks/tsconfig.json & wait"
   },
   "devDependencies": {
