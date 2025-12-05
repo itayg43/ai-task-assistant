@@ -2,9 +2,9 @@ import { Express } from "express";
 import http from "http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PROCESS_EXIT_CODE } from "../constants";
-import { Mocked, ServicesCallbacks } from "../types";
-import { registerProcessEventHandlers } from "./process-event/register-process-event-handlers";
+import { PROCESS_EXIT_CODE } from "../../constants";
+import { Mocked, ServicesCallbacks } from "../../types";
+import { registerProcessEventHandlers } from "../process-event/register-process-event-handlers";
 import { initializeServer } from "./server";
 
 vi.mock("./process-event/register-process-event-handlers");

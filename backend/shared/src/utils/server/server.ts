@@ -1,10 +1,10 @@
 import { Express } from "express";
 import http from "http";
 
-import { createLogger } from "../config/create-logger";
-import { PROCESS_EXIT_CODE } from "../constants";
-import { ServicesCallbacks, ServicesCleanupCallbacks } from "../types";
-import { registerProcessEventHandlers } from "./process-event/register-process-event-handlers";
+import { createLogger } from "../../config/create-logger";
+import { PROCESS_EXIT_CODE } from "../../constants";
+import { ServicesCallbacks, ServicesCleanupCallbacks } from "../../types";
+import { registerProcessEventHandlers } from "../process-event/register-process-event-handlers";
 
 const logger = createLogger("server");
 
