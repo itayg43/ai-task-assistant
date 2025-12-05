@@ -1,22 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  createMockPrismaClient,
+  type MockPrismaClient,
+} from "@mocks/prisma-mock";
 import { mockTask, mockUserId } from "@mocks/tasks-mocks";
 import { createManySubtasks } from "@repositories/subtasks-repository";
 import { PrismaClient } from "@shared/clients/prisma";
 
 describe("subtasksRepository", () => {
-  let mockPrismaClient: {
-    subtask: {
-      createMany: ReturnType<typeof vi.fn>;
-    };
-  };
+  let mockPrismaClient: MockPrismaClient;
 
   beforeEach(() => {
-    mockPrismaClient = {
-      subtask: {
-        createMany: vi.fn(),
-      },
-    };
+    mockPrismaClient = createMockPrismaClient();
   });
 
   afterEach(() => {
@@ -24,86 +20,52 @@ describe("subtasksRepository", () => {
   });
 
   describe("createManySubtasks", () => {
-    it("should create multiple subtasks with correct order and userId", async () => {
-      const taskId = mockTask.id;
-      const userId = mockUserId;
-      const subtasks = [
-        "Gather Data For Report",
-        "Write Q2 Report",
-        "Review Report",
-        "Submit Q2 Report",
-      ];
-
-      const mockResult = {
-        count: subtasks.length,
-      };
-
-      mockPrismaClient.subtask.createMany.mockResolvedValue(mockResult);
-
-      const result = await createManySubtasks(
-        mockPrismaClient as unknown as PrismaClient,
-        taskId,
-        userId,
-        subtasks
-      );
-
-      expect(mockPrismaClient.subtask.createMany).toHaveBeenCalledWith({
-        data: [
-          { taskId, userId, title: "Gather Data For Report", order: 0 },
-          { taskId, userId, title: "Write Q2 Report", order: 1 },
-          { taskId, userId, title: "Review Report", order: 2 },
-          { taskId, userId, title: "Submit Q2 Report", order: 3 },
+    const testCases = [
+      {
+        name: "multiple subtasks",
+        subtasks: [
+          "Gather Data For Report",
+          "Write Q2 Report",
+          "Review Report",
+          "Submit Q2 Report",
         ],
+      },
+      {
+        name: "single subtask",
+        subtasks: ["Buy groceries"],
+      },
+      {
+        name: "empty array",
+        subtasks: [] as string[],
+      },
+    ];
+
+    testCases.forEach(({ name, subtasks }) => {
+      it(`should handle ${name} correctly`, async () => {
+        const mockResult = {
+          count: subtasks.length,
+        };
+        mockPrismaClient.subtask.createMany.mockResolvedValue(mockResult);
+
+        const result = await createManySubtasks(
+          mockPrismaClient as unknown as PrismaClient,
+          mockTask.id,
+          mockUserId,
+          subtasks
+        );
+
+        const expectedData = subtasks.map((title, idx) => ({
+          taskId: mockTask.id,
+          userId: mockUserId,
+          title,
+          order: idx,
+        }));
+
+        expect(mockPrismaClient.subtask.createMany).toHaveBeenCalledWith({
+          data: expectedData,
+        });
+        expect(result).toEqual(mockResult);
       });
-      expect(result).toEqual(mockResult);
-    });
-
-    it("should handle empty subtasks array", async () => {
-      const taskId = mockTask.id;
-      const userId = mockUserId;
-      const subtasks: string[] = [];
-
-      const mockResult = {
-        count: 0,
-      };
-
-      mockPrismaClient.subtask.createMany.mockResolvedValue(mockResult);
-
-      const result = await createManySubtasks(
-        mockPrismaClient as unknown as PrismaClient,
-        taskId,
-        userId,
-        subtasks
-      );
-
-      expect(mockPrismaClient.subtask.createMany).toHaveBeenCalledWith({
-        data: [],
-      });
-      expect(result).toEqual(mockResult);
-    });
-
-    it("should handle single subtask", async () => {
-      const taskId = mockTask.id;
-      const userId = mockUserId;
-      const subtasks = ["Buy groceries"];
-
-      const mockResult = {
-        count: 1,
-      };
-
-      mockPrismaClient.subtask.createMany.mockResolvedValue(mockResult);
-
-      const result = await createManySubtasks(
-        mockPrismaClient as unknown as PrismaClient,
-        taskId,
-        userId,
-        subtasks
-      );
-
-      expect(mockPrismaClient.subtask.createMany).toHaveBeenCalledWith({
-        data: [{ taskId, userId, title: "Buy groceries", order: 0 }],
-      });
-      expect(result).toEqual(mockResult);
     });
   });
 });

@@ -1,27 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createMockPrismaClient,
+  type MockPrismaClient,
+} from "@mocks/prisma-mock";
+import {
   mockNaturalLanguage,
   mockParsedTask,
   mockTask,
+  mockTaskWithSubtasks,
   mockUserId,
 } from "@mocks/tasks-mocks";
-import { createTask } from "@repositories/tasks-repository";
+import { createTask, findTaskById } from "@repositories/tasks-repository";
 import { PrismaClient } from "@shared/clients/prisma";
 
 describe("tasksRepository", () => {
-  let mockPrismaClient: {
-    task: {
-      create: ReturnType<typeof vi.fn>;
-    };
-  };
+  let mockPrismaClient: MockPrismaClient;
 
   beforeEach(() => {
-    mockPrismaClient = {
-      task: {
-        create: vi.fn(),
-      },
-    };
+    mockPrismaClient = createMockPrismaClient();
   });
 
   afterEach(() => {
@@ -55,39 +52,45 @@ describe("tasksRepository", () => {
       });
       expect(result).toEqual(mockTask);
     });
+  });
 
-    it("should handle null dueDate correctly", async () => {
-      const parsedTaskWithoutDueDate = {
-        ...mockParsedTask,
-        dueDate: null,
-      };
-      const mockTaskWithoutDueDate = {
-        ...mockTask,
-        dueDate: null,
-      };
+  describe("findTaskById", () => {
+    it("should find task with subtasks", async () => {
+      mockPrismaClient.task.findUnique.mockResolvedValue(mockTaskWithSubtasks);
 
-      mockPrismaClient.task.create.mockResolvedValue(mockTaskWithoutDueDate);
-
-      const result = await createTask(
+      const result = await findTaskById(
         mockPrismaClient as unknown as PrismaClient,
-        mockUserId,
-        mockNaturalLanguage,
-        parsedTaskWithoutDueDate
+        mockTask.id
       );
 
-      expect(mockPrismaClient.task.create).toHaveBeenCalledWith({
-        data: {
-          userId: mockUserId,
-          naturalLanguage: mockNaturalLanguage,
-          title: parsedTaskWithoutDueDate.title,
-          dueDate: null,
-          category: parsedTaskWithoutDueDate.category,
-          priorityLevel: parsedTaskWithoutDueDate.priority.level,
-          priorityScore: parsedTaskWithoutDueDate.priority.score,
-          priorityReason: parsedTaskWithoutDueDate.priority.reason,
+      expect(mockPrismaClient.task.findUnique).toHaveBeenCalledWith({
+        where: {
+          id: mockTask.id,
+        },
+        include: {
+          subtasks: true,
         },
       });
-      expect(result).toEqual(mockTaskWithoutDueDate);
+      expect(result).toEqual(mockTaskWithSubtasks);
+    });
+
+    it("should return null when task not found", async () => {
+      mockPrismaClient.task.findUnique.mockResolvedValue(null);
+
+      const result = await findTaskById(
+        mockPrismaClient as unknown as PrismaClient,
+        999
+      );
+
+      expect(mockPrismaClient.task.findUnique).toHaveBeenCalledWith({
+        where: {
+          id: 999,
+        },
+        include: {
+          subtasks: true,
+        },
+      });
+      expect(result).toBeNull();
     });
   });
 });
