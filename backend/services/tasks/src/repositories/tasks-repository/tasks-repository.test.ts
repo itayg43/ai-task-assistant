@@ -60,7 +60,8 @@ describe("tasksRepository", () => {
 
       const result = await findTaskById(
         mockPrismaClient as unknown as PrismaClient,
-        mockTask.id
+        mockTask.id,
+        mockUserId
       );
 
       expect(mockPrismaClient.task.findUnique).toHaveBeenCalledWith({
@@ -79,7 +80,8 @@ describe("tasksRepository", () => {
 
       const result = await findTaskById(
         mockPrismaClient as unknown as PrismaClient,
-        999
+        999,
+        mockUserId
       );
 
       expect(mockPrismaClient.task.findUnique).toHaveBeenCalledWith({

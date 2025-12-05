@@ -34,11 +34,13 @@ export const createTask = async (
 
 export const findTaskById = async (
   client: PrismaClient | PrismaTransactionClient,
-  taskId: number
+  taskId: number,
+  userId: number
 ): Promise<TaskWithSubtasks | null> => {
   return await client.task.findUnique({
     where: {
       id: taskId,
+      userId,
     },
     include: {
       subtasks: true,

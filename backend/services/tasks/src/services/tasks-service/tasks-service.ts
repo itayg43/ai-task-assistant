@@ -38,7 +38,7 @@ export const createTaskHandler = async (
       await createManySubtasks(tx, createdTask.id, userId, parsedTask.subtasks);
     }
 
-    const taskWithSubtasks = await findTaskById(tx, createdTask.id);
+    const taskWithSubtasks = await findTaskById(tx, createdTask.id, userId);
 
     return taskWithSubtasks!;
   });
