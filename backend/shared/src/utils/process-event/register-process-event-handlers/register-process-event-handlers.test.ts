@@ -2,9 +2,9 @@ import http from "http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  CloseServerCleanupCallbacks,
   Mocked,
   ProcessExitCallback,
+  ServicesCleanupCallbacks,
 } from "../../../types";
 import { shutdownHandler } from "../handlers/shutdown-handler";
 import { registerProcessEventHandlers } from "./register-process-event-handlers";
@@ -15,8 +15,10 @@ describe("registerProcessEventHandlers", () => {
   let mockedShutdownHandler: Mocked<typeof shutdownHandler>;
 
   let mockServer: Partial<http.Server>;
+
   let mockProcessExitCallback: ProcessExitCallback;
-  let mockCloseServerCleanupCallbacks: CloseServerCleanupCallbacks;
+
+  let mockCleanupCallbacks: ServicesCleanupCallbacks;
 
   let processOnSpy: any;
 
@@ -49,8 +51,10 @@ describe("registerProcessEventHandlers", () => {
     mockServer = {
       close: vi.fn(),
     };
+
     mockProcessExitCallback = vi.fn() as unknown as ProcessExitCallback;
-    mockCloseServerCleanupCallbacks = {
+
+    mockCleanupCallbacks = {
       afterSuccess: vi.fn().mockResolvedValue(undefined),
       afterFailure: vi.fn().mockResolvedValue(undefined),
     };
@@ -68,22 +72,18 @@ describe("registerProcessEventHandlers", () => {
       registerProcessEventHandlers(
         mockServer as http.Server,
         mockProcessExitCallback,
-        mockCloseServerCleanupCallbacks
+        mockCleanupCallbacks
       );
 
-      // verify that process.on was called with the correct event and a function
       expect(processOnSpy).toHaveBeenCalledWith(name, expect.any(Function));
 
-      // get the handler for this event
       const eventCall = processOnSpy.mock.calls.find(
         (call: any) => call[0] === name
       );
       const eventHandler = eventCall![1] as Function;
 
-      // trigger the handler
       eventHandler(errorOrReason);
 
-      // verify the correct handler was called based on the expectedHandler
       if (expectedHandler === "shutdownHandler") {
         expect(mockedShutdownHandler).toHaveBeenCalledWith(
           mockServer,
@@ -91,7 +91,7 @@ describe("registerProcessEventHandlers", () => {
           errorOrReason,
           expect.any(Uint8Array),
           mockProcessExitCallback,
-          mockCloseServerCleanupCallbacks
+          mockCleanupCallbacks
         );
       }
     }

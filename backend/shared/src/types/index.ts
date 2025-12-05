@@ -1,5 +1,4 @@
 export type { AuthenticationContext } from "./authentication-context";
-export type { CloseServerCleanupCallbacks } from "./close-server-cleanup-callbacks";
 export type { DurationUnit } from "./duration-unit";
 export type { GetElapsedDurationOptions } from "./get-elpased-duration-options";
 export type { HttpErrorResponseData } from "./http-error-response-data";
@@ -9,6 +8,10 @@ export type { Mocked } from "./mocked";
 export type { PrismaTransactionClient } from "./prisma-transaction-client";
 export type { ProcessExitCallback } from "./process-exit-callback";
 export type { RetryConfig } from "./retry-config";
+export type {
+  ServicesCallbacks,
+  ServicesCleanupCallbacks,
+} from "./services-callbacks";
 export type { TokenBucketRateLimiterConfig } from "./token-bucket-rate-limiter-config";
 export type { TokenBucketState } from "./token-bucket-state";
 export type { WithDurationResult } from "./with-duration-result";
