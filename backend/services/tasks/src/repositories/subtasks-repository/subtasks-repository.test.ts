@@ -20,7 +20,7 @@ describe("subtasksRepository", () => {
   });
 
   describe("createManySubtasks", () => {
-    const testCases = [
+    it.each([
       {
         name: "multiple subtasks",
         subtasks: [
@@ -38,34 +38,30 @@ describe("subtasksRepository", () => {
         name: "empty array",
         subtasks: [] as string[],
       },
-    ];
+    ])("should handle $name correctly", async ({ subtasks }) => {
+      const mockResult = {
+        count: subtasks.length,
+      };
+      mockPrismaClient.subtask.createMany.mockResolvedValue(mockResult);
 
-    testCases.forEach(({ name, subtasks }) => {
-      it(`should handle ${name} correctly`, async () => {
-        const mockResult = {
-          count: subtasks.length,
-        };
-        mockPrismaClient.subtask.createMany.mockResolvedValue(mockResult);
+      const result = await createManySubtasks(
+        mockPrismaClient as unknown as PrismaClient,
+        mockTask.id,
+        mockUserId,
+        subtasks
+      );
 
-        const result = await createManySubtasks(
-          mockPrismaClient as unknown as PrismaClient,
-          mockTask.id,
-          mockUserId,
-          subtasks
-        );
+      const expectedData = subtasks.map((title, idx) => ({
+        taskId: mockTask.id,
+        userId: mockUserId,
+        title,
+        order: idx,
+      }));
 
-        const expectedData = subtasks.map((title, idx) => ({
-          taskId: mockTask.id,
-          userId: mockUserId,
-          title,
-          order: idx,
-        }));
-
-        expect(mockPrismaClient.subtask.createMany).toHaveBeenCalledWith({
-          data: expectedData,
-        });
-        expect(result).toEqual(mockResult);
+      expect(mockPrismaClient.subtask.createMany).toHaveBeenCalledWith({
+        data: expectedData,
       });
+      expect(result).toEqual(mockResult);
     });
   });
 });
