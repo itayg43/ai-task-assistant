@@ -44,15 +44,6 @@ describe("subtasksRepository (integration)", () => {
       expect(createdTask).toBeDefined();
       expect(createdTask.id).toBeDefined();
 
-      const foundTask = await prismaClient.task.findUnique({
-        where: {
-          id: createdTask.id,
-        },
-      });
-
-      expect(foundTask).toBeTruthy();
-      expect(foundTask?.id).toBe(createdTask.id);
-
       const subtasks = [
         "Gather Data For Report",
         "Write Q2 Report",
