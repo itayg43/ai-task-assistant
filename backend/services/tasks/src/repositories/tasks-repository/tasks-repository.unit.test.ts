@@ -14,7 +14,7 @@ import {
 import { createTask, findTaskById } from "@repositories/tasks-repository";
 import { PrismaClient } from "@shared/clients/prisma";
 
-describe("tasksRepository", () => {
+describe("tasksRepository (unit)", () => {
   let mockPrismaClient: MockPrismaClient;
 
   beforeEach(() => {
