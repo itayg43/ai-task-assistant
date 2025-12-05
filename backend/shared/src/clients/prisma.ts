@@ -1,9 +1,8 @@
 import { PrismaClient } from "@prisma/client";
-
-import { createLogger } from "../config/create-logger";
-
 // Re-export PrismaClient and Prisma namespace for centralized imports
 export { Prisma, PrismaClient } from "@prisma/client";
+
+import { createLogger } from "../config/create-logger";
 
 const logger = createLogger("prisma");
 
@@ -19,12 +18,12 @@ export const createPrismaClient = (databaseUrl: string) => {
   return prisma;
 };
 
-export const connectPrismaClient = async (
-  prisma: PrismaClient
-): Promise<void> => {
+export const connectPrismaClient = async (prisma: PrismaClient) => {
   try {
     logger.info("Connecting Prisma client...");
+
     await prisma.$connect();
+
     logger.info("Prisma client connected");
   } catch (error) {
     logger.error("Failed to connect Prisma client", error);
@@ -33,12 +32,12 @@ export const connectPrismaClient = async (
   }
 };
 
-export const disconnectPrismaClient = async (
-  prisma: PrismaClient
-): Promise<void> => {
+export const disconnectPrismaClient = async (prisma: PrismaClient) => {
   try {
     logger.info("Disconnecting Prisma client...");
+
     await prisma.$disconnect();
+
     logger.info("Prisma client disconnected");
   } catch (error) {
     logger.error("Failed to disconnect Prisma client", error);
