@@ -31,8 +31,8 @@ describe("tasksRepository (integration)", () => {
     await prismaClient.$disconnect();
   });
 
-  describe("createTask", () => {
-    it("should create a task and persist it to the database", async () => {
+  describe("createTask and findTaskById", () => {
+    it("should create a task and find it with subtasks", async () => {
       const createdTask = await createTask(
         prismaClient,
         mockUserId,
@@ -49,17 +49,6 @@ describe("tasksRepository (integration)", () => {
       expect(createdTask.priorityScore).toBe(mockParsedTask.priority.score);
       expect(createdTask.priorityReason).toBe(mockParsedTask.priority.reason);
       expect(createdTask.naturalLanguage).toBe(mockNaturalLanguage);
-    });
-  });
-
-  describe("findTaskById", () => {
-    it("should find task with subtasks when userId matches", async () => {
-      const createdTask = await createTask(
-        prismaClient,
-        mockUserId,
-        mockNaturalLanguage,
-        mockParsedTask
-      );
 
       const foundTask = await findTaskById(
         prismaClient,
