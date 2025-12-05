@@ -67,6 +67,7 @@ describe("tasksRepository", () => {
       expect(mockPrismaClient.task.findUnique).toHaveBeenCalledWith({
         where: {
           id: mockTask.id,
+          userId: mockUserId,
         },
         include: {
           subtasks: true,
@@ -87,6 +88,7 @@ describe("tasksRepository", () => {
       expect(mockPrismaClient.task.findUnique).toHaveBeenCalledWith({
         where: {
           id: 999,
+          userId: mockUserId,
         },
         include: {
           subtasks: true,

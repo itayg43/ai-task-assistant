@@ -7,7 +7,9 @@ import { Mocked, ServicesCallbacks } from "../../types";
 import { registerProcessEventHandlers } from "../process-event/register-process-event-handlers";
 import { initializeServer } from "./server";
 
-vi.mock("./process-event/register-process-event-handlers");
+vi.mock("../process-event/register-process-event-handlers", () => ({
+  registerProcessEventHandlers: vi.fn(),
+}));
 
 describe("server", () => {
   describe("initializeServer", () => {

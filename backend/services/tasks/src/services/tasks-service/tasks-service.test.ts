@@ -36,155 +36,186 @@ vi.mock("@clients/prisma", () => ({
   },
 }));
 
-describe("createTaskHandler", () => {
-  let mockedExecuteCapability: Mocked<typeof executeCapability>;
-  let mockedCreateTask: Mocked<typeof createTask>;
-  let mockedFindTaskById: Mocked<typeof findTaskById>;
-  let mockedCreateManySubtasks: Mocked<typeof createManySubtasks>;
+describe("tasksService", () => {
+  describe("createTaskHandler", () => {
+    let mockedExecuteCapability: Mocked<typeof executeCapability>;
 
-  let mockTransaction: ReturnType<typeof vi.fn>;
+    let mockedCreateTask: Mocked<typeof createTask>;
+    let mockedCreateManySubtasks: Mocked<typeof createManySubtasks>;
+    let mockedFindTaskById: Mocked<typeof findTaskById>;
 
-  const executeHandler = async () => {
-    return await createTaskHandler(
-      mockRequestId,
-      mockUserId,
-      mockNaturalLanguage
-    );
-  };
+    let mockTransaction: ReturnType<typeof vi.fn>;
 
-  beforeEach(async () => {
-    mockedExecuteCapability = vi.mocked(executeCapability);
-    mockedCreateTask = vi.mocked(createTask);
-    mockedFindTaskById = vi.mocked(findTaskById);
-    mockedCreateManySubtasks = vi.mocked(createManySubtasks);
+    const executeHandler = async () => {
+      return await createTaskHandler(
+        mockRequestId,
+        mockUserId,
+        mockNaturalLanguage
+      );
+    };
 
-    mockedExecuteCapability.mockResolvedValue(mockAiCapabilityResponse);
+    beforeEach(async () => {
+      mockedExecuteCapability = vi.mocked(executeCapability);
+      mockedExecuteCapability.mockResolvedValue(mockAiCapabilityResponse);
 
-    mockedCreateTask.mockResolvedValue(mockTask);
-    mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasks);
+      mockedCreateTask = vi.mocked(createTask);
+      mockedCreateTask.mockResolvedValue(mockTask);
+      mockedCreateManySubtasks = vi.mocked(createManySubtasks);
+      mockedFindTaskById = vi.mocked(findTaskById);
+      mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasks);
 
-    mockTransaction = vi.fn(async (callback) => {
-      return await callback({});
+      mockTransaction = vi.fn(async (callback) => {
+        return await callback({});
+      });
+      const { prisma } = await import("@clients/prisma");
+      vi.mocked(prisma.$transaction).mockImplementation(mockTransaction);
     });
 
-    const { prisma } = await import("@clients/prisma");
-    vi.mocked(prisma.$transaction).mockImplementation(mockTransaction);
-  });
+    afterEach(() => {
+      vi.clearAllMocks();
+    });
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+    it("should propagate errors from executeCapability", async () => {
+      const mockError = new Error("AI service error");
+      mockedExecuteCapability.mockRejectedValue(mockError);
 
-  it("should successfully call executeCapability with correct parameters", async () => {
-    await executeHandler();
+      await expect(executeHandler()).rejects.toThrow(mockError);
+    });
 
-    expect(mockedExecuteCapability).toHaveBeenCalledWith(mockRequestId, {
-      capability: "parse-task",
-      pattern: "sync",
-      params: {
+    it("should successfully create task and return it", async () => {
+      const result = await executeHandler();
+
+      expect(mockedExecuteCapability).toHaveBeenCalledWith(mockRequestId, {
+        capability: "parse-task",
+        pattern: "sync",
+        params: {
+          naturalLanguage: mockNaturalLanguage,
+          config: DEFAULT_PARSE_TASK_CONFIG,
+        },
+      });
+      expect(mockTransaction).toHaveBeenCalled();
+      expect(mockedCreateTask).toHaveBeenCalledWith(
+        {},
+        mockUserId,
+        mockNaturalLanguage,
+        mockParsedTask
+      );
+      expect(mockedFindTaskById).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockTask.id,
+        mockUserId
+      );
+      expect(result).toMatchObject({
+        id: 1,
+        userId: mockUserId,
         naturalLanguage: mockNaturalLanguage,
-        config: DEFAULT_PARSE_TASK_CONFIG,
+        title: mockParsedTask.title,
+        category: mockParsedTask.category,
+        priorityLevel: mockParsedTask.priority.level,
+        priorityScore: mockParsedTask.priority.score,
+        priorityReason: mockParsedTask.priority.reason,
+        subtasks: [],
+      });
+    });
+
+    it("should persist subtasks when they exist", async () => {
+      const parsedTaskWithSubtasks = {
+        ...mockParsedTask,
+        subtasks: ["Subtask 1", "Subtask 2"],
+      };
+
+      mockedExecuteCapability.mockResolvedValue({
+        ...mockAiCapabilityResponse,
+        result: parsedTaskWithSubtasks,
+      });
+
+      mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasksWithItems);
+
+      const result = await executeHandler();
+
+      expect(mockedCreateManySubtasks).toHaveBeenCalledWith(
+        expect.any(Object),
+        1,
+        mockUserId,
+        parsedTaskWithSubtasks.subtasks
+      );
+      expect(result.subtasks).toHaveLength(2);
+      expect(result.subtasks[0].title).toBe("Subtask 1");
+      expect(result.subtasks[1].title).toBe("Subtask 2");
+    });
+
+    it.each([
+      {
+        description: "null",
+        subtasks: null,
       },
-    });
-  });
+      {
+        description: "empty array",
+        subtasks: [],
+      },
+    ])(
+      "should not persist subtasks when they are $description",
+      async ({ subtasks }) => {
+        const parsedTaskWithoutSubtasks = {
+          ...mockParsedTask,
+          subtasks,
+        };
 
-  it("should return task with subtasks from database", async () => {
-    const result = await executeHandler();
+        mockedExecuteCapability.mockResolvedValue({
+          ...mockAiCapabilityResponse,
+          result: parsedTaskWithoutSubtasks,
+        });
 
-    expect(result).toMatchObject({
-      id: 1,
-      userId: mockUserId,
-      naturalLanguage: mockNaturalLanguage,
-      title: mockParsedTask.title,
-      category: mockParsedTask.category,
-      priorityLevel: mockParsedTask.priority.level,
-      priorityScore: mockParsedTask.priority.score,
-      priorityReason: mockParsedTask.priority.reason,
-      subtasks: [],
-    });
-    expect(result.subtasks).toBeDefined();
-  });
+        mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasks);
 
-  it("should persist task to database using transaction", async () => {
-    await executeHandler();
+        const result = await executeHandler();
 
-    expect(mockTransaction).toHaveBeenCalled();
-    expect(mockedCreateTask).toHaveBeenCalledWith(
-      {},
-      mockUserId,
-      mockNaturalLanguage,
-      mockParsedTask
+        expect(mockedCreateManySubtasks).not.toHaveBeenCalled();
+        expect(result.subtasks).toEqual([]);
+      }
     );
-  });
 
-  it("should persist subtasks when they exist", async () => {
-    const parsedTaskWithSubtasks = {
-      ...mockParsedTask,
-      subtasks: ["Subtask 1", "Subtask 2"],
-    };
+    describe("transaction rollback", () => {
+      beforeEach(() => {
+        mockTransaction.mockImplementation(async (callback) => {
+          try {
+            return await callback({});
+          } catch (error) {
+            throw error;
+          }
+        });
+      });
 
-    mockedExecuteCapability.mockResolvedValue({
-      ...mockAiCapabilityResponse,
-      result: parsedTaskWithSubtasks,
+      it("should rollback transaction when task creation fails", async () => {
+        const taskError = new Error("Task creation failed");
+        mockedCreateTask.mockRejectedValue(taskError);
+
+        await expect(executeHandler()).rejects.toThrow(taskError);
+
+        expect(mockedCreateTask).toHaveBeenCalled();
+        expect(mockedCreateManySubtasks).not.toHaveBeenCalled();
+      });
+
+      it("should rollback transaction when subtask creation fails", async () => {
+        const parsedTaskWithSubtasks = {
+          ...mockParsedTask,
+          subtasks: ["Subtask 1", "Subtask 2"],
+        };
+
+        mockedExecuteCapability.mockResolvedValue({
+          ...mockAiCapabilityResponse,
+          result: parsedTaskWithSubtasks,
+        });
+
+        const subtaskError = new Error("Subtask creation failed");
+        mockedCreateManySubtasks.mockRejectedValue(subtaskError);
+
+        await expect(executeHandler()).rejects.toThrow(subtaskError);
+
+        expect(mockedCreateTask).toHaveBeenCalled();
+        expect(mockedCreateManySubtasks).toHaveBeenCalled();
+        expect(mockedFindTaskById).not.toHaveBeenCalled();
+      });
     });
-
-    mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasksWithItems);
-
-    const result = await executeHandler();
-
-    expect(mockedCreateManySubtasks).toHaveBeenCalledWith(
-      expect.any(Object),
-      1,
-      mockUserId,
-      parsedTaskWithSubtasks.subtasks
-    );
-    expect(result.subtasks).toHaveLength(2);
-    expect(result.subtasks[0].title).toBe("Subtask 1");
-    expect(result.subtasks[1].title).toBe("Subtask 2");
-  });
-
-  it("should not persist subtasks when they are null", async () => {
-    const parsedTaskWithoutSubtasks = {
-      ...mockParsedTask,
-      subtasks: null,
-    };
-
-    mockedExecuteCapability.mockResolvedValue({
-      ...mockAiCapabilityResponse,
-      result: parsedTaskWithoutSubtasks,
-    });
-
-    mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasks);
-
-    const result = await executeHandler();
-
-    expect(mockedCreateManySubtasks).not.toHaveBeenCalled();
-    expect(result.subtasks).toEqual([]);
-  });
-
-  it("should not persist subtasks when they are empty array", async () => {
-    const parsedTaskWithEmptySubtasks = {
-      ...mockParsedTask,
-      subtasks: [],
-    };
-
-    mockedExecuteCapability.mockResolvedValue({
-      ...mockAiCapabilityResponse,
-      result: parsedTaskWithEmptySubtasks,
-    });
-
-    mockedFindTaskById.mockResolvedValue(mockTaskWithSubtasks);
-
-    const result = await executeHandler();
-
-    expect(mockedCreateManySubtasks).not.toHaveBeenCalled();
-    expect(result.subtasks).toEqual([]);
-  });
-
-  it("should propagate errors from executeCapability", async () => {
-    const mockError = new Error("AI service error");
-    mockedExecuteCapability.mockRejectedValue(mockError);
-
-    await expect(executeHandler()).rejects.toThrow(mockError);
   });
 });
