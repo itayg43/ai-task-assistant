@@ -438,7 +438,7 @@ See `backend/services/tasks/prisma/schema.prisma` for the complete schema defini
 
 ## Near-Term Enhancements
 
-1. **Task Retrieval with Pagination**
+1. **Tasks Retrieval with Pagination**
 
    - Implement paginated task retrieval endpoint (e.g., `GET /tasks`)
    - Always filter by `userId` (required, utilizes existing indexed field for performance)
