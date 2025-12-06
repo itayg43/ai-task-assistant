@@ -1,20 +1,24 @@
-# AI Task Assistant
-
-A microservices-based system that leverages OpenAI to parse natural language task descriptions into structured, actionable data with priority scoring, categorization, and subtask generation.
+# Task Assistant
 
 ## Overview
 
 ### Architecture
 
 ```mermaid
-graph LR
+graph TB
     Client[Client] -->|HTTP Request| Tasks[Tasks Service<br/>Port 3001]
-    Tasks -->|Rate Limit Check| Redis[Redis<br/>Token Bucket<br/>Rate Limiting]
+
+    Tasks -->|Rate Limit Check| Redis[Redis<br/>Token Bucket<br/>Rate Limiting<br/>Port 6379]
     Redis -->|Allow/Deny| Tasks
+
+    Tasks -->|Database Operations| Postgres[PostgreSQL<br/>Port 5432]
+    Postgres -->|Query Results| Tasks
+
     Tasks -->|AI Request| AI[AI Service<br/>Port 3002]
     AI -->|OpenAI API| OpenAI[OpenAI GPT]
     OpenAI -->|AI Response| AI
     AI -->|Response| Tasks
+
     Tasks -->|Final Response| Client
 ```
 
@@ -25,6 +29,7 @@ graph LR
 - **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
 - **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
 - **Distributed Rate Limiting**: Token bucket algorithm with Redis and Redlock
+- **Database Persistence**: PostgreSQL database with Prisma ORM for reliable task and subtask storage
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
 
 ### Tech Stack
@@ -32,6 +37,7 @@ graph LR
 - **Runtime**: Node.js with TypeScript
 - **Framework**: Express.js
 - **AI**: OpenAI API
+- **Database**: PostgreSQL with Prisma ORM
 - **Caching/Locking**: Redis with Redlock
 - **Containerization**: Docker & Docker Compose
 - **Monorepo**: NPM Workspaces
@@ -63,6 +69,10 @@ graph LR
 3. **Configure environment variables**
 
    ```bash
+   # Root level
+   cp .env.example .env
+   # Edit .env with PostgreSQL credentials
+
    # AI Service
    cd backend/services/ai
    cp .env.example .env.dev
@@ -73,7 +83,13 @@ graph LR
    # Tasks Service
    cd backend/services/tasks
    cp .env.example .env.dev
-   # Edit .env.dev with service configuration
+   # Edit .env.dev with service configuration including:
+   # DATABASE_URL=postgresql://user:password@postgres:5432/database_name
+
+   # Create .env.test for database integration tests
+   cp .env.example .env.test
+   # Edit .env.test with test database configuration:
+   # DATABASE_URL=postgresql://user:password@localhost:5432/test_database_name
    ```
 
 4. **Start services**
@@ -87,6 +103,7 @@ graph LR
    - **Tasks Service**: `http://localhost:3001`
    - **AI Service**: `http://localhost:3002`
    - **Redis**: `localhost:6379`
+   - **PostgreSQL**: `localhost:5432`
 
 ### Additional Commands
 
@@ -96,6 +113,14 @@ npm run type-check
 
 # Access Redis CLI
 docker exec -it <redis_container_id> redis-cli
+
+# Access PostgreSQL CLI
+docker exec -it <postgres_container_id> psql -U <POSTGRES_USER> -d <POSTGRES_DB>
+
+# Prisma commands (from backend/services/tasks directory)
+cd backend/services/tasks
+npm run prisma:generate  # Generate Prisma client
+npm run prisma:migrate:dev  # Run database migrations
 
 # View logs
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f ai
@@ -108,14 +133,24 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f tasks
 # Run all tests
 npm test
 
-# Run prompt evaluation tests (requires .env.test)
+# Run prompt evaluation tests (requires .env.test in backend/services/ai)
 npm run test:prompts
+
+# Run database integration tests (requires .env.test in backend/services/tasks)
+npm run test:db
 
 # Run tests for specific workspace
 npm test -w backend/services/ai
 npm test -w backend/services/tasks
 npm test -w backend/shared
 ```
+
+**Important Notes for `npm run test:db`:**
+
+- The test database should be separate from development database
+- Tests run sequentially to avoid race conditions with shared database state
+- Ensure PostgreSQL is running and accessible before running tests
+- The test suite will clean up data after each test, but uses a real database connection
 
 ## Continuous Integration
 
@@ -183,7 +218,7 @@ POST /capabilities/parse-task?pattern=sync
   },
   "result": {
     "title": "Plan Company-Wide Team Building Event",
-    "dueDate": "2025-12-26T20:33:11.049Z",
+    "dueDate": "2026-01-06T00:00:00.000Z",
     "category": "work",
     "priority": {
       "level": "high",
@@ -208,24 +243,57 @@ POST /capabilities/parse-task?pattern=sync
 
 ```json
 {
-  "tasksServiceRequestId": "7fcc9514-4db5-435c-948b-0127b374f435",
-  "title": "Plan Company-Wide Team Building Event",
-  "dueDate": "2025-12-26T20:33:11.049Z",
-  "category": "work",
-  "priority": {
-    "level": "high",
-    "score": 8,
-    "reason": "Event involves multiple critical steps and coordination for a large group within a fixed timeframe next month"
-  },
-  "subtasks": [
-    "Obtain Budget Approval",
-    "Select Suitable Venue",
-    "Book Venue",
-    "Plan Team Building Activities",
-    "Coordinate Activity Logistics",
-    "Communicate Event Details To Employees",
-    "Execute Team Building Event"
-  ]
+  "tasksServiceRequestId": "4d2011a0-ea7f-4ccf-bc24-993bd9f804f6",
+  "task": {
+    "id": 7,
+    "title": "Plan Company-Wide Team Building Event",
+    "dueDate": "2026-01-06T00:00:00.000Z",
+    "category": "work",
+    "priority": {
+      "level": "high",
+      "score": 8,
+      "reason": "Event involves multiple critical steps and coordination for a large group within a fixed timeframe next month"
+    },
+    "createdAt": "2025-12-06T16:46:59.698Z",
+    "updatedAt": "2025-12-06T16:46:59.698Z",
+    "subtasks": [
+      {
+        "id": 29,
+        "title": "Obtain Budget Approval",
+        "order": 0
+      },
+      {
+        "id": 30,
+        "title": "Select Suitable Venue",
+        "order": 1
+      },
+      {
+        "id": 31,
+        "title": "Book Venue",
+        "order": 2
+      },
+      {
+        "id": 32,
+        "title": "Plan Team Building Activities",
+        "order": 3
+      },
+      {
+        "id": 33,
+        "title": "Coordinate Activity Logistics",
+        "order": 4
+      },
+      {
+        "id": 34,
+        "title": "Communicate Event Details To Employees",
+        "order": 5
+      },
+      {
+        "id": 35,
+        "title": "Execute Team Building Event",
+        "order": 6
+      }
+    ]
+  }
 }
 ```
 
@@ -344,19 +412,42 @@ POST /capabilities/parse-task?pattern=sync
 
 The `backend/shared` package provides reusable components:
 
-- **Clients**: Redis, Redlock, HTTP client
+- **Clients**: Redis, Redlock, HTTP client, Prisma client
 - **Middlewares**: Authentication, CORS, error handling, rate limiting, schema validation
 - **Utilities**: Date/time helpers, retry logic, distributed locking, token bucket rate limiter
 - **Error Classes**: Custom error types for consistent error handling
 - **Types & Schemas**: Shared TypeScript types and Zod schemas
 
+## Database Schema
+
+The Tasks service uses PostgreSQL with Prisma ORM. The schema includes:
+
+### Models
+
+- **Task**: Stores task information including title, category, priority, due date, and natural language input
+- **Subtask**: Stores subtasks associated with tasks, with ordering support
+
+### Key Features
+
+- User-based data isolation via `userId` fields
+- Cascade deletion: Subtasks are automatically deleted when their parent task is deleted
+- Unique ordering: Each task's subtasks have unique order values
+- Indexed queries: Optimized indexes on `userId` and `taskId` for efficient lookups
+
+See `backend/services/tasks/prisma/schema.prisma` for the complete schema definition.
+
 ## Near-Term Enhancements
 
-1. **PostgreSQL Integration**
+1. **Task Retrieval with Pagination**
 
-   - Add PostgreSQL service to Docker Compose
-   - Implement Prisma ORM with schema and migrations
-   - Create CRUD operations for tasks in Tasks service
+   - Implement paginated task retrieval endpoint (e.g., `GET /tasks`)
+   - Always filter by `userId` (required, utilizes existing indexed field for performance)
+   - Make all other options configurable via query parameters:
+     - Pagination: `skip` and `take` (or cursor-based pagination)
+     - Sorting: Configurable `orderBy` (e.g., dueDate, priority, createdAt) with direction
+     - Additional filtering: Optional `where` clauses (category, priority, due date range, etc.)
+   - Include pagination metadata in response using Prisma's `count()` for total records
+   - Allow clients to customize their queries based on their specific needs
 
 2. **Token Usage Rate Limiting**
 
