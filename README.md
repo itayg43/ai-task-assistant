@@ -1,5 +1,7 @@
 # Task Assistant
 
+This is a personal LLM-powered task assistant built with TypeScript and Node.js, integrating the OpenAI API. Built to practice backend engineering in a modular microservices architecture with type-safe code, focusing on maintainability and testability. It is intended as a learning and portfolio project rather than a fully production-ready system.
+
 ## Overview
 
 ### Architecture
@@ -456,7 +458,18 @@ See `backend/services/tasks/prisma/schema.prisma` for the complete schema defini
    - Store token usage in Redis with distributed locking (Redlock) to prevent race conditions
    - Configure per-user token limits (e.g., 10,000 tokens per hour)
 
-3. **Async AI Processing**
+3. **OpenAI API Performance Monitoring**
+
+   - Add Prometheus and Grafana services to Docker Compose for local monitoring
+   - Instrument `executeParse` function with Prometheus metrics:
+     - Success rate (track success and failure counts)
+     - Duration metrics (average and P95, with P99 available if needed)
+     - Total token usage (input and output tracked separately, average can be derived)
+   - Expose `/metrics` endpoint in AI service for Prometheus scraping
+   - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
+   - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
+
+4. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
