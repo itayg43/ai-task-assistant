@@ -1,4 +1,9 @@
 import { PARSE_TASK_VAGUE_INPUT_ERROR } from "@constants";
+import { type Subtask } from "@repositories/subtasks-repository";
+import {
+  type Task,
+  type TaskWithSubtasks,
+} from "@repositories/tasks-repository";
 import { TAiCapabilityResponse, TAiErrorData, TParsedTask } from "@types";
 
 export const mockNaturalLanguage = "Submit Q2 report by next Friday";
@@ -44,4 +49,51 @@ export const mockAiErrorData: TAiErrorData = {
 
 export const mockAiErrorDataWithoutType: TAiErrorData = {
   message: "Invalid input provided",
+};
+
+export const mockUserId = 1;
+
+export const mockTask: Task = {
+  id: 1,
+  userId: mockUserId,
+  naturalLanguage: mockNaturalLanguage,
+  title: mockParsedTask.title,
+  dueDate: mockParsedTask.dueDate ? new Date(mockParsedTask.dueDate) : null,
+  category: mockParsedTask.category,
+  priorityLevel: mockParsedTask.priority.level,
+  priorityScore: mockParsedTask.priority.score,
+  priorityReason: mockParsedTask.priority.reason,
+  createdAt: new Date("2024-01-19T00:00:00Z"),
+  updatedAt: new Date("2024-01-19T00:00:00Z"),
+};
+
+export const mockTaskWithSubtasks: TaskWithSubtasks = {
+  ...mockTask,
+  subtasks: [],
+};
+
+export const mockSubtasks: Subtask[] = [
+  {
+    id: 1,
+    taskId: mockTask.id,
+    userId: mockUserId,
+    title: "Subtask 1",
+    order: 0,
+    createdAt: new Date("2024-01-19T00:00:00Z"),
+    updatedAt: new Date("2024-01-19T00:00:00Z"),
+  },
+  {
+    id: 2,
+    taskId: mockTask.id,
+    userId: mockUserId,
+    title: "Subtask 2",
+    order: 1,
+    createdAt: new Date("2024-01-19T00:00:00Z"),
+    updatedAt: new Date("2024-01-19T00:00:00Z"),
+  },
+];
+
+export const mockTaskWithSubtasksWithItems: TaskWithSubtasks = {
+  ...mockTask,
+  subtasks: mockSubtasks,
 };

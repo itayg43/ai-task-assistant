@@ -1,0 +1,17 @@
+import tsconfigPaths from "vite-tsconfig-paths";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [tsconfigPaths()],
+  test: {
+    include: ["src/repositories/**/*.integration.test.ts"],
+    testTimeout: 30000,
+    // Run tests sequentially to avoid race conditions with shared database state
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
+  },
+});

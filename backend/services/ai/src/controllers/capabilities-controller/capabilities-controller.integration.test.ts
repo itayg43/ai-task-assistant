@@ -12,6 +12,13 @@ import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { Mocked } from "@shared/types";
 import { app } from "../../app";
 
+vi.mock("@config/env", () => ({
+  env: {
+    SERVICE_NAME: "ai",
+    SERVICE_PORT: "3002",
+  },
+}));
+
 vi.mock("@capabilities/parse-task/handler", () => ({
   parseTaskHandler: vi.fn(),
 }));

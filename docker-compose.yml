@@ -14,6 +14,7 @@ services:
     depends_on:
       - redis
       - ai
+      - postgres
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health/readyz"]
       interval: 30s
@@ -25,3 +26,18 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

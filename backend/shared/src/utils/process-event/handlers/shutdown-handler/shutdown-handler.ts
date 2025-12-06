@@ -6,9 +6,10 @@ import {
   SERVER_SHUTDOWN_STATE,
 } from "../../../../constants";
 import {
-  CloseServerCleanupCallbacks,
   ProcessExitCallback,
+  ServicesCleanupCallbacks,
 } from "../../../../types";
+import { closeServer, performFailureCleanup } from "../../../server";
 
 const logger = createLogger("shutdownHandler");
 
@@ -18,7 +19,7 @@ export const shutdownHandler = async (
   errorOrReason: unknown,
   shutdownView: Uint8Array,
   processExitCallback: ProcessExitCallback,
-  closeServerCleanupCallbacks: CloseServerCleanupCallbacks
+  servicesCleanupCallbacks?: ServicesCleanupCallbacks
 ) => {
   logger.info(`Invoked by event: ${event}`);
 
@@ -38,12 +39,11 @@ export const shutdownHandler = async (
     server,
     errorOrReason,
     processExitCallback,
-    closeServerCleanupCallbacks
+    servicesCleanupCallbacks
   );
 };
 
 function checkIfShutdownAlreadyInProgress(shutdownView: Uint8Array) {
-  // use atomic compare-and-exchange to ensure only one handler proceeds
   const expected = SERVER_SHUTDOWN_STATE.NOT_SHUTTING_DOWN;
   const replacement = SERVER_SHUTDOWN_STATE.SHUTTING_DOWN;
 
@@ -56,38 +56,29 @@ async function processShutdown(
   server: http.Server,
   errorOrReason: unknown,
   processExitCallback: ProcessExitCallback,
-  closeServerCleanupCallbacks: CloseServerCleanupCallbacks
+  servicesCleanupCallbacks?: ServicesCleanupCallbacks
 ) {
   logger.info("Closing HTTP server...");
 
   try {
     await closeServer(server);
 
-    await closeServerCleanupCallbacks.afterSuccess();
+    if (servicesCleanupCallbacks) {
+      await servicesCleanupCallbacks.afterSuccess();
+    }
 
     const exitCode = errorOrReason
       ? PROCESS_EXIT_CODE.ERROR
       : PROCESS_EXIT_CODE.REGULAR;
+
     logger.info(`HTTP server closed. Exiting process. Exit code: ${exitCode}`);
 
     processExitCallback(exitCode);
   } catch (error) {
     logger.error(`Error while closing the server:`, error);
 
-    closeServerCleanupCallbacks.afterFailure();
+    await performFailureCleanup(servicesCleanupCallbacks?.afterFailure);
 
     processExitCallback(PROCESS_EXIT_CODE.ERROR);
   }
-}
-
-async function closeServer(server: http.Server): Promise<void> {
-  return new Promise((resolve, reject) => {
-    server.close((closeError) => {
-      if (closeError) {
-        reject(closeError);
-      } else {
-        resolve();
-      }
-    });
-  });
 }

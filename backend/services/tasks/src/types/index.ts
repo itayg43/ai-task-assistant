@@ -9,3 +9,4 @@ export type {
   TParseTaskConfigScoreRange,
 } from "./parse-task-config";
 export type { TParsedTask } from "./parsed-task";
+export type { TaskResponse } from "./task-response";

@@ -9,6 +9,8 @@ export const env = cleanEnv(process.env, {
 
   AI_SERVICE_URL: str(),
 
+  DATABASE_URL: str(),
+
   REDIS_URL: str(),
   REDIS_CONNECT_TIMEOUT_MS: num(),
   REDIS_READY_TIMEOUT_MS: num(),

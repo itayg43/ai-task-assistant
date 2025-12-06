@@ -4,6 +4,8 @@ import { StatusCodes } from "http-status-codes";
 import { CreateTaskInput } from "@schemas/tasks-schemas";
 import { createTaskHandler } from "@services/tasks-service";
 import { createLogger } from "@shared/config/create-logger";
+import { getAuthenticationContext } from "@shared/utils/authentication-context";
+import { taskToResponseDto } from "@utils/task-to-response-dto";
 
 const logger = createLogger("tasksController");
 
@@ -13,6 +15,7 @@ export const createTask = async (
   next: NextFunction
 ) => {
   const { requestId } = res.locals;
+  const { userId } = getAuthenticationContext(res);
   const { naturalLanguage } = req.body;
 
   const baseLogContext = {
@@ -23,7 +26,7 @@ export const createTask = async (
   try {
     logger.info("Create task - starting", baseLogContext);
 
-    const result = await createTaskHandler(requestId, naturalLanguage);
+    const result = await createTaskHandler(requestId, userId, naturalLanguage);
 
     logger.info("Create task - succeeded", {
       ...baseLogContext,
@@ -32,7 +35,7 @@ export const createTask = async (
 
     res.status(StatusCodes.CREATED).json({
       tasksServiceRequestId: requestId,
-      ...result,
+      task: taskToResponseDto(result),
     });
   } catch (error) {
     next(error);

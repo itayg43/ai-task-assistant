@@ -1,0 +1,51 @@
+generator client {
+    provider      = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Task {
+    id              Int       @id @default(autoincrement())
+    userId          Int       @map("user_id")
+    naturalLanguage String    @map("natural_language") @db.Text
+    title           String
+    dueDate         DateTime? @map("due_date") @db.Timestamp
+    category        String
+    priorityLevel   String    @map("priority_level")
+    priorityScore   Int       @map("priority_score")
+    priorityReason  String    @map("priority_reason") @db.Text
+    createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp
+    updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp
+
+    subtasks Subtask[]
+
+    @@index([userId], map: "tasks_user_id_idx")
+    // @@map("tasks") maps the Prisma model name "Task" to the database table name "tasks"
+    // This allows using PascalCase in Prisma while keeping snake_case in the database
+    @@map("tasks")
+}
+
+model Subtask {
+    id        Int      @id @default(autoincrement())
+    taskId    Int      @map("task_id")
+    userId    Int      @map("user_id")
+    title     String
+    order     Int
+    createdAt DateTime @default(now()) @map("created_at") @db.Timestamp
+    updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp
+
+    // Foreign key relationship: subtasks belong to a task, cascade delete removes subtasks when task is deleted
+    task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+    // Unique constraint ensures no duplicate order values for the same task
+    @@unique([taskId, order], map: "subtasks_task_id_order_key")
+    @@index([taskId], map: "subtasks_task_id_idx")
+    @@index([taskId, userId], map: "subtasks_task_id_user_id_idx")
+    // @@map("subtasks") maps the Prisma model name "Subtask" to the database table name "subtasks"
+    // This allows using PascalCase in Prisma while keeping snake_case in the database
+    @@map("subtasks")
+}
