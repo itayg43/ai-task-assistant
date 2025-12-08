@@ -10,7 +10,7 @@ import {
   findTaskById,
   findTasks,
 } from "@repositories/tasks-repository";
-import { GET_TASKS_ALLOWED_ORDER_DIRECTIONS } from "@schemas/tasks-schemas";
+import { GET_TASKS_ALLOWED_ORDER_DIRECTIONS } from "@constants";
 import { createPrismaClient } from "@shared/clients/prisma";
 
 describe("tasksRepository (integration)", () => {

@@ -4,19 +4,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   mockAiCapabilityResponse,
+  mockFindTasksResult,
+  mockGetTasksInputQuery,
   mockNaturalLanguage,
   mockParsedTask,
   mockTask,
   mockTaskWithSubtasks,
 } from "@mocks/tasks-mocks";
-import { FindTasksResult } from "@repositories/tasks-repository";
 import {
   GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
   GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
   GET_TASKS_DEFAULT_SKIP,
   GET_TASKS_DEFAULT_TAKE,
-  GetTasksInput,
-} from "@schemas/tasks-schemas";
+} from "@constants";
+import { GetTasksInput } from "@schemas/tasks-schemas";
 import { executeCapability } from "@services/ai-capabilities-service";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
 import {
@@ -25,8 +26,8 @@ import {
   TooManyRequestsError,
 } from "@shared/errors";
 import { Mocked } from "@shared/types";
+import { GetTasksResponse } from "@types";
 import { app } from "../../app";
-import { GetTasksResponse } from "./tasks-controller";
 
 vi.mock("@config/env", () => ({
   env: {
@@ -204,18 +205,6 @@ describe("tasksController (integration)", () => {
 
   describe("getTasks", () => {
     const getTasksUrl = "/api/v1/tasks";
-
-    const mockGetTasksInputQuery: GetTasksInput["query"] = {
-      skip: 0,
-      take: 10,
-      orderBy: "createdAt",
-      orderDirection: "desc",
-    };
-    const mockFindTasksResult: FindTasksResult = {
-      tasks: [mockTaskWithSubtasks],
-      totalCount: 1,
-      hasMore: false,
-    };
 
     beforeEach(async () => {
       const { findTasks } = await import("@repositories/tasks-repository");

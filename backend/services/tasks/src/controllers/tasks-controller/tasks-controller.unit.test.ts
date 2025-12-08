@@ -2,19 +2,16 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createTask, getTasks } from "@controllers/tasks-controller";
+import { CreateTaskResponse, GetTasksResponse } from "@types";
 import {
-  createTask,
-  getTasks,
-  type CreateTaskResponse,
-  type GetTasksResponse,
-} from "@controllers/tasks-controller";
-import {
+  mockFindTasksResult,
+  mockGetTasksInputQuery,
   mockNaturalLanguage,
   mockRequestId,
   mockTaskWithSubtasks,
   mockUserId,
 } from "@mocks/tasks-mocks";
-import { FindTasksResult } from "@repositories/tasks-repository";
 import { GetTasksInput } from "@schemas/tasks-schemas";
 import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
 import { Mocked } from "@shared/types";
@@ -105,24 +102,14 @@ describe("tasksController (unit)", () => {
   });
 
   describe("getTasks", () => {
-    const mockValidatedQuery: GetTasksInput["query"] = {
-      skip: 0,
-      take: 10,
-      orderBy: "createdAt",
-      orderDirection: "desc",
-      category: "work",
-      priorityLevel: "high",
-    };
-    const mockFindTasksResult: FindTasksResult = {
-      tasks: [mockTaskWithSubtasks],
-      totalCount: 1,
-      hasMore: false,
-    };
-
     let mockedGetTasksHandler: Mocked<typeof getTasksHandler>;
 
     beforeEach(() => {
-      mockResponse.locals!.validatedQuery = mockValidatedQuery;
+      mockResponse.locals!.validatedQuery = {
+        ...mockGetTasksInputQuery,
+        category: "work",
+        priorityLevel: "high",
+      };
 
       mockedGetTasksHandler = vi.mocked(getTasksHandler);
       mockedGetTasksHandler.mockResolvedValue(mockFindTasksResult);
@@ -132,10 +119,7 @@ describe("tasksController (unit)", () => {
       await getTasks(mockRequest as any, mockResponse as Response, mockNext);
 
       expect(mockedGetTasksHandler).toHaveBeenCalledWith(mockUserId, {
-        skip: 0,
-        take: 10,
-        orderBy: "createdAt",
-        orderDirection: "desc",
+        ...mockGetTasksInputQuery,
         where: {
           category: "work",
           priorityLevel: "high",

@@ -1,6 +1,1 @@
-export {
-  createTask,
-  type CreateTaskResponse,
-  getTasks,
-  type GetTasksResponse,
-} from "./tasks-controller";
+export { createTask, getTasks } from "./tasks-controller";

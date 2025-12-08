@@ -1,7 +1,15 @@
 import z from "zod";
 
-import { Prisma } from "@shared/clients/prisma";
+import {
+  GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
+  GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
+  GET_TASKS_DEFAULT_SKIP,
+  GET_TASKS_DEFAULT_TAKE,
+  GET_TASKS_MAX_TAKE,
+  GET_TASKS_MIN_TAKE,
+} from "@constants";
 import { TaskOrderByFields } from "@repositories/tasks-repository";
+import { Prisma } from "@shared/clients/prisma";
 
 export const createTaskSchema = z.object({
   body: z.object({
@@ -11,26 +19,16 @@ export const createTaskSchema = z.object({
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 
-export const GET_TASKS_ALLOWED_ORDER_BY_FIELDS: [
-  TaskOrderByFields,
-  ...TaskOrderByFields[]
-] = ["dueDate", "priorityScore", "createdAt"];
-
-export const GET_TASKS_ALLOWED_ORDER_DIRECTIONS: [
-  Prisma.SortOrder,
-  Prisma.SortOrder
-] = ["asc", "desc"];
-
-export const GET_TASKS_DEFAULT_SKIP = 0;
-export const GET_TASKS_DEFAULT_TAKE = 10;
-const MIN_TAKE = 1;
-const MAX_TAKE = 100;
-
 export const getTasksSchema = z.object({
   query: z
     .object({
       skip: z.coerce.number().int().min(GET_TASKS_DEFAULT_SKIP).nullish(),
-      take: z.coerce.number().int().min(MIN_TAKE).max(MAX_TAKE).nullish(),
+      take: z.coerce
+        .number()
+        .int()
+        .min(GET_TASKS_MIN_TAKE)
+        .max(GET_TASKS_MAX_TAKE)
+        .nullish(),
       orderBy: z.enum(GET_TASKS_ALLOWED_ORDER_BY_FIELDS).nullish(),
       orderDirection: z.enum(GET_TASKS_ALLOWED_ORDER_DIRECTIONS).nullish(),
       category: z.string().nullish(),
@@ -48,7 +46,7 @@ export const getTasksSchema = z.object({
     .pipe(
       z.object({
         skip: z.number().int().min(GET_TASKS_DEFAULT_SKIP),
-        take: z.number().int().min(MIN_TAKE).max(MAX_TAKE),
+        take: z.number().int().min(GET_TASKS_MIN_TAKE).max(GET_TASKS_MAX_TAKE),
         orderBy: z.enum(GET_TASKS_ALLOWED_ORDER_BY_FIELDS),
         orderDirection: z.enum(GET_TASKS_ALLOWED_ORDER_DIRECTIONS),
         category: z.string().optional(),

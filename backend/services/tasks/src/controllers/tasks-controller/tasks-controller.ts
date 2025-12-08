@@ -6,28 +6,8 @@ import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
 import { createLogger } from "@shared/config/create-logger";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
 import { getValidatedQuery } from "@shared/utils/validated-query";
-import { TaskResponse } from "@types";
+import { CreateTaskResponse, GetTasksResponse } from "@types";
 import { taskToResponseDto } from "@utils/task-to-response-dto";
-
-type BaseTaskControllerResponse = {
-  tasksServiceRequestId: string;
-};
-
-export type CreateTaskResponse = BaseTaskControllerResponse & {
-  task: TaskResponse;
-};
-
-export type GetTasksResponse = BaseTaskControllerResponse & {
-  tasks: TaskResponse[];
-  pagination: {
-    totalCount: number;
-    skip: number;
-    take: number;
-    hasMore: boolean;
-    currentPage: number;
-    totalPages: number;
-  };
-};
 
 const logger = createLogger("tasksController");
 

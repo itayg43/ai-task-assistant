@@ -10,3 +10,7 @@ export type {
 } from "./parse-task-config";
 export type { TParsedTask } from "./parsed-task";
 export type { TaskResponse } from "./task-response";
+export type {
+  CreateTaskResponse,
+  GetTasksResponse,
+} from "./tasks-controller-response";

@@ -1,9 +1,11 @@
 import { PARSE_TASK_VAGUE_INPUT_ERROR } from "@constants";
 import { type Subtask } from "@repositories/subtasks-repository";
 import {
+  type FindTasksResult,
   type Task,
   type TaskWithSubtasks,
 } from "@repositories/tasks-repository";
+import { GetTasksInput } from "@schemas/tasks-schemas";
 import { TAiCapabilityResponse, TAiErrorData, TParsedTask } from "@types";
 
 export const mockNaturalLanguage = "Submit Q2 report by next Friday";
@@ -96,4 +98,17 @@ export const mockSubtasks: Subtask[] = [
 export const mockTaskWithSubtasksWithItems: TaskWithSubtasks = {
   ...mockTask,
   subtasks: mockSubtasks,
+};
+
+export const mockGetTasksInputQuery: GetTasksInput["query"] = {
+  skip: 0,
+  take: 10,
+  orderBy: "createdAt",
+  orderDirection: "desc",
+};
+
+export const mockFindTasksResult: FindTasksResult = {
+  tasks: [mockTaskWithSubtasks],
+  totalCount: 1,
+  hasMore: false,
 };
