@@ -29,18 +29,19 @@ const MAX_TAKE = 100;
 export const getTasksSchema = z.object({
   query: z
     .object({
-      skip: z.string().nullish(),
-      take: z.string().nullish(),
+      skip: z.coerce.number().int().min(GET_TASKS_DEFAULT_SKIP).nullish(),
+      take: z.coerce.number().int().min(MIN_TAKE).max(MAX_TAKE).nullish(),
       orderBy: z.enum(GET_TASKS_ALLOWED_ORDER_BY_FIELDS).nullish(),
       orderDirection: z.enum(GET_TASKS_ALLOWED_ORDER_DIRECTIONS).nullish(),
       category: z.string().nullish(),
       priorityLevel: z.string().nullish(),
     })
     .transform((data) => ({
-      skip: data.skip ? parseInt(data.skip) : GET_TASKS_DEFAULT_SKIP,
-      take: data.take ? parseInt(data.take) : GET_TASKS_DEFAULT_TAKE,
-      orderBy: (data.orderBy || "createdAt") as TaskOrderByFields,
-      orderDirection: (data.orderDirection || "desc") as Prisma.SortOrder,
+      skip: data.skip ?? GET_TASKS_DEFAULT_SKIP,
+      take: data.take ?? GET_TASKS_DEFAULT_TAKE,
+      orderBy: (data.orderBy ?? "createdAt") satisfies TaskOrderByFields,
+      orderDirection: (data.orderDirection ??
+        "desc") satisfies Prisma.SortOrder,
       category: data.category || undefined,
       priorityLevel: data.priorityLevel || undefined,
     }))
