@@ -237,6 +237,8 @@ describe("tasksController (integration)", () => {
           skip: expect.any(Number),
           take: expect.any(Number),
           hasMore: expect.any(Boolean),
+          currentPage: expect.any(Number),
+          totalPages: expect.any(Number),
         },
       };
 
@@ -256,6 +258,8 @@ describe("tasksController (integration)", () => {
           skip: GET_TASKS_DEFAULT_SKIP,
           take: GET_TASKS_DEFAULT_TAKE,
           hasMore: expect.any(Boolean),
+          currentPage: expect.any(Number),
+          totalPages: expect.any(Number),
         },
       };
 

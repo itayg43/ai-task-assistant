@@ -151,6 +151,8 @@ describe("tasksController (unit)", () => {
           skip: 0,
           take: 10,
           hasMore: false,
+          currentPage: 1,
+          totalPages: 1,
         },
       };
       expect(mockResponse.json).toHaveBeenCalledWith(response);
@@ -175,6 +177,8 @@ describe("tasksController (unit)", () => {
           skip: 0,
           take: 10,
           hasMore: false,
+          currentPage: 1,
+          totalPages: 0,
         },
       };
       expect(mockResponse.json).toHaveBeenCalledWith(response);

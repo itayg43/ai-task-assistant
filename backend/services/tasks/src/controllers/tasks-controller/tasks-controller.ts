@@ -24,6 +24,8 @@ export type GetTasksResponse = BaseTaskControllerResponse & {
     skip: number;
     take: number;
     hasMore: boolean;
+    currentPage: number;
+    totalPages: number;
   };
 };
 
@@ -103,6 +105,9 @@ export const getTasks = async (
         skip,
         take,
         hasMore: result.hasMore,
+        currentPage: Math.floor(skip / take) + 1,
+        totalPages:
+          result.totalCount > 0 ? Math.ceil(result.totalCount / take) : 0,
       },
     };
 
