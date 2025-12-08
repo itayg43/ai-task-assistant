@@ -6,5 +6,5 @@ export {
   GET_TASKS_DEFAULT_TAKE,
   GET_TASKS_MAX_TAKE,
   GET_TASKS_MIN_TAKE,
-} from "./get-tasks-constants";
+} from "./get-tasks";
 export { DEFAULT_PARSE_TASK_CONFIG } from "./parse-task-config";
