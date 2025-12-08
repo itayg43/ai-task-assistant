@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { CreateTaskInput, GetTasksInput } from "@schemas/tasks-schemas";
+import { CreateTaskInput, GetTasksInput } from "@types";
 import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
 import { createLogger } from "@shared/config/create-logger";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";

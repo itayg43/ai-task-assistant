@@ -5,7 +5,7 @@ import {
   type Task,
   type TaskWithSubtasks,
 } from "@repositories/tasks-repository";
-import { GetTasksInput } from "@schemas/tasks-schemas";
+import { GetTasksInput } from "@types";
 import { TAiCapabilityResponse, TAiErrorData, TParsedTask } from "@types";
 
 export const mockNaturalLanguage = "Submit Q2 report by next Friday";

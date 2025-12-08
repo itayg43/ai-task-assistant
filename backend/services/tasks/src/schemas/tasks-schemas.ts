@@ -17,8 +17,6 @@ export const createTaskSchema = z.object({
   }),
 });
 
-export type CreateTaskInput = z.infer<typeof createTaskSchema>;
-
 export const getTasksSchema = z.object({
   query: z
     .object({
@@ -54,5 +52,3 @@ export const getTasksSchema = z.object({
       })
     ),
 });
-
-export type GetTasksInput = z.infer<typeof getTasksSchema>;

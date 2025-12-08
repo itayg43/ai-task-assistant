@@ -10,6 +10,7 @@ export type {
 } from "./parse-task-config";
 export type { TParsedTask } from "./parsed-task";
 export type { TaskResponse } from "./task-response";
+export type { CreateTaskInput, GetTasksInput } from "./tasks-controller-input";
 export type {
   CreateTaskResponse,
   GetTasksResponse,

@@ -17,7 +17,7 @@ import {
   GET_TASKS_DEFAULT_SKIP,
   GET_TASKS_DEFAULT_TAKE,
 } from "@constants";
-import { GetTasksInput } from "@schemas/tasks-schemas";
+import { GetTasksInput } from "@types";
 import { executeCapability } from "@services/ai-capabilities-service";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
 import {

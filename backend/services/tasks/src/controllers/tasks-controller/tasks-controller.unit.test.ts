@@ -12,7 +12,7 @@ import {
   mockTaskWithSubtasks,
   mockUserId,
 } from "@mocks/tasks-mocks";
-import { GetTasksInput } from "@schemas/tasks-schemas";
+import { GetTasksInput } from "@types";
 import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
 import { Mocked } from "@shared/types";
 import { taskToResponseDto } from "@utils/task-to-response-dto";
