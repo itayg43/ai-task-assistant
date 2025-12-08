@@ -1,2 +1,1 @@
-export { createTaskHandler } from "./tasks-service";
-
+export { createTaskHandler, getTasksHandler } from "./tasks-service";
