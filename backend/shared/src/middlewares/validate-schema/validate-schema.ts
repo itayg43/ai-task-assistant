@@ -3,11 +3,21 @@ import z from "zod";
 
 export const validateSchema =
   (schema: z.AnyZodObject) =>
-  (req: Request, _res: Response, next: NextFunction) => {
+  (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = schema.parse(req) as any;
+      const parsed = schema.parse(req);
 
-      req.body = parsed.body;
+      if (parsed.body !== undefined) {
+        req.body = parsed.body;
+      }
+
+      if (parsed.query !== undefined) {
+        res.locals.validatedQuery = parsed.query;
+      }
+
+      if (parsed.params !== undefined) {
+        res.locals.validatedParams = parsed.params;
+      }
 
       next();
     } catch (error) {
