@@ -3,6 +3,12 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
+  GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
+  GET_TASKS_DEFAULT_SKIP,
+  GET_TASKS_DEFAULT_TAKE,
+} from "@constants";
+import {
   mockAiCapabilityResponse,
   mockFindTasksResult,
   mockGetTasksInputQuery,
@@ -11,13 +17,6 @@ import {
   mockTask,
   mockTaskWithSubtasks,
 } from "@mocks/tasks-mocks";
-import {
-  GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
-  GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
-  GET_TASKS_DEFAULT_SKIP,
-  GET_TASKS_DEFAULT_TAKE,
-} from "@constants";
-import { GetTasksInput } from "@types";
 import { executeCapability } from "@services/ai-capabilities-service";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
 import {
