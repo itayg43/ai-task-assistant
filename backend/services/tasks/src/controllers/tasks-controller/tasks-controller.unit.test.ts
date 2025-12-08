@@ -3,7 +3,6 @@ import { StatusCodes } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTask, getTasks } from "@controllers/tasks-controller";
-import { CreateTaskResponse, GetTasksResponse } from "@types";
 import {
   mockFindTasksResult,
   mockGetTasksInputQuery,
@@ -12,9 +11,9 @@ import {
   mockTaskWithSubtasks,
   mockUserId,
 } from "@mocks/tasks-mocks";
-import { GetTasksInput } from "@types";
 import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
 import { Mocked } from "@shared/types";
+import { CreateTaskResponse, GetTasksResponse } from "@types";
 import { taskToResponseDto } from "@utils/task-to-response-dto";
 
 vi.mock("@services/tasks-service", () => ({
