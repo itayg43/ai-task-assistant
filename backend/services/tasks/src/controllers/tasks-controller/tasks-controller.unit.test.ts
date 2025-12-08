@@ -2,19 +2,27 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createTask } from "@controllers/tasks-controller";
+import {
+  createTask,
+  getTasks,
+  type CreateTaskResponse,
+  type GetTasksResponse,
+} from "@controllers/tasks-controller";
 import {
   mockNaturalLanguage,
   mockRequestId,
   mockTaskWithSubtasks,
   mockUserId,
 } from "@mocks/tasks-mocks";
-import { createTaskHandler } from "@services/tasks-service";
+import { FindTasksResult } from "@repositories/tasks-repository";
+import { GetTasksInput } from "@schemas/tasks-schemas";
+import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
 import { Mocked } from "@shared/types";
 import { taskToResponseDto } from "@utils/task-to-response-dto";
 
 vi.mock("@services/tasks-service", () => ({
   createTaskHandler: vi.fn(),
+  getTasksHandler: vi.fn(),
 }));
 
 describe("tasksController (unit)", () => {
@@ -23,6 +31,8 @@ describe("tasksController (unit)", () => {
   let mockNext: NextFunction;
 
   beforeEach(() => {
+    mockRequest = {};
+
     mockResponse = {
       locals: {
         requestId: mockRequestId,
@@ -67,12 +77,14 @@ describe("tasksController (unit)", () => {
         mockUserId,
         mockNaturalLanguage
       );
-
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.CREATED);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+
+      const response: CreateTaskResponse = {
         tasksServiceRequestId: mockRequestId,
         task: taskToResponseDto(mockTaskWithSubtasks),
-      });
+      };
+      expect(mockResponse.json).toHaveBeenCalledWith(response);
+
       expect(mockNext).not.toHaveBeenCalled();
     });
 
@@ -85,6 +97,94 @@ describe("tasksController (unit)", () => {
         mockResponse as Response,
         mockNext
       );
+
+      expect(mockNext).toHaveBeenCalledWith(mockError);
+      expect(mockResponse.status).not.toHaveBeenCalled();
+      expect(mockResponse.json).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getTasks", () => {
+    const mockValidatedQuery: GetTasksInput["query"] = {
+      skip: 0,
+      take: 10,
+      orderBy: "createdAt",
+      orderDirection: "desc",
+      category: "work",
+      priorityLevel: "high",
+    };
+    const mockFindTasksResult: FindTasksResult = {
+      tasks: [mockTaskWithSubtasks],
+      totalCount: 1,
+      hasMore: false,
+    };
+
+    let mockedGetTasksHandler: Mocked<typeof getTasksHandler>;
+
+    beforeEach(() => {
+      mockResponse.locals!.validatedQuery = mockValidatedQuery;
+
+      mockedGetTasksHandler = vi.mocked(getTasksHandler);
+      mockedGetTasksHandler.mockResolvedValue(mockFindTasksResult);
+    });
+
+    it("should successfully get tasks and return 200 with paginated response", async () => {
+      await getTasks(mockRequest as any, mockResponse as Response, mockNext);
+
+      expect(mockedGetTasksHandler).toHaveBeenCalledWith(mockUserId, {
+        skip: 0,
+        take: 10,
+        orderBy: "createdAt",
+        orderDirection: "desc",
+        where: {
+          category: "work",
+          priorityLevel: "high",
+        },
+      });
+      expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.OK);
+
+      const response: GetTasksResponse = {
+        tasksServiceRequestId: mockRequestId,
+        tasks: [taskToResponseDto(mockTaskWithSubtasks)],
+        pagination: {
+          totalCount: 1,
+          skip: 0,
+          take: 10,
+          hasMore: false,
+        },
+      };
+      expect(mockResponse.json).toHaveBeenCalledWith(response);
+
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should handle empty results correctly", async () => {
+      mockedGetTasksHandler.mockResolvedValue({
+        tasks: [],
+        totalCount: 0,
+        hasMore: false,
+      });
+
+      await getTasks(mockRequest as any, mockResponse as Response, mockNext);
+
+      const response: GetTasksResponse = {
+        tasksServiceRequestId: mockRequestId,
+        tasks: [],
+        pagination: {
+          totalCount: 0,
+          skip: 0,
+          take: 10,
+          hasMore: false,
+        },
+      };
+      expect(mockResponse.json).toHaveBeenCalledWith(response);
+    });
+
+    it("should handle errors from getTasksHandler and pass to next", async () => {
+      const mockError = new Error("Failed to get tasks");
+      mockedGetTasksHandler.mockRejectedValue(mockError);
+
+      await getTasks(mockRequest as any, mockResponse as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(mockError);
       expect(mockResponse.status).not.toHaveBeenCalled();
