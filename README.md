@@ -32,6 +32,7 @@ graph TB
 - **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
 - **Distributed Rate Limiting**: Token bucket algorithm with Redis and Redlock
 - **Database Persistence**: PostgreSQL database with Prisma ORM for reliable task and subtask storage
+- **Task Retrieval with Pagination**: Paginated task retrieval with filtering, and sorting support
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
 
 ### Tech Stack
@@ -123,6 +124,7 @@ docker exec -it <postgres_container_id> psql -U <POSTGRES_USER> -d <POSTGRES_DB>
 cd backend/services/tasks
 npm run prisma:generate  # Generate Prisma client
 npm run prisma:migrate:dev  # Run database migrations
+npm run prisma:seed  # Seed database with sample data (25 tasks with subtasks)
 
 # View logs
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f ai
@@ -167,12 +169,12 @@ Usage of GitHub Actions for automated testing and quality assurance:
 
 ## API Examples
 
-### Success Case
+### Create Task
 
 **1. Client Request to Tasks Service:**
 
 ```http
-POST /create
+POST /api/v1/tasks
 
 {
   "naturalLanguage": "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination"
@@ -306,7 +308,7 @@ When input is too vague, the system provides helpful suggestions:
 **1. Client Request to Tasks Service:**
 
 ```http
-POST /create
+POST /api/v1/tasks
 
 {
   "naturalLanguage": "Plan something soon"
@@ -373,7 +375,7 @@ When the OpenAI API encounters an error, the system handles it gracefully:
 **1. Client Request to Tasks Service:**
 
 ```http
-POST /create
+POST /api/v1/tasks
 
 {
   "naturalLanguage": "Plan and execute a company-wide team building event for 50 people next month with budget approval, venue booking, and activity coordination"
@@ -410,6 +412,111 @@ POST /capabilities/parse-task?pattern=sync
 }
 ```
 
+### Get Tasks
+
+**Client Request:**
+
+```http
+GET /api/v1/tasks?skip=0&take=5&orderBy=priorityScore&orderDirection=desc
+```
+
+**Query Parameters:**
+
+- `skip` (optional): Number of records to skip (default: 0)
+- `take` (optional): Number of records to return (default: 10, min: 1, max: 100)
+- `orderBy` (optional): Field to sort by - `"dueDate"`, `"priorityScore"`, or `"createdAt"` (default: `"createdAt"`)
+- `orderDirection` (optional): Sort direction - `"asc"` or `"desc"` (default: `"desc"`)
+- `category` (optional): Filter by task category (e.g., `"work"`, `"personal"`)
+- `priorityLevel` (optional): Filter by priority level (e.g., `"high"`, `"medium"`, `"low"`, `"critical"`)
+
+**Tasks Service Response (HTTP 200):**
+
+```json
+{
+  "tasksServiceRequestId": "a9b1a054-9626-41f2-8bb3-ab3f3cc50773",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Review And Approve Quarterly Budget Report",
+      "dueDate": "2025-12-12T23:59:59.000Z",
+      "category": "work",
+      "priority": {
+        "level": "high",
+        "score": 8,
+        "reason": "Task involves reviewing and approving a quarterly budget report with a deadline at the end of the week, indicating high priority and time sensitivity for work-related financial planning."
+      },
+      "createdAt": "2025-12-09T10:00:00.000Z",
+      "updatedAt": "2025-12-09T10:00:00.000Z",
+      "subtasks": [...]
+    },
+    {
+      "id": 2,
+      "title": "Prepare Client Meeting Presentation",
+      "dueDate": "2025-12-15T00:00:00.000Z",
+      "category": "work",
+      "priority": {
+        "level": "high",
+        "score": 8,
+        "reason": "Task involves preparing a presentation for a client meeting scheduled for next Monday, indicating high priority and urgency for work-related client engagement."
+      },
+      "createdAt": "2025-12-09T10:00:00.000Z",
+      "updatedAt": "2025-12-09T10:00:00.000Z",
+      "subtasks": [...]
+    },
+    {
+      "id": 3,
+      "title": "Update Project Documentation And Share With Team",
+      "dueDate": null,
+      "category": "work",
+      "priority": {
+        "level": "medium",
+        "score": 5,
+        "reason": "Task involves updating project documentation and sharing it with the team, indicating medium priority for work-related documentation maintenance."
+      },
+      "createdAt": "2025-12-09T10:00:00.000Z",
+      "updatedAt": "2025-12-09T10:00:00.000Z",
+      "subtasks": [...]
+    },
+    {
+      "id": 4,
+      "title": "Schedule Team Standup Meeting",
+      "dueDate": "2025-12-10T09:00:00.000Z",
+      "category": "work",
+      "priority": {
+        "level": "low",
+        "score": 2,
+        "reason": "Task involves scheduling a team standup meeting for tomorrow morning, indicating low priority for routine work-related meeting coordination."
+      },
+      "createdAt": "2025-12-09T10:00:00.000Z",
+      "updatedAt": "2025-12-09T10:00:00.000Z",
+      "subtasks": [...]
+    },
+    {
+      "id": 5,
+      "title": "Complete Code Review For Pull Request 123",
+      "dueDate": "2025-12-12T23:59:59.000Z",
+      "category": "work",
+      "priority": {
+        "level": "high",
+        "score": 8,
+        "reason": "Task involves completing a code review for pull request #123 with a deadline this Friday, indicating high priority and time sensitivity for work-related software development."
+      },
+      "createdAt": "2025-12-09T10:00:00.000Z",
+      "updatedAt": "2025-12-09T10:00:00.000Z",
+      "subtasks": [...]
+    }
+  ],
+  "pagination": {
+    "totalCount": 25,
+    "skip": 0,
+    "take": 5,
+    "hasMore": true,
+    "currentPage": 1,
+    "totalPages": 5
+  }
+}
+```
+
 ## Shared Library
 
 The `backend/shared` package provides reusable components:
@@ -438,27 +545,27 @@ The Tasks service uses PostgreSQL with Prisma ORM. The schema includes:
 
 See `backend/services/tasks/prisma/schema.prisma` for the complete schema definition.
 
+### Seeding
+
+The database can be seeded with sample data (25 tasks with subtasks) for testing and development:
+
+```bash
+cd backend/services/tasks
+npm run prisma:seed
+```
+
+The seed file is located at `backend/services/tasks/prisma/seed.ts` and will automatically replace `@postgres:5432` with `@localhost:5432` when running locally. See `backend/services/tasks/prisma/README.md` for more details.
+
 ## Near-Term Enhancements
 
-1. **Tasks Retrieval with Pagination**
-
-   - Implement paginated task retrieval endpoint (e.g., `GET /tasks`)
-   - Always filter by `userId` (required, utilizes existing indexed field for performance)
-   - Make all other options configurable via query parameters:
-     - Pagination: `skip` and `take` (or cursor-based pagination)
-     - Sorting: Configurable `orderBy` (e.g., dueDate, priority, createdAt) with direction
-     - Additional filtering: Optional `where` clauses (category, priority, due date range, etc.)
-   - Include pagination metadata in response using Prisma's `count()` for total records
-   - Allow clients to customize their queries based on their specific needs
-
-2. **Token Usage Rate Limiting**
+1. **Token Usage Rate Limiting**
 
    - Implement rate limiting on `/tasks` create route based on OpenAI token usage
    - Track token consumption per request using AI service response metadata
    - Store token usage in Redis with distributed locking (Redlock) to prevent race conditions
    - Configure per-user token limits (e.g., 10,000 tokens per hour)
 
-3. **OpenAI API Performance Monitoring**
+2. **OpenAI API Performance Monitoring**
 
    - Add Prometheus and Grafana services to Docker Compose for local monitoring
    - Instrument `executeParse` function with Prometheus metrics:
@@ -469,7 +576,7 @@ See `backend/services/tasks/prisma/schema.prisma` for the complete schema defini
    - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
    - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
 
-4. **Async AI Processing**
+3. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
