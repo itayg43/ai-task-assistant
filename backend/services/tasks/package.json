@@ -10,7 +10,8 @@
     "test": "vitest",
     "test:db": "npx dotenv-cli -e .env.test -- vitest --config vitest.db.config.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate:dev": "prisma migrate dev"
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:seed": "npx dotenv-cli -e .env.dev -- ts-node -r tsconfig-paths/register prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
