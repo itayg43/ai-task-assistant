@@ -26,6 +26,6 @@
       "@utils/*": ["src/utils/*"]
     }
   },
-  "include": ["src/"],
+  "include": ["src/", "prisma/"],
   "exclude": ["node_modules/", "dist/"]
 }

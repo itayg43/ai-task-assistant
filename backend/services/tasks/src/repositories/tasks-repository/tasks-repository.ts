@@ -10,6 +10,31 @@ export type TaskWithSubtasks = Prisma.TaskGetPayload<{
   };
 }>;
 
+// Exclude: filters a union type (removes "subtasks" from the union of keys)
+export type TaskOrderByFields = Exclude<
+  keyof Prisma.TaskOrderByWithRelationInput,
+  "subtasks"
+>;
+
+export type TaskWhereFields = Omit<
+  Prisma.TaskWhereInput,
+  "userId" | "subtasks"
+>;
+
+export type FindTasksOptions = {
+  skip: number;
+  take: number;
+  orderBy: TaskOrderByFields;
+  orderDirection: Prisma.SortOrder;
+  where?: TaskWhereFields;
+};
+
+export type FindTasksResult = {
+  tasks: TaskWithSubtasks[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
 export const createTask = async (
   client: PrismaClient | PrismaTransactionClient,
   userId: number,
@@ -46,4 +71,40 @@ export const findTaskById = async (
       subtasks: true,
     },
   });
+};
+
+export const findTasks = async (
+  client: PrismaClient | PrismaTransactionClient,
+  userId: number,
+  options: FindTasksOptions
+): Promise<FindTasksResult> => {
+  const { skip, take, orderBy, orderDirection, where: optionalWhere } = options;
+
+  const where: Prisma.TaskWhereInput = {
+    userId,
+    ...optionalWhere,
+  };
+
+  const [tasks, totalCount] = await Promise.all([
+    client.task.findMany({
+      where,
+      orderBy: {
+        [orderBy]: orderDirection,
+      },
+      skip,
+      take,
+      include: {
+        subtasks: true,
+      },
+    }),
+    client.task.count({
+      where,
+    }),
+  ]);
+
+  return {
+    tasks,
+    totalCount,
+    hasMore: skip + take < totalCount,
+  };
 };

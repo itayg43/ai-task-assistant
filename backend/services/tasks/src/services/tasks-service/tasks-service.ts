@@ -4,6 +4,9 @@ import { createManySubtasks } from "@repositories/subtasks-repository";
 import {
   createTask,
   findTaskById,
+  findTasks,
+  type FindTasksOptions,
+  type FindTasksResult,
   type TaskWithSubtasks,
 } from "@repositories/tasks-repository";
 import { executeCapability } from "@services/ai-capabilities-service";
@@ -42,4 +45,11 @@ export const createTaskHandler = async (
 
     return taskWithSubtasks!;
   });
+};
+
+export const getTasksHandler = async (
+  userId: number,
+  options: FindTasksOptions
+): Promise<FindTasksResult> => {
+  return await findTasks(prisma, userId, options);
 };

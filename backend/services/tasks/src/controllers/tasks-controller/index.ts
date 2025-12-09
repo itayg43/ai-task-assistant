@@ -1,1 +1,1 @@
-export { createTask } from "./tasks-controller";
+export { createTask, getTasks } from "./tasks-controller";

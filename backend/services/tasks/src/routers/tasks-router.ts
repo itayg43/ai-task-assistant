@@ -1,9 +1,10 @@
 import { Router } from "express";
 
-import { createTask } from "@controllers/tasks-controller";
+import { createTask, getTasks } from "@controllers/tasks-controller";
 import { validateSchema } from "@shared/middlewares/validate-schema";
-import { createTaskSchema } from "@schemas/tasks-schemas";
+import { createTaskSchema, getTasksSchema } from "@schemas/tasks-schemas";
 
 export const tasksRouter = Router();
 
-tasksRouter.post("/create", [validateSchema(createTaskSchema)], createTask);
+tasksRouter.post("/", [validateSchema(createTaskSchema)], createTask);
+tasksRouter.get("/", [validateSchema(getTasksSchema)], getTasks);

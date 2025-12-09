@@ -3,7 +3,15 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
+  GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
+  GET_TASKS_DEFAULT_SKIP,
+  GET_TASKS_DEFAULT_TAKE,
+} from "@constants";
+import {
   mockAiCapabilityResponse,
+  mockFindTasksResult,
+  mockGetTasksInputQuery,
   mockNaturalLanguage,
   mockParsedTask,
   mockTask,
@@ -17,6 +25,7 @@ import {
   TooManyRequestsError,
 } from "@shared/errors";
 import { Mocked } from "@shared/types";
+import { GetTasksResponse } from "@types";
 import { app } from "../../app";
 
 vi.mock("@config/env", () => ({
@@ -33,6 +42,7 @@ vi.mock("@services/ai-capabilities-service", () => ({
 vi.mock("@repositories/tasks-repository", () => ({
   createTask: vi.fn(),
   findTaskById: vi.fn(),
+  findTasks: vi.fn(),
 }));
 
 vi.mock("@repositories/subtasks-repository", () => ({
@@ -80,15 +90,14 @@ describe("tasksController (integration)", () => {
   });
 
   describe("createTaskHandler", () => {
-    const createTaskUrl = "/api/v1/tasks/create";
+    const createTaskUrl = "/api/v1/tasks";
 
     beforeEach(async () => {
-      const {
-        createTask: createTaskRepository,
-        findTaskById: findTaskByIdRepository,
-      } = await import("@repositories/tasks-repository");
-      vi.mocked(createTaskRepository).mockResolvedValue(mockTask);
-      vi.mocked(findTaskByIdRepository).mockResolvedValue(mockTaskWithSubtasks);
+      const { createTask, findTaskById } = await import(
+        "@repositories/tasks-repository"
+      );
+      vi.mocked(createTask).mockResolvedValue(mockTask);
+      vi.mocked(findTaskById).mockResolvedValue(mockTaskWithSubtasks);
 
       mockTransaction = vi.fn(async (callback) => {
         return await callback({});
@@ -190,6 +199,180 @@ describe("tasksController (integration)", () => {
       expect(response.status).toBe(StatusCodes.SERVICE_UNAVAILABLE);
       expect(response.body.message).toBe(DEFAULT_ERROR_MESSAGE);
       expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
+    });
+  });
+
+  describe("getTasks", () => {
+    const getTasksUrl = "/api/v1/tasks";
+
+    beforeEach(async () => {
+      const { findTasks } = await import("@repositories/tasks-repository");
+      vi.mocked(findTasks).mockResolvedValue(mockFindTasksResult);
+    });
+
+    it("should return 200 with paginated tasks for valid query parameters", async () => {
+      const response = await request(app)
+        .get(getTasksUrl)
+        .query(mockGetTasksInputQuery);
+
+      expect(response.status).toBe(StatusCodes.OK);
+
+      const expectedBody: GetTasksResponse = {
+        tasksServiceRequestId: expect.any(String),
+        tasks: expect.any(Array),
+        pagination: {
+          totalCount: expect.any(Number),
+          skip: expect.any(Number),
+          take: expect.any(Number),
+          hasMore: expect.any(Boolean),
+          currentPage: expect.any(Number),
+          totalPages: expect.any(Number),
+        },
+      };
+
+      expect(response.body).toMatchObject(expectedBody);
+    });
+
+    it("should return 200 with default pagination when no query parameters provided", async () => {
+      const response = await request(app).get(getTasksUrl);
+
+      expect(response.status).toBe(StatusCodes.OK);
+
+      const expectedBody: GetTasksResponse = {
+        tasksServiceRequestId: expect.any(String),
+        tasks: expect.any(Array),
+        pagination: {
+          totalCount: expect.any(Number),
+          skip: GET_TASKS_DEFAULT_SKIP,
+          take: GET_TASKS_DEFAULT_TAKE,
+          hasMore: expect.any(Boolean),
+          currentPage: expect.any(Number),
+          totalPages: expect.any(Number),
+        },
+      };
+
+      expect(response.body).toMatchObject(expectedBody);
+    });
+
+    it("should filter by category when provided", async () => {
+      const response = await request(app)
+        .get(getTasksUrl)
+        .query({
+          ...mockGetTasksInputQuery,
+          category: "work",
+        });
+
+      expect(response.status).toBe(StatusCodes.OK);
+
+      const { findTasks } = await import("@repositories/tasks-repository");
+      expect(vi.mocked(findTasks)).toHaveBeenCalledWith(
+        expect.anything(),
+        1,
+        expect.objectContaining({
+          where: expect.objectContaining({
+            category: "work",
+          }),
+        })
+      );
+    });
+
+    it("should filter by priorityLevel when provided", async () => {
+      const response = await request(app)
+        .get(getTasksUrl)
+        .query({
+          ...mockGetTasksInputQuery,
+          priorityLevel: "high",
+        });
+
+      expect(response.status).toBe(StatusCodes.OK);
+
+      const { findTasks } = await import("@repositories/tasks-repository");
+      expect(vi.mocked(findTasks)).toHaveBeenCalledWith(
+        expect.anything(),
+        1,
+        expect.objectContaining({
+          where: expect.objectContaining({
+            priorityLevel: "high",
+          }),
+        })
+      );
+    });
+
+    it.each(GET_TASKS_ALLOWED_ORDER_BY_FIELDS.map((orderBy) => [orderBy]))(
+      "should support orderBy field: %s",
+      async (orderBy) => {
+        const response = await request(app)
+          .get(getTasksUrl)
+          .query({
+            ...mockGetTasksInputQuery,
+            orderBy,
+          });
+
+        expect(response.status).toBe(StatusCodes.OK);
+      }
+    );
+
+    it.each(
+      GET_TASKS_ALLOWED_ORDER_DIRECTIONS.map((orderDirection) => [
+        orderDirection,
+      ])
+    )("should support orderDirection: %s", async (orderDirection) => {
+      const response = await request(app)
+        .get(getTasksUrl)
+        .query({
+          ...mockGetTasksInputQuery,
+          orderDirection,
+        });
+
+      expect(response.status).toBe(StatusCodes.OK);
+    });
+
+    it("should return 400 for invalid orderBy value", async () => {
+      const response = await request(app)
+        .get(getTasksUrl)
+        .query({
+          ...mockGetTasksInputQuery,
+          orderBy: "invalidField",
+        });
+
+      expect(response.status).toBe(StatusCodes.BAD_REQUEST);
+      expect(response.body.message).toBeDefined();
+    });
+
+    it("should return 400 for invalid orderDirection value", async () => {
+      const response = await request(app)
+        .get(getTasksUrl)
+        .query({
+          ...mockGetTasksInputQuery,
+          orderDirection: "invalid",
+        });
+
+      expect(response.status).toBe(StatusCodes.BAD_REQUEST);
+      expect(response.body.message).toBeDefined();
+    });
+
+    it("should return 400 for invalid skip value (negative)", async () => {
+      const response = await request(app)
+        .get(getTasksUrl)
+        .query({
+          ...mockGetTasksInputQuery,
+          skip: -1,
+        });
+
+      expect(response.status).toBe(StatusCodes.BAD_REQUEST);
+      expect(response.body.message).toBeDefined();
+    });
+
+    it("should return 400 for invalid take value (too large)", async () => {
+      const response = await request(app)
+        .get(getTasksUrl)
+        .query({
+          ...mockGetTasksInputQuery,
+          take: 101,
+        });
+
+      expect(response.status).toBe(StatusCodes.BAD_REQUEST);
+      expect(response.body.message).toBeDefined();
     });
   });
 });
