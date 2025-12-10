@@ -2,11 +2,11 @@ services:
   ai:
     build:
       context: ./backend
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3002/health/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:3002/health/healthz"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
 
   tasks:
     build:
@@ -15,11 +15,11 @@ services:
       - redis
       - ai
       - postgres
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health/readyz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:3001/health/readyz"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
 
   redis:
     image: redis:8.0
