@@ -47,6 +47,7 @@ export const mockAiErrorData: TAiErrorData = {
     "What specifically needs to be planned? (e.g., 'Plan vacation', 'Plan team meeting')",
     "What is the context or category? (work, personal, etc.)",
   ],
+  openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
 };
 
 export const mockAiErrorDataWithoutType: TAiErrorData = {
