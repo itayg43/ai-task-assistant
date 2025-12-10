@@ -11,7 +11,7 @@ type TAiCapabilityMap = {
 
 export type TAiCapability = keyof TAiCapabilityMap;
 
-type TOpenaiMetadata = {
+export type TOpenaiMetadata = {
   responseId: string;
   tokens: {
     input: number;
