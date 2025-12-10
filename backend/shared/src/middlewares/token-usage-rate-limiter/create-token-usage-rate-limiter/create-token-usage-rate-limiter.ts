@@ -8,21 +8,13 @@ import {
   ServiceUnavailableError,
   TooManyRequestsError,
 } from "../../../errors";
+import type { TokenUsageRateLimiterConfig } from "../../../types";
 import { getAuthenticationContext } from "../../../utils/authentication-context";
 import { getTokenBucketLockKey } from "../../../utils/token-bucket/key-utils";
 import { processTokenUsage } from "../../../utils/token-bucket/process-token-usage";
 import { withLock } from "../../../utils/with-lock";
 
 const logger = createLogger("tokenUsageRateLimiter");
-
-type TokenUsageRateLimiterConfig = {
-  serviceName: string;
-  rateLimiterName: string;
-  windowTokensLimit: number;
-  windowSizeSeconds: number;
-  estimatedTokens: number;
-  lockTtlMs: number;
-};
 
 export const createTokenUsageRateLimiter =
   (
@@ -70,6 +62,7 @@ export const createTokenUsageRateLimiter =
         res.locals.tokenUsage = {
           tokensReserved: result.tokensReserved,
           windowStartTimestamp: result.windowStartTimestamp,
+          // actualTokens will be set by the controller after AI call
         };
 
         logger.info(

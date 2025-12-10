@@ -10,6 +10,7 @@ declare global {
       tokenUsage?: {
         tokensReserved: number;
         windowStartTimestamp: number;
+        actualTokens?: number;
       };
     }
   }

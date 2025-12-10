@@ -10,12 +10,16 @@ import {
 } from "../../../errors";
 import { createRedisClientMock } from "../../../mocks/redis-mock";
 import { createRedlockClientMock } from "../../../mocks/redlock-mock";
+import type { TokenUsageRateLimiterConfig } from "../../../types";
 import { Mocked } from "../../../types";
 import { getAuthenticationContext } from "../../../utils/authentication-context";
 import {
+  mockLockKey,
+  mockRequestId,
+  mockTokenUsageAllowedResponse,
   mockTokenUsageConfig,
+  mockTokenUsageDeniedResponse,
   mockUserId,
-  mockWindowStartTimestamp,
 } from "../../../utils/token-bucket/__tests__/token-usage-test-constants";
 import { getTokenBucketLockKey } from "../../../utils/token-bucket/key-utils";
 import { processTokenUsage } from "../../../utils/token-bucket/process-token-usage";
@@ -26,8 +30,6 @@ vi.mock("../../../utils/authentication-context");
 vi.mock("../../../utils/token-bucket/key-utils");
 vi.mock("../../../utils/token-bucket/process-token-usage");
 vi.mock("../../../utils/with-lock");
-
-type TokenUsageRateLimiterConfig = typeof mockTokenUsageConfig;
 
 describe("createTokenUsageRateLimiter", () => {
   let mockedGetAuthenticationContext: Mocked<typeof getAuthenticationContext>;
@@ -41,8 +43,6 @@ describe("createTokenUsageRateLimiter", () => {
 
   let mockRedisClient: Redis;
   let mockRedlockClient: Redlock;
-
-  const mockLockKey = "process:token:bucket:lock";
 
   const executeMiddleware = async (
     config: TokenUsageRateLimiterConfig = mockTokenUsageConfig
@@ -91,7 +91,7 @@ describe("createTokenUsageRateLimiter", () => {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
       locals: {
-        requestId: "test-request-id",
+        requestId: mockRequestId,
       },
     };
     mockNextFunction = vi.fn();
@@ -105,13 +105,7 @@ describe("createTokenUsageRateLimiter", () => {
   });
 
   it("should call next and store reservation data when the request is allowed", async () => {
-    mockedProcessTokenUsage.mockResolvedValue({
-      allowed: true,
-      tokensUsed: 100,
-      tokensReserved: 100,
-      tokensRemaining: 900,
-      windowStartTimestamp: mockWindowStartTimestamp,
-    });
+    mockedProcessTokenUsage.mockResolvedValue(mockTokenUsageAllowedResponse);
 
     await executeMiddleware();
 
@@ -119,8 +113,8 @@ describe("createTokenUsageRateLimiter", () => {
     expect(mockResponse.json).not.toHaveBeenCalled();
     expect(mockNextFunction).toHaveBeenCalled();
     expect(mockResponse.locals?.tokenUsage).toEqual({
-      tokensReserved: 100,
-      windowStartTimestamp: mockWindowStartTimestamp,
+      tokensReserved: mockTokenUsageAllowedResponse.tokensReserved,
+      windowStartTimestamp: mockTokenUsageAllowedResponse.windowStartTimestamp,
     });
   });
 
@@ -150,13 +144,7 @@ describe("createTokenUsageRateLimiter", () => {
   });
 
   it("should throw TooManyRequestsError when request is not allowed", async () => {
-    mockedProcessTokenUsage.mockResolvedValue({
-      allowed: false,
-      tokensUsed: 950,
-      tokensReserved: 0,
-      tokensRemaining: 50,
-      windowStartTimestamp: mockWindowStartTimestamp,
-    });
+    mockedProcessTokenUsage.mockResolvedValue(mockTokenUsageDeniedResponse);
 
     await executeMiddleware();
 

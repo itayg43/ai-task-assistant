@@ -2,6 +2,10 @@ import Redis from "ioredis";
 
 import { createLogger } from "../../../config/create-logger";
 import { MS_PER_SECOND } from "../../../constants";
+import type {
+  TokenUsageRateLimiterConfig,
+  TokenUsageState,
+} from "../../../types";
 import { getCurrentTime } from "../../date-time";
 import { getTokenBucketKey } from "../key-utils";
 import {
@@ -11,23 +15,6 @@ import {
 } from "../token-bucket-state-utils";
 
 const logger = createLogger("processTokenUsage");
-
-type TokenUsageRateLimiterConfig = {
-  serviceName: string;
-  rateLimiterName: string;
-  windowTokensLimit: number;
-  windowSizeSeconds: number;
-  estimatedTokens: number;
-  lockTtlMs: number;
-};
-
-type TokenUsageState = {
-  allowed: boolean;
-  tokensUsed: number;
-  tokensReserved: number;
-  tokensRemaining: number;
-  windowStartTimestamp: number;
-};
 
 export const processTokenUsage = async (
   redisClient: Redis,

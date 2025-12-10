@@ -29,16 +29,25 @@ export const createTask = async (
   try {
     logger.info("Create task - starting", baseLogContext);
 
-    const result = await createTaskHandler(requestId, userId, naturalLanguage);
+    const { task, tokensUsed } = await createTaskHandler(
+      requestId,
+      userId,
+      naturalLanguage
+    );
+
+    if (res.locals.tokenUsage) {
+      res.locals.tokenUsage.actualTokens = tokensUsed;
+    }
 
     logger.info("Create task - succeeded", {
       ...baseLogContext,
-      result,
+      task,
+      tokensUsed,
     });
 
     res.status(StatusCodes.CREATED).json({
       tasksServiceRequestId: requestId,
-      task: taskToResponseDto(result),
+      task: taskToResponseDto(task),
     });
   } catch (error) {
     next(error);
