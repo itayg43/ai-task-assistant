@@ -5,6 +5,11 @@ declare global {
     interface Locals {
       authenticationContext?: AuthenticationContext;
       requestId: string;
+      tokenUsage?: {
+        tokensReserved: number;
+        windowStartTimestamp: number;
+        actualTokens?: number;
+      };
     }
   }
 }
