@@ -30,7 +30,7 @@ export const createTaskHandler = async (
     },
   });
 
-  const tokensUsed = extractOpenaiTokenUsage(openaiMetadata, requestId);
+  const tokensUsed = extractOpenaiTokenUsage(openaiMetadata);
 
   const task = await prisma.$transaction(async (tx) => {
     const createdTask = await createTask(
