@@ -59,9 +59,24 @@ const { mockTokenBucketRateLimiter } = vi.hoisted(() => ({
   mockTokenBucketRateLimiter: vi.fn((_req, _res, next) => next()),
 }));
 
+const { mockOpenaiTokenUsageRateLimiter, mockOpenaiUpdateTokenUsage } =
+  vi.hoisted(() => ({
+    mockOpenaiTokenUsageRateLimiter: vi.fn((_req, _res, next) => next()),
+    mockOpenaiUpdateTokenUsage: vi.fn((_req, _res, next) => next()),
+  }));
+
 vi.mock("@middlewares/token-bucket-rate-limiter", () => ({
   tokenBucketRateLimiter: {
     global: mockTokenBucketRateLimiter,
+  },
+}));
+
+vi.mock("@middlewares/token-usage-rate-limiter", () => ({
+  openaiTokenUsageRateLimiter: {
+    createTask: mockOpenaiTokenUsageRateLimiter,
+  },
+  openaiUpdateTokenUsage: {
+    createTask: mockOpenaiUpdateTokenUsage,
   },
 }));
 
@@ -83,13 +98,17 @@ describe("tasksController (integration)", () => {
     mockedExecuteCapability = vi.mocked(executeCapability);
 
     mockTokenBucketRateLimiter.mockImplementation((_req, _res, next) => next());
+    mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) =>
+      next()
+    );
+    mockOpenaiUpdateTokenUsage.mockImplementation((_req, _res, next) => next());
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("createTaskHandler", () => {
+  describe("createTask", () => {
     const createTaskUrl = "/api/v1/tasks";
 
     beforeEach(async () => {
@@ -115,7 +134,6 @@ describe("tasksController (integration)", () => {
       });
 
       expect(response.status).toBe(StatusCodes.CREATED);
-      expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
       expect(response.body).toMatchObject({
         tasksServiceRequestId: expect.any(String),
         task: {
