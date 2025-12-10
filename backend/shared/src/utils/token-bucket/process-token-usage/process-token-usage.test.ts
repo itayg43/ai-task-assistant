@@ -12,6 +12,11 @@ import {
   incrementTokenUsage,
   resetTokenUsageWindow,
 } from "../token-bucket-state-utils";
+import {
+  mockKey,
+  mockTokenUsageConfig,
+  mockUserId,
+} from "../__tests__/token-usage-test-constants";
 
 vi.mock("../../date-time");
 vi.mock("../key-utils");
@@ -26,22 +31,14 @@ describe("processTokenUsage", () => {
 
   let mockRedisClient: Redis;
 
-  const mockConfig = {
-    serviceName: "service",
-    rateLimiterName: "test",
-    windowTokensLimit: 1000,
-    windowSizeSeconds: 86400, // 24 hours
-    estimatedTokens: 100,
-    lockTtlMs: 500,
-  };
-  const mockUserId = 1;
-  const mockKey = "process:token:bucket";
-
   beforeEach(() => {
     vi.useFakeTimers();
 
     mockedGetCurrentTime = vi.mocked(getCurrentTime);
+    
     mockedGetTokenBucketKey = vi.mocked(getTokenBucketKey);
+    mockedGetTokenBucketKey.mockReturnValue(mockKey);
+
     mockedGetTokenUsageState = vi.mocked(getTokenUsageState);
     mockedResetTokenUsageWindow = vi.mocked(resetTokenUsageWindow);
     mockedIncrementTokenUsage = vi.mocked(incrementTokenUsage);
@@ -56,13 +53,13 @@ describe("processTokenUsage", () => {
 
   it("should handle multiple sequential requests in same window", async () => {
     const mockNow = 1000000;
-    const windowSizeSecondsMs = mockConfig.windowSizeSeconds * MS_PER_SECOND;
+    const windowSizeSecondsMs =
+      mockTokenUsageConfig.windowSizeSeconds * MS_PER_SECOND;
     const calculatedWindowStart =
       Math.floor(mockNow / windowSizeSecondsMs) * windowSizeSecondsMs;
 
     vi.setSystemTime(mockNow);
     mockedGetCurrentTime.mockReturnValue(mockNow);
-    mockedGetTokenBucketKey.mockReturnValue(mockKey);
 
     // First request: allowed, tokensUsed = 100
     mockedGetTokenUsageState.mockResolvedValue({
@@ -73,7 +70,7 @@ describe("processTokenUsage", () => {
 
     let result = await processTokenUsage(
       mockRedisClient,
-      mockConfig,
+      mockTokenUsageConfig,
       mockUserId
     );
     expect(result.allowed).toBe(true);
@@ -88,7 +85,11 @@ describe("processTokenUsage", () => {
     });
     mockedIncrementTokenUsage.mockResolvedValue(200);
 
-    result = await processTokenUsage(mockRedisClient, mockConfig, mockUserId);
+    result = await processTokenUsage(
+      mockRedisClient,
+      mockTokenUsageConfig,
+      mockUserId
+    );
     expect(result.allowed).toBe(true);
     expect(result.tokensUsed).toBe(200);
     expect(result.tokensReserved).toBe(100);
@@ -100,7 +101,11 @@ describe("processTokenUsage", () => {
       windowStartTimestamp: calculatedWindowStart,
     });
 
-    result = await processTokenUsage(mockRedisClient, mockConfig, mockUserId);
+    result = await processTokenUsage(
+      mockRedisClient,
+      mockTokenUsageConfig,
+      mockUserId
+    );
     expect(result.allowed).toBe(false);
     expect(result.tokensUsed).toBe(950);
     expect(result.tokensReserved).toBe(0);
@@ -111,13 +116,13 @@ describe("processTokenUsage", () => {
   it("should reset window when window boundary is crossed", async () => {
     const oldWindowStart = 0;
     const mockNow = 86400000; // Start of second window (24 hours later)
-    const windowSizeSecondsMs = mockConfig.windowSizeSeconds * MS_PER_SECOND;
+    const windowSizeSecondsMs =
+      mockTokenUsageConfig.windowSizeSeconds * MS_PER_SECOND;
     const newWindowStart =
       Math.floor(mockNow / windowSizeSecondsMs) * windowSizeSecondsMs;
 
     vi.setSystemTime(mockNow);
     mockedGetCurrentTime.mockReturnValue(mockNow);
-    mockedGetTokenBucketKey.mockReturnValue(mockKey);
 
     mockedGetTokenUsageState.mockResolvedValue({
       tokensUsed: 999,
@@ -127,7 +132,7 @@ describe("processTokenUsage", () => {
 
     const result = await processTokenUsage(
       mockRedisClient,
-      mockConfig,
+      mockTokenUsageConfig,
       mockUserId
     );
 
@@ -135,7 +140,7 @@ describe("processTokenUsage", () => {
       mockRedisClient,
       mockKey,
       newWindowStart,
-      mockConfig.windowSizeSeconds
+      mockTokenUsageConfig.windowSizeSeconds
     );
     expect(result.allowed).toBe(true);
     expect(result.tokensUsed).toBe(100); // After reset and increment
@@ -145,19 +150,19 @@ describe("processTokenUsage", () => {
   it("should reset window but deny if still exceeds limit after reset", async () => {
     const oldWindowStart = 0;
     const mockNow = 86400000; // Start of second window
-    const windowSizeSecondsMs = mockConfig.windowSizeSeconds * MS_PER_SECOND;
+    const windowSizeSecondsMs =
+      mockTokenUsageConfig.windowSizeSeconds * MS_PER_SECOND;
     const newWindowStart =
       Math.floor(mockNow / windowSizeSecondsMs) * windowSizeSecondsMs;
 
     // Use a config with very high estimatedTokens that exceeds limit even after reset
     const highEstimatedConfig = {
-      ...mockConfig,
+      ...mockTokenUsageConfig,
       estimatedTokens: 1500, // Exceeds windowTokensLimit of 1000
     };
 
     vi.setSystemTime(mockNow);
     mockedGetCurrentTime.mockReturnValue(mockNow);
-    mockedGetTokenBucketKey.mockReturnValue(mockKey);
 
     mockedGetTokenUsageState.mockResolvedValue({
       tokensUsed: 999,

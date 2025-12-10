@@ -10,6 +10,13 @@ import {
   getTokenUsageState,
   incrementTokenUsage,
 } from "../token-bucket-state-utils";
+import {
+  mockKey,
+  mockTokenUsageConfig,
+  mockTokensUsed,
+  mockUserId,
+  mockWindowStartTimestamp,
+} from "../__tests__/token-usage-test-constants";
 
 vi.mock("../key-utils");
 vi.mock("../token-bucket-state-utils");
@@ -22,22 +29,16 @@ describe("updateTokenUsage", () => {
 
   let mockRedisClient: Redis;
 
-  const mockConfig = {
-    serviceName: "service",
-    rateLimiterName: "test",
-    windowTokensLimit: 1000,
-    windowSizeSeconds: 86400,
-    estimatedTokens: 100,
-    lockTtlMs: 500,
-  };
-  const mockUserId = 1;
-  const mockKey = "process:token:bucket";
-  const mockWindowStartTimestamp = 1000000;
-  const mockTokensUsed = 500;
-
   beforeEach(() => {
     mockedGetTokenBucketKey = vi.mocked(getTokenBucketKey);
+    mockedGetTokenBucketKey.mockReturnValue(mockKey);
+
     mockedGetTokenUsageState = vi.mocked(getTokenUsageState);
+    mockedGetTokenUsageState.mockResolvedValue({
+      tokensUsed: mockTokensUsed,
+      windowStartTimestamp: mockWindowStartTimestamp,
+    });
+
     mockedIncrementTokenUsage = vi.mocked(incrementTokenUsage);
     mockedDecrementTokenUsage = vi.mocked(decrementTokenUsage);
 
@@ -52,15 +53,9 @@ describe("updateTokenUsage", () => {
     const actualTokens = 100;
     const reservedTokens = 100;
 
-    mockedGetTokenBucketKey.mockReturnValue(mockKey);
-    mockedGetTokenUsageState.mockResolvedValue({
-      tokensUsed: mockTokensUsed,
-      windowStartTimestamp: mockWindowStartTimestamp,
-    });
-
     await updateTokenUsage(
       mockRedisClient,
-      mockConfig,
+      mockTokenUsageConfig,
       mockUserId,
       actualTokens,
       reservedTokens,
@@ -82,16 +77,11 @@ describe("updateTokenUsage", () => {
     const diff = reservedTokens - actualTokens; // 20
     const expectedNewTokensUsed = mockTokensUsed - diff; // 480
 
-    mockedGetTokenBucketKey.mockReturnValue(mockKey);
-    mockedGetTokenUsageState.mockResolvedValue({
-      tokensUsed: mockTokensUsed,
-      windowStartTimestamp: mockWindowStartTimestamp,
-    });
     mockedDecrementTokenUsage.mockResolvedValue(expectedNewTokensUsed);
 
     await updateTokenUsage(
       mockRedisClient,
-      mockConfig,
+      mockTokenUsageConfig,
       mockUserId,
       actualTokens,
       reservedTokens,
@@ -113,16 +103,11 @@ describe("updateTokenUsage", () => {
     const absDiff = Math.abs(diff); // 20
     const expectedNewTokensUsed = mockTokensUsed + absDiff; // 520
 
-    mockedGetTokenBucketKey.mockReturnValue(mockKey);
-    mockedGetTokenUsageState.mockResolvedValue({
-      tokensUsed: mockTokensUsed,
-      windowStartTimestamp: mockWindowStartTimestamp,
-    });
     mockedIncrementTokenUsage.mockResolvedValue(expectedNewTokensUsed);
 
     await updateTokenUsage(
       mockRedisClient,
-      mockConfig,
+      mockTokenUsageConfig,
       mockUserId,
       actualTokens,
       reservedTokens,
@@ -142,15 +127,14 @@ describe("updateTokenUsage", () => {
     const reservedTokens = 100;
     const differentWindowStart = 2000000;
 
-    mockedGetTokenBucketKey.mockReturnValue(mockKey);
     mockedGetTokenUsageState.mockResolvedValue({
       tokensUsed: mockTokensUsed,
-      windowStartTimestamp: differentWindowStart, // Different window
+      windowStartTimestamp: differentWindowStart,
     });
 
     await updateTokenUsage(
       mockRedisClient,
-      mockConfig,
+      mockTokenUsageConfig,
       mockUserId,
       actualTokens,
       reservedTokens,
