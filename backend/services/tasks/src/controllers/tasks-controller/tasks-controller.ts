@@ -49,6 +49,9 @@ export const createTask = async (
       tasksServiceRequestId: requestId,
       task: taskToResponseDto(task),
     });
+
+    // Continue to post-response middleware: "token usage update"
+    next();
   } catch (error) {
     next(error);
   }
