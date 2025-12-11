@@ -69,7 +69,7 @@ const { mockOpenaiTokenUsageRateLimiter, mockOpenaiUpdateTokenUsage } =
 
 vi.mock("@middlewares/token-bucket-rate-limiter", () => ({
   tokenBucketRateLimiter: {
-    global: mockTokenBucketRateLimiter,
+    api: mockTokenBucketRateLimiter,
   },
 }));
 
