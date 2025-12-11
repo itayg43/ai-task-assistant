@@ -3,13 +3,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MS_PER_SECOND } from "../../../constants";
 import { createRedisClientMock } from "../../../mocks/redis-mock";
-import { Mocked, TokenBucketRateLimiterConfig } from "../../../types";
+import { Mocked } from "../../../types";
 import { getTokenBucketKey } from "../key-utils";
 import { processTokenBucket } from "../process-token-bucket";
 import {
+  decrementTokenBucket,
   getTokenBucketState,
-  setTokenBucketState,
+  incrementTokenBucket,
+  updateTokenBucketTimestamp,
 } from "../token-bucket-state-utils";
+import {
+  mockProcessTokenBucketKey,
+  mockTokenBucketConfig,
+} from "../__tests__/token-bucket-test-constants";
+import { mockUserId } from "../__tests__/token-usage-test-constants";
 
 vi.mock("../key-utils");
 vi.mock("../token-bucket-state-utils");
@@ -22,26 +29,19 @@ vi.mock("../token-bucket-state-utils");
 describe("processTokenBucket", () => {
   let mockedGetTokenBucketKey: Mocked<typeof getTokenBucketKey>;
   let mockedGetTokenBucketState: Mocked<typeof getTokenBucketState>;
-  let mockedSetTokenBucketState: Mocked<typeof setTokenBucketState>;
+  let mockedIncrementTokenBucket: Mocked<typeof incrementTokenBucket>;
+  let mockedDecrementTokenBucket: Mocked<typeof decrementTokenBucket>;
+  let mockedUpdateTokenBucketTimestamp: Mocked<
+    typeof updateTokenBucketTimestamp
+  >;
 
   let mockRedisClient: Redis;
-
-  const mockConfig: TokenBucketRateLimiterConfig = {
-    serviceName: "service",
-    rateLimiterName: "test",
-    bucketSize: 100,
-    refillRate: 1,
-    bucketTtlSeconds: 100,
-    lockTtlMs: 500,
-  };
-  const mockUserId = 1;
-  const mockKey = "process:token:bucket";
 
   const cases = [
     {
       description: "should handle first time access - no existing state",
       mockNow: 1000,
-      mockTokens: mockConfig.bucketSize,
+      mockTokens: mockTokenBucketConfig.bucketSize,
       mockLast: 1000,
       expectedAllowed: true,
     },
@@ -100,12 +100,12 @@ describe("processTokenBucket", () => {
   ) => {
     const elapsed = (mockNow - mockLast) / MS_PER_SECOND;
     const tokensToAdd = parseInt(
-      (elapsed * mockConfig.refillRate).toString(),
+      (elapsed * mockTokenBucketConfig.refillRate).toString(),
       10
     );
     const updatedTokens = Math.min(
       mockTokens + tokensToAdd,
-      mockConfig.bucketSize
+      mockTokenBucketConfig.bucketSize
     );
 
     return expectedAllowed ? updatedTokens - 1 : updatedTokens;
@@ -116,7 +116,9 @@ describe("processTokenBucket", () => {
 
     mockedGetTokenBucketKey = vi.mocked(getTokenBucketKey);
     mockedGetTokenBucketState = vi.mocked(getTokenBucketState);
-    mockedSetTokenBucketState = vi.mocked(setTokenBucketState);
+    mockedIncrementTokenBucket = vi.mocked(incrementTokenBucket);
+    mockedDecrementTokenBucket = vi.mocked(decrementTokenBucket);
+    mockedUpdateTokenBucketTimestamp = vi.mocked(updateTokenBucketTimestamp);
 
     mockRedisClient = createRedisClientMock();
   });
@@ -136,16 +138,18 @@ describe("processTokenBucket", () => {
 
     vi.setSystemTime(mockNow);
 
-    mockedGetTokenBucketKey.mockReturnValue(mockKey);
+    mockedGetTokenBucketKey.mockReturnValue(mockProcessTokenBucketKey);
     mockedGetTokenBucketState.mockResolvedValue({
       tokens: mockTokens,
       last: mockLast,
     });
+    mockedIncrementTokenBucket.mockResolvedValue(mockTokens); // No refill needed
+    mockedDecrementTokenBucket.mockResolvedValue(1); // After decrement: 2 - 1 = 1
 
     // First request: allowed, tokens = 1
     let result = await processTokenBucket(
       mockRedisClient,
-      mockConfig,
+      mockTokenBucketConfig,
       mockUserId
     );
     expect(result.allowed).toBe(true);
@@ -156,7 +160,13 @@ describe("processTokenBucket", () => {
       tokens: 1,
       last: mockNow,
     });
-    result = await processTokenBucket(mockRedisClient, mockConfig, mockUserId);
+    mockedIncrementTokenBucket.mockResolvedValue(1); // No refill needed
+    mockedDecrementTokenBucket.mockResolvedValue(0); // After decrement: 1 - 1 = 0
+    result = await processTokenBucket(
+      mockRedisClient,
+      mockTokenBucketConfig,
+      mockUserId
+    );
     expect(result.allowed).toBe(true);
     expect(result.tokensLeft).toBe(0);
 
@@ -165,7 +175,12 @@ describe("processTokenBucket", () => {
       tokens: 0,
       last: mockNow,
     });
-    result = await processTokenBucket(mockRedisClient, mockConfig, mockUserId);
+    mockedIncrementTokenBucket.mockResolvedValue(0); // No refill needed
+    result = await processTokenBucket(
+      mockRedisClient,
+      mockTokenBucketConfig,
+      mockUserId
+    );
     expect(result.allowed).toBe(false);
     expect(result.tokensLeft).toBe(0);
   });
@@ -183,27 +198,72 @@ describe("processTokenBucket", () => {
 
       vi.setSystemTime(mockNow);
 
-      mockedGetTokenBucketKey.mockReturnValue(mockKey);
+      mockedGetTokenBucketKey.mockReturnValue(mockProcessTokenBucketKey);
       mockedGetTokenBucketState.mockResolvedValue({
         tokens: mockTokens,
         last: mockLast,
       });
 
+      // Calculate expected behavior for mocks
+      const elapsed = (mockNow - mockLast) / MS_PER_SECOND;
+      const tokensToAdd = parseInt(
+        (elapsed * mockTokenBucketConfig.refillRate).toString(),
+        10
+      );
+      const maxIncrement = Math.max(
+        0,
+        mockTokenBucketConfig.bucketSize - mockTokens
+      );
+      const actualIncrement = Math.min(tokensToAdd, maxIncrement);
+      const tokensAfterRefill = Math.min(
+        mockTokenBucketConfig.bucketSize,
+        mockTokens + tokensToAdd
+      );
+
+      // Mock incrementTokenBucket if there's a refill
+      if (actualIncrement > 0) {
+        mockedIncrementTokenBucket.mockResolvedValue(tokensAfterRefill);
+      }
+
+      // Mock decrementTokenBucket if request is allowed
+      if (expectedAllowed) {
+        mockedDecrementTokenBucket.mockResolvedValue(expectedTokensLeft);
+      }
+
+      // Mock updateTokenBucketTimestamp (always called)
+      mockedUpdateTokenBucketTimestamp.mockResolvedValue(undefined);
+
       const result = await processTokenBucket(
         mockRedisClient,
-        mockConfig,
+        mockTokenBucketConfig,
         mockUserId
       );
 
-      expectedAllowed
-        ? expect(mockedSetTokenBucketState).toHaveBeenCalledWith(
-            mockRedisClient,
-            mockKey,
-            mockConfig,
-            expectedTokensLeft,
-            mockNow
-          )
-        : expect(mockedSetTokenBucketState).not.toHaveBeenCalled();
+      // Verify atomic operations were called correctly
+      if (actualIncrement > 0) {
+        expect(mockedIncrementTokenBucket).toHaveBeenCalledWith(
+          mockRedisClient,
+          mockProcessTokenBucketKey,
+          actualIncrement
+        );
+      }
+
+      if (expectedAllowed) {
+        expect(mockedDecrementTokenBucket).toHaveBeenCalledWith(
+          mockRedisClient,
+          mockProcessTokenBucketKey,
+          1
+        );
+      }
+
+      // updateTokenBucketTimestamp should always be called
+      expect(mockedUpdateTokenBucketTimestamp).toHaveBeenCalledWith(
+        mockRedisClient,
+        mockProcessTokenBucketKey,
+        mockNow,
+        mockTokenBucketConfig.bucketTtlSeconds
+      );
+
       expect(result.allowed).toBe(expectedAllowed);
       expect(result.tokensLeft).toBe(expectedTokensLeft);
     }

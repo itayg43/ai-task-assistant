@@ -6,8 +6,10 @@ import { TokenBucketRateLimiterConfig, TokenBucketState } from "../../../types";
 import { getCurrentTime } from "../../date-time";
 import { getTokenBucketKey } from "../key-utils";
 import {
+  decrementTokenBucket,
   getTokenBucketState,
-  setTokenBucketState,
+  incrementTokenBucket,
+  updateTokenBucketTimestamp,
 } from "../token-bucket-state-utils";
 
 const logger = createLogger("processTokenBucket");
@@ -25,32 +27,42 @@ export const processTokenBucket = async (
 
   const now = getCurrentTime();
 
-  let { tokens, last } = await getTokenBucketState(
+  const { tokens, last } = await getTokenBucketState(
     redisClient,
     key,
     config,
     now
   );
 
-  // Calculate how much time has passed since the last update (in seconds)
   const elapsed = (now - last) / MS_PER_SECOND;
-  // Calculate how many tokens to add based on the elapsed time and refill rate
   const tokensToAdd = parseInt((elapsed * config.refillRate).toString(), 10);
-  // Store the previous token count for logging
-  const prevTokens = tokens;
-  // Add tokens, but do not exceed the bucket's maximum size
-  tokens = Math.min(config.bucketSize, tokens + tokensToAdd);
+  const actualIncrement = Math.min(
+    tokensToAdd,
+    Math.max(0, config.bucketSize - tokens)
+  );
+
+  const currentTokens =
+    actualIncrement > 0
+      ? await incrementTokenBucket(redisClient, key, actualIncrement)
+      : tokens;
 
   logger.info(`Token bucket state before processing for user ${userId}`, {
-    prevTokens,
+    prevTokens: tokens,
     tokensToAdd,
-    tokensAfterRefill: tokens,
+    tokensAfterRefill: currentTokens,
     elapsedSec: parseFloat(elapsed.toFixed(2)),
   });
 
-  if (tokens < 1) {
+  if (currentTokens < 1) {
     logger.warn(
       `Token bucket denied request for user ${userId}: not enough tokens`
+    );
+
+    await updateTokenBucketTimestamp(
+      redisClient,
+      key,
+      now,
+      config.bucketTtlSeconds
     );
 
     return {
@@ -59,16 +71,21 @@ export const processTokenBucket = async (
     };
   }
 
-  tokens -= 1;
+  const tokensLeft = await decrementTokenBucket(redisClient, key, 1);
 
-  await setTokenBucketState(redisClient, key, config, tokens, now);
+  await updateTokenBucketTimestamp(
+    redisClient,
+    key,
+    now,
+    config.bucketTtlSeconds
+  );
 
   logger.info(`Token bucket allowed request for user ${userId}`, {
-    tokensLeft: tokens,
+    tokensLeft,
   });
 
   return {
     allowed: true,
-    tokensLeft: tokens,
+    tokensLeft,
   };
 };

@@ -9,6 +9,10 @@ export { PROCESS_EXIT_CODE } from "./process-exit-code";
 export { PROCESS_TOKEN_BUCKET_REDIS_KEY_PREFIX } from "./process-token-bucket";
 export { SERVER_SHUTDOWN_STATE } from "./server-shutdown-state";
 export {
+  TOKEN_BUCKET_FIELD_LAST,
+  TOKEN_BUCKET_FIELD_TOKENS,
+} from "./token-bucket";
+export {
   TOKEN_USAGE_FIELD_TOKENS_USED,
   TOKEN_USAGE_FIELD_WINDOW_START_TIMESTAMP,
 } from "./token-usage";
