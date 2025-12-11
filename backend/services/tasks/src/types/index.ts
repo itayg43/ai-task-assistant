@@ -4,7 +4,10 @@ export type {
   TExecuteCapabilityConfig,
   TOpenaiMetadata,
 } from "./ai-capability";
-export type { TAiErrorData } from "./ai-error-data";
+export type {
+  TAiErrorData,
+  TAiParseTaskVagueInputErrorData,
+} from "./ai-error-data";
 export type {
   TParseTaskConfig,
   TParseTaskConfigScoreRange,
