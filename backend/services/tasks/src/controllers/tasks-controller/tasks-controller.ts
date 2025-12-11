@@ -75,17 +75,14 @@ export const getTasks = async (
   try {
     logger.info("Get tasks - starting", baseLogContext);
 
-    const { skip, take, orderBy, orderDirection, category, priorityLevel } =
-      query;
-
     const result = await getTasksHandler(userId, {
-      skip,
-      take,
-      orderBy,
-      orderDirection,
+      skip: query.skip,
+      take: query.take,
+      orderBy: query.orderBy,
+      orderDirection: query.orderDirection,
       where: {
-        category,
-        priorityLevel,
+        category: query.category,
+        priorityLevel: query.priorityLevel,
       },
     });
 
@@ -94,12 +91,11 @@ export const getTasks = async (
       tasks: result.tasks.map(taskToResponseDto),
       pagination: {
         totalCount: result.totalCount,
-        skip,
-        take,
+        skip: query.skip,
+        take: query.take,
         hasMore: result.hasMore,
-        currentPage: Math.floor(skip / take) + 1,
-        totalPages:
-          result.totalCount > 0 ? Math.ceil(result.totalCount / take) : 0,
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
       },
     };
 
