@@ -74,7 +74,7 @@ describe("bucketStateUtils", () => {
         mockTimestamp
       );
 
-      expect(mockRedisClient.hmset).toHaveBeenCalledWith(
+      expect(mockRedisClient.hset).toHaveBeenCalledWith(
         mockKey,
         "tokens",
         mockTokens,

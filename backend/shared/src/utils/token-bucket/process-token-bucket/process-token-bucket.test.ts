@@ -99,7 +99,10 @@ describe("processTokenBucket", () => {
     mockLast: number
   ) => {
     const elapsed = (mockNow - mockLast) / MS_PER_SECOND;
-    const tokensToAdd = elapsed * mockConfig.refillRate;
+    const tokensToAdd = parseInt(
+      (elapsed * mockConfig.refillRate).toString(),
+      10
+    );
     const updatedTokens = Math.min(
       mockTokens + tokensToAdd,
       mockConfig.bucketSize
@@ -146,7 +149,7 @@ describe("processTokenBucket", () => {
       mockUserId
     );
     expect(result.allowed).toBe(true);
-    expect(result.tokensLeft).toBeCloseTo(1);
+    expect(result.tokensLeft).toBe(1);
 
     // Second request: allowed, tokens = 0
     mockedGetTokenBucketState.mockResolvedValue({
@@ -155,7 +158,7 @@ describe("processTokenBucket", () => {
     });
     result = await processTokenBucket(mockRedisClient, mockConfig, mockUserId);
     expect(result.allowed).toBe(true);
-    expect(result.tokensLeft).toBeCloseTo(0);
+    expect(result.tokensLeft).toBe(0);
 
     // Third request: denied, tokens = 0
     mockedGetTokenBucketState.mockResolvedValue({
@@ -164,7 +167,7 @@ describe("processTokenBucket", () => {
     });
     result = await processTokenBucket(mockRedisClient, mockConfig, mockUserId);
     expect(result.allowed).toBe(false);
-    expect(result.tokensLeft).toBeCloseTo(0);
+    expect(result.tokensLeft).toBe(0);
   });
 
   // Table-driven tests for various token bucket scenarios
@@ -202,7 +205,7 @@ describe("processTokenBucket", () => {
           )
         : expect(mockedSetTokenBucketState).not.toHaveBeenCalled();
       expect(result.allowed).toBe(expectedAllowed);
-      expect(result.tokensLeft).toBeCloseTo(expectedTokensLeft);
+      expect(result.tokensLeft).toBe(expectedTokensLeft);
     }
   );
 });

@@ -72,7 +72,7 @@ describe("tokenUsageStateUtils", () => {
         mockTtlSeconds
       );
 
-      expect(mockRedisClient.hmset).toHaveBeenCalledWith(
+      expect(mockRedisClient.hset).toHaveBeenCalledWith(
         mockKey,
         TOKEN_USAGE_FIELD_TOKENS_USED,
         0,
