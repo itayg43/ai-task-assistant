@@ -560,7 +560,11 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
 
 ## Near-Term Enhancements
 
-1. **OpenAI API Performance Monitoring**
+1. **Redis atomic token bucket (align with OpenAI usage)**
+
+   - Refactor the global token bucket limiter to use atomic Redis `INCR` steps similar to the OpenAI usage limiter
+
+2. **OpenAI API Performance Monitoring**
 
    - Add Prometheus and Grafana services to Docker Compose for local monitoring
    - Instrument `executeParse` function with Prometheus metrics:
@@ -571,7 +575,7 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
    - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
    - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
 
-2. **Async AI Processing**
+3. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
