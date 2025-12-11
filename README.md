@@ -10,7 +10,7 @@ This is a personal LLM-powered task assistant built with TypeScript and Node.js,
 graph TB
     Client[Client] -->|HTTP Request| Tasks[Tasks Service<br/>Port 3001]
 
-    Tasks -->|Rate Limit Check| Redis[Redis<br/>Token Bucket<br/>Rate Limiting<br/>Port 6379]
+    Tasks -->|Rate Limit Check| Redis[Redis<br/>Global Token Bucket<br/>+ OpenAI Usage Window<br/>Rate Limiting<br/>Port 6379]
     Redis -->|Allow/Deny| Tasks
 
     Tasks -->|Database Operations| Postgres[PostgreSQL<br/>Port 5432]
@@ -30,9 +30,9 @@ graph TB
 - **Monorepo Code Organization**: NPM Workspaces for simplified dependency management and code sharing
 - **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
 - **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
-- **Distributed Rate Limiting**: Token bucket algorithm with Redis and Redlock
+- **Distributed Rate Limiting & OpenAI Usage Tracking**: Redis + Redlock token bucket plus OpenAI window limits with token reservation/reconciliation
 - **Database Persistence**: PostgreSQL database with Prisma ORM for reliable task and subtask storage
-- **Task Retrieval with Pagination**: Paginated task retrieval with filtering, and sorting support
+- **Task Retrieval with Pagination**: Paginated task retrieval with filtering, sorting, current page, and total pages
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
 
 ### Tech Stack
@@ -152,6 +152,7 @@ npm test -w backend/shared
 **Important Notes for `npm run test:db`:**
 
 - The test database should be separate from development database
+- The `test:db` script automatically resets the test database before running
 - Tests run sequentially to avoid race conditions with shared database state
 - Ensure PostgreSQL is running and accessible before running tests
 - The test suite will clean up data after each test, but uses a real database connection
@@ -301,6 +302,8 @@ POST /capabilities/parse-task?pattern=sync
 }
 ```
 
+**Token usage behavior:** The Tasks service reserves estimated OpenAI tokens when a create request begins, then reconciles with actual usage after the AI service returns metadata (response IDs, token counts, durations). Reservations are released or adjusted even on errors to keep window-based limits accurate.
+
 ### Vague Input Error
 
 When input is too vague, the system provides helpful suggestions:
@@ -367,6 +370,8 @@ POST /capabilities/parse-task?pattern=sync
   "tasksServiceRequestId": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
 }
 ```
+
+**Token usage reconciliation on errors:** When validation fails (e.g., vague input), the token usage error handler releases or adjusts the reserved tokens via the OpenAI token usage updater. Suggestions are returned to the client; OpenAI metadata and response IDs are available in service logs for tracing.
 
 ### OpenAI API Error
 
@@ -558,14 +563,7 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
 
 ## Near-Term Enhancements
 
-1. **Token Usage Rate Limiting**
-
-   - Implement rate limiting on `/tasks` create route based on OpenAI token usage
-   - Track token consumption per request using AI service response metadata
-   - Store token usage in Redis with distributed locking (Redlock) to prevent race conditions
-   - Configure per-user token limits (e.g., 10,000 tokens per hour)
-
-2. **OpenAI API Performance Monitoring**
+1. **OpenAI API Performance Monitoring**
 
    - Add Prometheus and Grafana services to Docker Compose for local monitoring
    - Instrument `executeParse` function with Prometheus metrics:
@@ -576,7 +574,7 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
    - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
    - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
 
-3. **Async AI Processing**
+2. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
