@@ -255,7 +255,13 @@ describe("parseTaskHandler", () => {
         expect(context?.suggestions).toEqual(
           mockParseTaskErrorOutputCoreV2.error?.suggestions
         );
-        expect(context?.openaiResponseId).toBe(mockOpenaiResponseId);
+        expect(context?.openaiMetadata).toEqual({
+          core: {
+            responseId: mockOpenaiResponseId,
+            tokens: mockOpenaiTokenUsage,
+            durationMs: mockOpenaiDurationMs,
+          },
+        });
       }
     });
   });
