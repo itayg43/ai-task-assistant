@@ -11,6 +11,7 @@ export { SERVER_SHUTDOWN_STATE } from "./server-shutdown-state";
 export {
   TOKEN_BUCKET_FIELD_LAST,
   TOKEN_BUCKET_FIELD_TOKENS,
+  TOKEN_CONSUMPTION_PER_REQUEST,
 } from "./token-bucket";
 export {
   TOKEN_USAGE_FIELD_TOKENS_USED,

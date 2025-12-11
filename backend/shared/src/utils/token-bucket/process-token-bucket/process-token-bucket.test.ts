@@ -1,7 +1,10 @@
 import Redis from "ioredis";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MS_PER_SECOND } from "../../../constants";
+import {
+  MS_PER_SECOND,
+  TOKEN_CONSUMPTION_PER_REQUEST,
+} from "../../../constants";
 import { createRedisClientMock } from "../../../mocks/redis-mock";
 import { Mocked } from "../../../types";
 import { getTokenBucketKey } from "../key-utils";
@@ -99,16 +102,15 @@ describe("processTokenBucket", () => {
     mockLast: number
   ) => {
     const elapsed = (mockNow - mockLast) / MS_PER_SECOND;
-    const tokensToAdd = parseInt(
-      (elapsed * mockTokenBucketConfig.refillRate).toString(),
-      10
-    );
+    const tokensToAdd = Math.floor(elapsed * mockTokenBucketConfig.refillRate);
     const updatedTokens = Math.min(
       mockTokens + tokensToAdd,
       mockTokenBucketConfig.bucketSize
     );
 
-    return expectedAllowed ? updatedTokens - 1 : updatedTokens;
+    return expectedAllowed
+      ? updatedTokens - TOKEN_CONSUMPTION_PER_REQUEST
+      : updatedTokens;
   };
 
   beforeEach(() => {
@@ -206,9 +208,8 @@ describe("processTokenBucket", () => {
 
       // Calculate expected behavior for mocks
       const elapsed = (mockNow - mockLast) / MS_PER_SECOND;
-      const tokensToAdd = parseInt(
-        (elapsed * mockTokenBucketConfig.refillRate).toString(),
-        10
+      const tokensToAdd = Math.floor(
+        elapsed * mockTokenBucketConfig.refillRate
       );
       const maxIncrement = Math.max(
         0,
@@ -252,7 +253,7 @@ describe("processTokenBucket", () => {
         expect(mockedDecrementTokenBucket).toHaveBeenCalledWith(
           mockRedisClient,
           mockProcessTokenBucketKey,
-          1
+          TOKEN_CONSUMPTION_PER_REQUEST
         );
       }
 

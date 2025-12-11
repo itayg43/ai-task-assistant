@@ -1,7 +1,10 @@
 import Redis from "ioredis";
 
 import { createLogger } from "../../../config/create-logger";
-import { MS_PER_SECOND } from "../../../constants";
+import {
+  MS_PER_SECOND,
+  TOKEN_CONSUMPTION_PER_REQUEST,
+} from "../../../constants";
 import { TokenBucketRateLimiterConfig, TokenBucketState } from "../../../types";
 import { getCurrentTime } from "../../date-time";
 import { getTokenBucketKey } from "../key-utils";
@@ -35,7 +38,11 @@ export const processTokenBucket = async (
   );
 
   const elapsed = (now - last) / MS_PER_SECOND;
-  const tokensToAdd = parseInt((elapsed * config.refillRate).toString(), 10);
+  // Note: There's a potential race condition between reading state and incrementing tokens.
+  // However, this function is called within a distributed lock (Redlock) at the middleware level,
+  // which ensures atomicity across multiple service instances. The lock prevents concurrent
+  // modifications to the token bucket state during the refill and consumption operations.
+  const tokensToAdd = Math.floor(elapsed * config.refillRate);
   const actualIncrement = Math.min(
     tokensToAdd,
     Math.max(0, config.bucketSize - tokens)
@@ -71,7 +78,11 @@ export const processTokenBucket = async (
     };
   }
 
-  const tokensLeft = await decrementTokenBucket(redisClient, key, 1);
+  const tokensLeft = await decrementTokenBucket(
+    redisClient,
+    key,
+    TOKEN_CONSUMPTION_PER_REQUEST
+  );
 
   await updateTokenBucketTimestamp(
     redisClient,
