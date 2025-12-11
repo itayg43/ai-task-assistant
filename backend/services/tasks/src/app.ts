@@ -27,7 +27,7 @@ app.use(
     requestId,
     authentication,
     requestResponseMetadata,
-    tokenBucketRateLimiter.global,
+    tokenBucketRateLimiter.api,
   ],
   tasksRouter
 );
