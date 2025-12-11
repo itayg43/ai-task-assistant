@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the implementation of the **Token Usage Rate Limiter** feature from PR #65. This feature adds distributed rate limiting for OpenAI token usage, tracking actual token consumption during task creation and reconciling reservations based on real usage. The system uses Redis for distributed state management and Redlock for distributed locking to ensure consistency across multiple service instances.
+This document summarizes the implementation of the **Token Usage Rate Limiter** feature from PR #65. This feature adds distributed rate limiting for OpenAI token usage, tracking actual token consumption during task creation and adjusting held tokens based on real usage. The system uses Redis for distributed state management and Redlock for distributed locking to ensure consistency across multiple service instances.
 
 ## Architecture Changes
 
@@ -10,24 +10,24 @@ This document summarizes the implementation of the **Token Usage Rate Limiter** 
 
 The token usage rate limiter implements a **fixed-window rate limiting** strategy that:
 
-1. **Reserves** estimated tokens before processing a request
+1. **Holds** estimated tokens before processing a request
 2. **Tracks** actual token usage from OpenAI API responses
-3. **Reconciles** the difference between reserved and actual tokens after processing
+3. **Adjusts** the difference between held and actual tokens after processing
 4. **Resets** the window periodically based on configured window size
 
 ### Key Components
 
-1. **Token Usage Rate Limiter Middleware**: Pre-request middleware that reserves tokens
-2. **Token Usage Update Middleware**: Post-response middleware that reconciles actual usage
-3. **Token Usage Error Handler**: Error middleware that handles token reconciliation on failures
+1. **Token Usage Rate Limiter Middleware**: Pre-request middleware that holds tokens
+2. **Token Usage Update Middleware**: Post-response middleware that adjusts actual usage
+3. **Token Usage Error Handler**: Error middleware that handles token adjustment on failures
 4. **Token Usage State Utilities**: Redis operations for managing token usage state
-5. **Token Usage Processing**: Core logic for checking limits and reserving tokens
+5. **Token Usage Processing**: Core logic for checking limits and holding tokens
 
 ## Implementation Details
 
 ### 1. Token Usage State Management
 
-**File**: `backend/shared/src/utils/token-bucket/token-bucket-state-utils/token-bucket-state-utils.ts`
+**File**: `backend/shared/src/utils/token-bucket/token-usage-state-utils/token-usage-state-utils.ts`
 
 The system uses Redis hash fields to store token usage state:
 
@@ -37,8 +37,8 @@ The system uses Redis hash fields to store token usage state:
 **Key Functions**:
 
 - `getTokenUsageState(redisClient, key, defaultWindowStartTimestamp)`: Retrieves current token usage state
-- `incrementTokenUsage(redisClient, key, amount)`: Atomically increments token usage using `HINCRBY`
-- `decrementTokenUsage(redisClient, key, amount)`: Atomically decrements token usage using `HINCRBY`
+- `incrementTokenUsage(redisClient, key, amount)`: Atomically increments token usage using `incrementHashField` from Redis utilities
+- `decrementTokenUsage(redisClient, key, amount)`: Atomically decrements token usage using `decrementHashField` from Redis utilities
 - `resetTokenUsageWindow(redisClient, key, newWindowStartTimestamp, ttlSeconds)`: Resets window and sets TTL
 
 **Redis Key Structure**:
@@ -87,9 +87,9 @@ token-bucket:{serviceName}:{rateLimiterName}:{userId}
    }
    ```
 
-5. **Reserve Tokens**: Atomically increments token usage by estimated amount
+5. **Hold Tokens**: Atomically increments token usage by estimated amount
 
-6. **Return Result**: Returns `TokenUsageState` with reservation details
+6. **Return Result**: Returns `TokenUsageState` with hold details
 
 **Return Type**:
 
@@ -115,22 +115,22 @@ type TokenUsageState = {
 
 2. **Window Mismatch Check**: Warns if window changed during request processing (edge case)
 
-3. **Calculate Difference**: Computes difference between reserved and actual tokens:
+3. **Calculate Difference**: Computes difference between held and actual tokens:
 
    ```typescript
    const diff = reservedTokens - actualTokens;
    ```
 
-4. **Reconcile Tokens**:
-   - **diff === 0**: No adjustment needed (reserved matches actual)
-   - **diff > 0**: Release excess tokens (reserved more than used)
-   - **diff < 0**: Increment additional tokens (used more than reserved)
+4. **Adjust Tokens**:
+   - **diff === 0**: No adjustment needed (held matches actual)
+   - **diff > 0**: Release excess tokens (held more than used)
+   - **diff < 0**: Increment additional tokens (used more than held)
 
 **Scenarios**:
 
-- **Perfect Estimate**: Reserved tokens match actual usage → no change
-- **Over-Estimated**: Reserved more than needed → decrement excess
-- **Under-Estimated**: Used more than reserved → increment difference
+- **Perfect Estimate**: Held tokens match actual usage → no change
+- **Over-Estimated**: Held more than needed → decrement excess
+- **Under-Estimated**: Used more than held → increment difference
 
 ### 4. Token Usage Rate Limiter Middleware
 
@@ -144,11 +144,11 @@ type TokenUsageState = {
 
 2. **Acquire Distributed Lock**: Uses Redlock to ensure atomic operations across instances
 
-3. **Process Token Usage**: Calls `processTokenUsage` to check limits and reserve tokens
+3. **Process Token Usage**: Calls `processTokenUsage` to check limits and hold tokens
 
 4. **Handle Rate Limit**: If not allowed, throws `TooManyRequestsError` (429)
 
-5. **Store Reservation**: Stores reservation data in `res.locals.tokenUsage`:
+5. **Store Hold Data**: Stores hold data in `res.locals.tokenUsage`:
 
    ```typescript
    res.locals.tokenUsage = {
@@ -181,17 +181,17 @@ type TokenUsageRateLimiterConfig = {
 
 **Middleware Flow**:
 
-1. **Check Reservation**: Only processes if `tokenUsage` exists and `actualTokens` is set
+1. **Check Hold Data**: Only processes if `tokenUsage` exists and `actualTokens` is set
 
-2. **Extract Data**: Gets reservation and actual token usage from `res.locals.tokenUsage`
+2. **Extract Data**: Gets hold data and actual token usage from `res.locals.tokenUsage`
 
 3. **Async Update**: Uses `setImmediate` to update token usage asynchronously (non-blocking)
 
 4. **Acquire Lock**: Uses Redlock for atomic update operation
 
-5. **Update Usage**: Calls `updateTokenUsage` to reconcile tokens
+5. **Update Usage**: Calls `updateTokenUsage` to adjust tokens
 
-6. **Error Handling**: Logs errors but doesn't fail the request (best-effort reconciliation)
+6. **Error Handling**: Logs errors but doesn't fail the request (best-effort adjustment)
 
 **Key Design Decision**: Updates happen asynchronously to avoid blocking the HTTP response
 
@@ -203,7 +203,7 @@ type TokenUsageRateLimiterConfig = {
 
 **Error Handling Flow**:
 
-1. **Check Reservation**: Skips if no reservation or already reconciled
+1. **Check Hold Data**: Skips if no hold data or already adjusted
 
 2. **Vague Input Error**: For `PARSE_TASK_VAGUE_INPUT_ERROR`:
 
@@ -212,14 +212,14 @@ type TokenUsageRateLimiterConfig = {
    - Returns `BadRequestError` with suggestions
 
 3. **Other Errors**: For all other errors:
-   - Sets `actualTokens` to 0 (releases full reservation)
+   - Sets `actualTokens` to 0 (releases full hold)
    - Updates token usage
    - Propagates original error
 
 **Error Types**:
 
-- **Vague Input Error**: Task parsing failed but tokens were consumed → reconcile actual usage
-- **Other Errors**: Request failed before/without token consumption → release reservation
+- **Vague Input Error**: Task parsing failed but tokens were consumed → adjust to actual usage
+- **Other Errors**: Request failed before/without token consumption → release hold
 
 ### 7. Token Extraction Utility
 
@@ -289,22 +289,22 @@ tasksRouter.post(
   "/",
   [
     validateSchema(createTaskSchema),
-    openaiTokenUsageRateLimiter.createTask, // Pre-request: reserve tokens
+    openaiTokenUsageRateLimiter.createTask, // Pre-request: hold tokens
   ],
   createTask, // Controller: process request
-  openaiUpdateTokenUsage // Post-response: reconcile tokens
+  openaiUpdateTokenUsage // Post-response: adjust tokens
 );
 
-tasksRouter.use(tokenUsageErrorHandler); // Error handler: reconcile on errors
+tasksRouter.use(tokenUsageErrorHandler); // Error handler: adjust on errors
 ```
 
 **Middleware Order**:
 
 1. **Schema Validation**: Validates request body
-2. **Token Usage Rate Limiter**: Reserves estimated tokens
+2. **Token Usage Rate Limiter**: Holds estimated tokens
 3. **Create Task Controller**: Processes request, sets actual tokens
-4. **Update Token Usage**: Reconciles tokens after successful response
-5. **Error Handler**: Reconciles tokens on errors (before global error handler)
+4. **Update Token Usage**: Adjusts tokens after successful response
+5. **Error Handler**: Adjusts tokens on errors (before global error handler)
 
 ### 10. Configuration
 
@@ -388,67 +388,3 @@ export type TokenUsageRateLimiterConfig = {
 export const TOKEN_USAGE_FIELD_TOKENS_USED = "tokensUsed";
 export const TOKEN_USAGE_FIELD_WINDOW_START_TIMESTAMP = "windowStartTimestamp";
 ```
-
-## Technical Decisions
-
-### 1. Fixed-Window Rate Limiting
-
-- **Decision**: Use fixed-window instead of sliding-window or token bucket
-- **Rationale**: Simpler implementation, predictable reset behavior, easier to reason about
-- **Trade-off**: Potential burst at window boundaries, but acceptable for token usage tracking
-
-### 2. Token Reservation Before Processing
-
-- **Decision**: Reserve estimated tokens before processing the request
-- **Rationale**: Prevents exceeding limits even if actual usage is higher
-- **Benefit**: Guarantees we never exceed the window limit
-
-### 3. Post-Response Reconciliation
-
-- **Decision**: Reconcile actual vs reserved tokens after response is sent
-- **Rationale**: Accurate tracking without blocking the HTTP response
-- **Implementation**: Uses `setImmediate` for async updates
-
-### 4. Distributed Locking with Redlock
-
-- **Decision**: Use Redlock for distributed locking
-- **Rationale**: Ensures atomic operations across multiple service instances
-- **Benefit**: Prevents race conditions in distributed environments
-
-### 5. Error Handling Strategy
-
-- **Decision**: Handle token reconciliation in error middleware
-- **Rationale**: Ensures tokens are reconciled even when requests fail
-- **Implementation**:
-  - Vague input errors: Extract actual usage from error metadata
-  - Other errors: Release full reservation (set actualTokens to 0)
-
-### 6. Redis Hash Fields
-
-- **Decision**: Store token usage state in Redis hash fields
-- **Rationale**: Atomic operations (`HINCRBY`), efficient updates, single key per user
-- **Benefit**: Better performance than separate keys
-
-### 7. Window Reset Logic
-
-- **Decision**: Reset window when `windowStartTimestamp` changes
-- **Rationale**: Fixed-window behavior with automatic reset
-- **Implementation**: Calculate window start, compare with stored value, reset if different
-
-### 8. Async Token Updates
-
-- **Decision**: Update token usage asynchronously after response
-- **Rationale**: Don't block HTTP response for Redis operations
-- **Trade-off**: Small window where state might be slightly inaccurate, but acceptable
-
-### 9. Estimated Tokens Configuration
-
-- **Decision**: Use configurable estimated tokens per operation
-- **Rationale**: Different operations consume different amounts of tokens
-- **Benefit**: Flexible configuration per endpoint/operation
-
-### 10. Token Extraction from Metadata
-
-- **Decision**: Extract tokens from OpenAI metadata structure
-- **Rationale**: Centralized extraction logic, handles multiple metadata entries
-- **Implementation**: Sums `input + output` tokens from all metadata entries
