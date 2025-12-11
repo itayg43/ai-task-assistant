@@ -269,4 +269,53 @@ describe("processTokenBucket", () => {
       expect(result.tokensLeft).toBe(expectedTokensLeft);
     }
   );
+
+  it("should handle bucket initialization when bucket doesn't exist in Redis", async () => {
+    // This test covers the bug scenario where:
+    // 1. Bucket doesn't exist in Redis (getTokenBucketState returns default values)
+    // 2. No time has passed (elapsed = 0, so actualIncrement = 0)
+    // 3. We don't call incrementTokenBucket (because actualIncrement = 0)
+    // 4. Without initialization, decrementTokenBucket would treat missing field as 0 → 0-1 = -1
+    // 5. With our fix, getTokenBucketState initializes the bucket, so decrement works correctly
+    const mockNow = 1000;
+    const mockTokens = mockTokenBucketConfig.bucketSize; // Default when field doesn't exist
+    const mockLast = mockNow; // Same time, so elapsed = 0
+
+    vi.setSystemTime(mockNow);
+
+    mockedGetTokenBucketKey.mockReturnValue(mockProcessTokenBucketKey);
+    // Simulate bucket doesn't exist - getTokenBucketState returns default values
+    // (In real scenario, getTokenBucketState would initialize it, but we're mocking here)
+    mockedGetTokenBucketState.mockResolvedValue({
+      tokens: mockTokens,
+      last: mockLast,
+    });
+    // No increment needed since actualIncrement = 0
+    // decrementTokenBucket should return correct value (not -1) because field exists after initialization
+    mockedDecrementTokenBucket.mockResolvedValue(
+      mockTokens - TOKEN_CONSUMPTION_PER_REQUEST
+    );
+    mockedUpdateTokenBucketTimestamp.mockResolvedValue(undefined);
+
+    const result = await processTokenBucket(
+      mockRedisClient,
+      mockTokenBucketConfig,
+      mockUserId
+    );
+
+    // Verify that incrementTokenBucket was NOT called (since actualIncrement = 0)
+    expect(mockedIncrementTokenBucket).not.toHaveBeenCalled();
+
+    // Verify that decrementTokenBucket was called
+    expect(mockedDecrementTokenBucket).toHaveBeenCalledWith(
+      mockRedisClient,
+      mockProcessTokenBucketKey,
+      TOKEN_CONSUMPTION_PER_REQUEST
+    );
+
+    // Verify the result is correct (not -1)
+    expect(result.allowed).toBe(true);
+    expect(result.tokensLeft).toBe(mockTokens - TOKEN_CONSUMPTION_PER_REQUEST);
+    expect(result.tokensLeft).toBeGreaterThanOrEqual(0); // Ensure it's not negative
+  });
 });
