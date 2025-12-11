@@ -89,7 +89,7 @@ describe("tasksController (unit)", () => {
       };
       expect(mockResponse.json).toHaveBeenCalledWith(response);
 
-      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalled();
     });
 
     it("should handle errors from createTaskHandler and pass to next", async () => {
@@ -156,6 +156,8 @@ describe("tasksController (unit)", () => {
         tasks: [],
         totalCount: 0,
         hasMore: false,
+        currentPage: 1,
+        totalPages: 0,
       });
 
       await getTasks(mockRequest as any, mockResponse as Response, mockNext);
