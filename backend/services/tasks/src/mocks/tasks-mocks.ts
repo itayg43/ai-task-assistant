@@ -101,6 +101,11 @@ export const mockTaskWithSubtasksWithItems: TaskWithSubtasks = {
   subtasks: mockSubtasks,
 };
 
+export const mockTokenUsage = {
+  tokensReserved: 100,
+  windowStartTimestamp: 1000000,
+};
+
 export const mockGetTasksInputQuery: GetTasksInput["query"] = {
   skip: 0,
   take: 10,

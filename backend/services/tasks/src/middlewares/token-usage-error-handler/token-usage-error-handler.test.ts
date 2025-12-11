@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tokenUsageErrorHandler } from "@middlewares/token-usage-error-handler";
-import { mockRequestId } from "@mocks/tasks-mocks";
+import { mockRequestId, mockTokenUsage } from "@mocks/tasks-mocks";
 import { Mocked } from "@shared/types";
 
 const { mockOpenaiUpdateTokenUsage } = vi.hoisted(() => ({
@@ -32,10 +32,7 @@ describe("tokenUsageErrorHandler", () => {
 
     res = {
       locals: {
-        tokenUsage: {
-          tokensReserved: 100,
-          windowStartTimestamp: 123,
-        },
+        tokenUsage: { ...mockTokenUsage },
       },
     } as Partial<Response>;
 

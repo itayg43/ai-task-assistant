@@ -17,6 +17,7 @@ import {
   mockParsedTask,
   mockTask,
   mockTaskWithSubtasks,
+  mockTokenUsage,
 } from "@mocks/tasks-mocks";
 import { executeCapability } from "@services/ai-capabilities-service";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
@@ -178,8 +179,8 @@ describe("tasksController (integration)", () => {
     it("should reconcile token usage on vague input error and return 400", async () => {
       mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, res, next) => {
         res.locals.tokenUsage = {
+          ...mockTokenUsage,
           tokensReserved: 2500,
-          windowStartTimestamp: 1000,
         };
 
         next();
