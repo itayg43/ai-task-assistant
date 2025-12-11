@@ -1,7 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 
 import { aiClient } from "@clients/ai";
-import { PARSE_TASK_VAGUE_INPUT_ERROR } from "@constants";
 import { isHttpError } from "@shared/clients/http";
 import { createLogger } from "@shared/config/create-logger";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
@@ -63,14 +62,7 @@ export const executeCapability = async <
       });
 
       if (responseStatus === StatusCodes.BAD_REQUEST) {
-        const context =
-          data.type === PARSE_TASK_VAGUE_INPUT_ERROR
-            ? {
-                suggestions: data.suggestions,
-              }
-            : undefined;
-
-        throw new BadRequestError(data.message, context);
+        throw new BadRequestError(data.message, data);
       }
 
       throw new InternalError();
