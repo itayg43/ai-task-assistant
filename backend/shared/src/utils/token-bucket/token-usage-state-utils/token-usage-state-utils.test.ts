@@ -11,7 +11,7 @@ import {
   getTokenUsageState,
   incrementTokenUsage,
   resetTokenUsageWindow,
-} from "./token-bucket-state-utils";
+} from "./token-usage-state-utils";
 
 describe("tokenUsageStateUtils", () => {
   let mockRedisClient: Redis;

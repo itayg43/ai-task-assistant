@@ -12,7 +12,7 @@ import {
   getTokenUsageState,
   incrementTokenUsage,
   resetTokenUsageWindow,
-} from "../token-bucket-state-utils";
+} from "../token-usage-state-utils";
 
 const logger = createLogger("processTokenUsage");
 

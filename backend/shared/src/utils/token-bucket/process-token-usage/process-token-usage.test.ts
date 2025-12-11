@@ -5,22 +5,26 @@ import { MS_PER_SECOND } from "../../../constants";
 import { createRedisClientMock } from "../../../mocks/redis-mock";
 import { Mocked } from "../../../types";
 import { getCurrentTime } from "../../date-time";
+import {
+  mockKey,
+  mockTokenUsageConfig,
+  mockUserId,
+} from "../__tests__/token-usage-test-constants";
 import { getTokenBucketKey } from "../key-utils";
 import { processTokenUsage } from "../process-token-usage";
 import {
   getTokenUsageState,
   incrementTokenUsage,
   resetTokenUsageWindow,
-} from "../token-bucket-state-utils";
-import {
-  mockKey,
-  mockTokenUsageConfig,
-  mockUserId,
-} from "../__tests__/token-usage-test-constants";
+} from "../token-usage-state-utils";
 
 vi.mock("../../date-time");
 vi.mock("../key-utils");
-vi.mock("../token-bucket-state-utils");
+vi.mock("../token-usage-state-utils", () => ({
+  resetTokenUsageWindow: vi.fn(),
+  getTokenUsageState: vi.fn(),
+  incrementTokenUsage: vi.fn(),
+}));
 
 describe("processTokenUsage", () => {
   let mockedGetCurrentTime: Mocked<typeof getCurrentTime>;
@@ -35,7 +39,7 @@ describe("processTokenUsage", () => {
     vi.useFakeTimers();
 
     mockedGetCurrentTime = vi.mocked(getCurrentTime);
-    
+
     mockedGetTokenBucketKey = vi.mocked(getTokenBucketKey);
     mockedGetTokenBucketKey.mockReturnValue(mockKey);
 

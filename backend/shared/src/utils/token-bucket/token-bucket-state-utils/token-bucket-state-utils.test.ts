@@ -7,17 +7,17 @@ import {
 } from "../../../constants";
 import { createRedisClientMock } from "../../../mocks/redis-mock";
 import {
+  mockTimestamp,
+  mockTokenBucketConfig,
+  mockTokenBucketKey,
+  mockTokens,
+} from "../__tests__/token-bucket-test-constants";
+import {
   decrementTokenBucket,
   getTokenBucketState,
   incrementTokenBucket,
   updateTokenBucketTimestamp,
 } from "../token-bucket-state-utils";
-import {
-  mockTokenBucketConfig,
-  mockTokenBucketKey,
-  mockTimestamp,
-  mockTokens,
-} from "../__tests__/token-bucket-test-constants";
 
 describe("bucketStateUtils", () => {
   let mockRedisClient: Redis;

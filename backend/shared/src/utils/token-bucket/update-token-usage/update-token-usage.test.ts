@@ -3,13 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createRedisClientMock } from "../../../mocks/redis-mock";
 import { Mocked } from "../../../types";
-import { getTokenBucketKey } from "../key-utils";
-import { updateTokenUsage } from "../update-token-usage";
-import {
-  decrementTokenUsage,
-  getTokenUsageState,
-  incrementTokenUsage,
-} from "../token-bucket-state-utils";
 import {
   mockKey,
   mockTokenUsageConfig,
@@ -17,9 +10,20 @@ import {
   mockUserId,
   mockWindowStartTimestamp,
 } from "../__tests__/token-usage-test-constants";
+import { getTokenBucketKey } from "../key-utils";
+import {
+  decrementTokenUsage,
+  getTokenUsageState,
+  incrementTokenUsage,
+} from "../token-usage-state-utils";
+import { updateTokenUsage } from "../update-token-usage";
 
 vi.mock("../key-utils");
-vi.mock("../token-bucket-state-utils");
+vi.mock("../token-usage-state-utils", () => ({
+  decrementTokenUsage: vi.fn(),
+  getTokenUsageState: vi.fn(),
+  incrementTokenUsage: vi.fn(),
+}));
 
 describe("updateTokenUsage", () => {
   let mockedGetTokenBucketKey: Mocked<typeof getTokenBucketKey>;
