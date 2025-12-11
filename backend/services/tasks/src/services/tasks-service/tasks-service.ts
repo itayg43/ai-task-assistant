@@ -11,13 +11,14 @@ import {
 } from "@repositories/tasks-repository";
 import { executeCapability } from "@services/ai-capabilities-service";
 import { TParsedTask } from "@types";
+import { extractOpenaiTokenUsage } from "@utils/extract-openai-token-usage";
 
 export const createTaskHandler = async (
   requestId: string,
   userId: number,
   naturalLanguage: string
-): Promise<TaskWithSubtasks> => {
-  const { result: parsedTask } = await executeCapability<
+): Promise<{ task: TaskWithSubtasks; tokensUsed: number }> => {
+  const { result: parsedTask, openaiMetadata } = await executeCapability<
     "parse-task",
     TParsedTask
   >(requestId, {
@@ -29,7 +30,9 @@ export const createTaskHandler = async (
     },
   });
 
-  return await prisma.$transaction(async (tx) => {
+  const tokensUsed = extractOpenaiTokenUsage(openaiMetadata);
+
+  const task = await prisma.$transaction(async (tx) => {
     const createdTask = await createTask(
       tx,
       userId,
@@ -45,6 +48,11 @@ export const createTaskHandler = async (
 
     return taskWithSubtasks!;
   });
+
+  return {
+    task,
+    tokensUsed,
+  };
 };
 
 export const getTasksHandler = async (

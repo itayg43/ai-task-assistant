@@ -7,6 +7,7 @@ import {
   GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
   GET_TASKS_DEFAULT_SKIP,
   GET_TASKS_DEFAULT_TAKE,
+  PARSE_TASK_VAGUE_INPUT_ERROR,
 } from "@constants";
 import {
   mockAiCapabilityResponse,
@@ -16,6 +17,7 @@ import {
   mockParsedTask,
   mockTask,
   mockTaskWithSubtasks,
+  mockTokenUsage,
 } from "@mocks/tasks-mocks";
 import { executeCapability } from "@services/ai-capabilities-service";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
@@ -59,10 +61,23 @@ const { mockTokenBucketRateLimiter } = vi.hoisted(() => ({
   mockTokenBucketRateLimiter: vi.fn((_req, _res, next) => next()),
 }));
 
+const { mockOpenaiTokenUsageRateLimiter, mockOpenaiUpdateTokenUsage } =
+  vi.hoisted(() => ({
+    mockOpenaiTokenUsageRateLimiter: vi.fn((_req, _res, next) => next()),
+    mockOpenaiUpdateTokenUsage: vi.fn((_req, _res, next) => next()),
+  }));
+
 vi.mock("@middlewares/token-bucket-rate-limiter", () => ({
   tokenBucketRateLimiter: {
     global: mockTokenBucketRateLimiter,
   },
+}));
+
+vi.mock("@middlewares/token-usage-rate-limiter", () => ({
+  openaiTokenUsageRateLimiter: {
+    createTask: mockOpenaiTokenUsageRateLimiter,
+  },
+  openaiUpdateTokenUsage: mockOpenaiUpdateTokenUsage,
 }));
 
 vi.mock("@shared/middlewares/authentication", () => ({
@@ -83,13 +98,17 @@ describe("tasksController (integration)", () => {
     mockedExecuteCapability = vi.mocked(executeCapability);
 
     mockTokenBucketRateLimiter.mockImplementation((_req, _res, next) => next());
+    mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) =>
+      next()
+    );
+    mockOpenaiUpdateTokenUsage.mockImplementation((_req, _res, next) => next());
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("createTaskHandler", () => {
+  describe("createTask", () => {
     const createTaskUrl = "/api/v1/tasks";
 
     beforeEach(async () => {
@@ -115,7 +134,6 @@ describe("tasksController (integration)", () => {
       });
 
       expect(response.status).toBe(StatusCodes.CREATED);
-      expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
       expect(response.body).toMatchObject({
         tasksServiceRequestId: expect.any(String),
         task: {
@@ -156,6 +174,39 @@ describe("tasksController (integration)", () => {
       expect(response.body.message).toBe("Input is too vague");
       expect(response.body.suggestions).toEqual(["Add more details"]);
       expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
+    });
+
+    it("should reconcile token usage on vague input error and return 400", async () => {
+      mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, res, next) => {
+        res.locals.tokenUsage = {
+          ...mockTokenUsage,
+          tokensReserved: 2500,
+        };
+
+        next();
+      });
+
+      const vagueError = new BadRequestError("Input is too vague to parse", {
+        type: PARSE_TASK_VAGUE_INPUT_ERROR,
+        suggestions: ["Be more specific"],
+        openaiMetadata: {
+          core: {
+            tokens: { input: 10, output: 5 },
+          },
+        },
+      });
+      mockedExecuteCapability.mockRejectedValue(vagueError);
+
+      const response = await request(app).post(createTaskUrl).send({
+        naturalLanguage: mockNaturalLanguage,
+      });
+
+      expect(response.status).toBe(StatusCodes.BAD_REQUEST);
+      expect(response.body).toMatchObject({
+        tasksServiceRequestId: expect.any(String),
+        suggestions: vagueError.context?.suggestions,
+      });
+      expect(mockOpenaiUpdateTokenUsage).toHaveBeenCalledTimes(1);
     });
 
     it("should handle unexpected errors and return 500", async () => {

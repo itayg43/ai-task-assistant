@@ -35,6 +35,10 @@ describe("tasksController (unit)", () => {
         authenticationContext: {
           userId: mockUserId,
         },
+        tokenUsage: {
+          tokensReserved: 100,
+          windowStartTimestamp: 1000000,
+        },
       },
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
@@ -58,7 +62,10 @@ describe("tasksController (unit)", () => {
       };
 
       mockedCreateTaskHandler = vi.mocked(createTaskHandler);
-      mockedCreateTaskHandler.mockResolvedValue(mockTaskWithSubtasks);
+      mockedCreateTaskHandler.mockResolvedValue({
+        task: mockTaskWithSubtasks,
+        tokensUsed: 150,
+      });
     });
 
     it("should successfully create task and return 201 with correct response structure", async () => {
@@ -74,6 +81,7 @@ describe("tasksController (unit)", () => {
         mockNaturalLanguage
       );
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.CREATED);
+      expect(mockResponse.locals?.tokenUsage?.actualTokens).toBe(150);
 
       const response: CreateTaskResponse = {
         tasksServiceRequestId: mockRequestId,
@@ -81,7 +89,7 @@ describe("tasksController (unit)", () => {
       };
       expect(mockResponse.json).toHaveBeenCalledWith(response);
 
-      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalled();
     });
 
     it("should handle errors from createTaskHandler and pass to next", async () => {
@@ -148,6 +156,8 @@ describe("tasksController (unit)", () => {
         tasks: [],
         totalCount: 0,
         hasMore: false,
+        currentPage: 1,
+        totalPages: 0,
       });
 
       await getTasks(mockRequest as any, mockResponse as Response, mockNext);

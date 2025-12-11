@@ -150,6 +150,8 @@ describe("tasksRepository (unit)", () => {
         tasks: mockTasks,
         totalCount: mockTotalCount,
         hasMore: false,
+        currentPage: 1,
+        totalPages: 1,
       });
     });
 

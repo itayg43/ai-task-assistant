@@ -10,7 +10,7 @@ This is a personal LLM-powered task assistant built with TypeScript and Node.js,
 graph TB
     Client[Client] -->|HTTP Request| Tasks[Tasks Service<br/>Port 3001]
 
-    Tasks -->|Rate Limit Check| Redis[Redis<br/>Token Bucket<br/>Rate Limiting<br/>Port 6379]
+    Tasks -->|Rate Limit Check| Redis[Redis<br/>Global Token Bucket<br/>+ OpenAI Usage Window<br/>Rate Limiting<br/>Port 6379]
     Redis -->|Allow/Deny| Tasks
 
     Tasks -->|Database Operations| Postgres[PostgreSQL<br/>Port 5432]
@@ -30,9 +30,8 @@ graph TB
 - **Monorepo Code Organization**: NPM Workspaces for simplified dependency management and code sharing
 - **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
 - **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
-- **Distributed Rate Limiting**: Token bucket algorithm with Redis and Redlock
-- **Database Persistence**: PostgreSQL database with Prisma ORM for reliable task and subtask storage
-- **Task Retrieval with Pagination**: Paginated task retrieval with filtering, and sorting support
+- **Distributed Rate Limiting & OpenAI Usage**: Redis + Redlock token bucket plus OpenAI window limits with token hold/release for each request
+- **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval (filters, sorting, current page, total pages)
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
 
 ### Tech Stack
@@ -152,6 +151,7 @@ npm test -w backend/shared
 **Important Notes for `npm run test:db`:**
 
 - The test database should be separate from development database
+- The `test:db` script automatically resets the test database before running
 - Tests run sequentially to avoid race conditions with shared database state
 - Ensure PostgreSQL is running and accessible before running tests
 - The test suite will clean up data after each test, but uses a real database connection
@@ -300,6 +300,8 @@ POST /capabilities/parse-task?pattern=sync
   }
 }
 ```
+
+**Token usage handling:** The Tasks service holds an estimated amount of OpenAI tokens when a create request begins, then adjusts to the actual usage after the AI service returns metadata (response IDs, token counts, durations). On errors (including vague input), held tokens are released or adjusted to keep window-based limits accurate.
 
 ### Vague Input Error
 
@@ -558,12 +560,9 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
 
 ## Near-Term Enhancements
 
-1. **Token Usage Rate Limiting**
+1. **Redis atomic token bucket (align with OpenAI usage)**
 
-   - Implement rate limiting on `/tasks` create route based on OpenAI token usage
-   - Track token consumption per request using AI service response metadata
-   - Store token usage in Redis with distributed locking (Redlock) to prevent race conditions
-   - Configure per-user token limits (e.g., 10,000 tokens per hour)
+   - Refactor the global token bucket limiter to use atomic Redis `INCR` steps similar to the OpenAI usage limiter
 
 2. **OpenAI API Performance Monitoring**
 

@@ -33,6 +33,8 @@ export type FindTasksResult = {
   tasks: TaskWithSubtasks[];
   totalCount: number;
   hasMore: boolean;
+  currentPage: number;
+  totalPages: number;
 };
 
 export const createTask = async (
@@ -106,5 +108,7 @@ export const findTasks = async (
     tasks,
     totalCount,
     hasMore: skip + take < totalCount,
+    currentPage: Math.floor(skip / take) + 1,
+    totalPages: totalCount > 0 ? Math.ceil(totalCount / take) : 0,
   };
 };

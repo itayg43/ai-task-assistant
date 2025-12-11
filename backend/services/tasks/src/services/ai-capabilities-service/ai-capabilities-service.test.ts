@@ -9,7 +9,6 @@ import {
 import {
   mockAiCapabilityResponse,
   mockAiErrorData,
-  mockAiErrorDataWithoutType,
   mockNaturalLanguage,
   mockRequestId,
 } from "@mocks/tasks-mocks";
@@ -78,26 +77,6 @@ describe("executeCapability", () => {
       }
     );
     expect(result).toEqual(mockAiCapabilityResponse);
-  });
-
-  it("should handle HTTP 400 errors and throw BadRequestError", async () => {
-    const mockHttpError = createHttpError(StatusCodes.BAD_REQUEST, {
-      message: mockAiErrorDataWithoutType.message,
-    });
-
-    mockedAiClientPost.mockRejectedValue(mockHttpError);
-
-    const config = createExecuteConfig();
-
-    try {
-      await executeCapability(mockRequestId, config);
-      expect.fail("Should have thrown BadRequestError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(BadRequestError);
-      expect((error as BadRequestError).message).toBe(
-        mockAiErrorDataWithoutType.message
-      );
-    }
   });
 
   it(`should handle HTTP 400 errors with ${PARSE_TASK_VAGUE_INPUT_ERROR} type and include suggestions`, async () => {

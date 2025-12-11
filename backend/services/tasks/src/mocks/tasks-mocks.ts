@@ -5,8 +5,12 @@ import {
   type Task,
   type TaskWithSubtasks,
 } from "@repositories/tasks-repository";
-import { GetTasksInput } from "@types";
-import { TAiCapabilityResponse, TAiErrorData, TParsedTask } from "@types";
+import {
+  GetTasksInput,
+  TAiCapabilityResponse,
+  TAiErrorData,
+  TParsedTask,
+} from "@types";
 
 export const mockNaturalLanguage = "Submit Q2 report by next Friday";
 
@@ -47,10 +51,7 @@ export const mockAiErrorData: TAiErrorData = {
     "What specifically needs to be planned? (e.g., 'Plan vacation', 'Plan team meeting')",
     "What is the context or category? (work, personal, etc.)",
   ],
-};
-
-export const mockAiErrorDataWithoutType: TAiErrorData = {
-  message: "Invalid input provided",
+  openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
 };
 
 export const mockUserId = 1;
@@ -100,6 +101,11 @@ export const mockTaskWithSubtasksWithItems: TaskWithSubtasks = {
   subtasks: mockSubtasks,
 };
 
+export const mockTokenUsage = {
+  tokensReserved: 100,
+  windowStartTimestamp: 1000000,
+};
+
 export const mockGetTasksInputQuery: GetTasksInput["query"] = {
   skip: 0,
   take: 10,
@@ -111,4 +117,6 @@ export const mockFindTasksResult: FindTasksResult = {
   tasks: [mockTaskWithSubtasks],
   totalCount: 1,
   hasMore: false,
+  currentPage: 1,
+  totalPages: 1,
 };

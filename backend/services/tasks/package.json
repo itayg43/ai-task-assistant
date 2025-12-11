@@ -8,7 +8,8 @@
     "start": "node dist/server.js",
     "start:dev": "ts-node-dev --inspect=0.0.0.0:51204 -r tsconfig-paths/register --respawn src/server.ts",
     "test": "vitest",
-    "test:db": "npx dotenv-cli -e .env.test -- vitest --config vitest.db.config.ts",
+    "test:db": "npm run test:db:reset && npx dotenv-cli -e .env.test -- vitest --config vitest.db.config.ts",
+    "test:db:reset": "npx dotenv-cli -e .env.test -- prisma migrate reset --force --skip-seed",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:seed": "npx dotenv-cli -e .env.dev -- ts-node -r tsconfig-paths/register prisma/seed.ts"

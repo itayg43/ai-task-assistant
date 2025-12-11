@@ -67,7 +67,13 @@ const coreHandler = async (
         throw new BadRequestError(error.reason, {
           type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
           suggestions: error.suggestions,
-          openaiResponseId,
+          openaiMetadata: {
+            core: {
+              responseId: openaiResponseId,
+              tokens: usage.tokens,
+              durationMs,
+            },
+          },
         });
       }
 

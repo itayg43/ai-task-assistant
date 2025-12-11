@@ -82,7 +82,7 @@ describe("tasksService", () => {
       await expect(executeHandler()).rejects.toThrow(mockError);
     });
 
-    it("should successfully create task and return it", async () => {
+    it("should successfully create task and return it with token usage", async () => {
       const result = await executeHandler();
 
       expect(mockedExecuteCapability).toHaveBeenCalledWith(mockRequestId, {
@@ -105,7 +105,7 @@ describe("tasksService", () => {
         mockTask.id,
         mockUserId
       );
-      expect(result).toMatchObject({
+      expect(result.task).toMatchObject({
         id: 1,
         userId: mockUserId,
         naturalLanguage: mockNaturalLanguage,
@@ -116,6 +116,7 @@ describe("tasksService", () => {
         priorityReason: mockParsedTask.priority.reason,
         subtasks: [],
       });
+      expect(result.tokensUsed).toBe(150);
     });
 
     it("should persist subtasks when they exist", async () => {
@@ -139,9 +140,10 @@ describe("tasksService", () => {
         mockUserId,
         parsedTaskWithSubtasks.subtasks
       );
-      expect(result.subtasks).toHaveLength(2);
-      expect(result.subtasks[0].title).toBe("Subtask 1");
-      expect(result.subtasks[1].title).toBe("Subtask 2");
+      expect(result.task.subtasks).toHaveLength(2);
+      expect(result.task.subtasks[0].title).toBe("Subtask 1");
+      expect(result.task.subtasks[1].title).toBe("Subtask 2");
+      expect(result.tokensUsed).toBe(150);
     });
 
     it.each([
@@ -171,7 +173,8 @@ describe("tasksService", () => {
         const result = await executeHandler();
 
         expect(mockedCreateManySubtasks).not.toHaveBeenCalled();
-        expect(result.subtasks).toEqual([]);
+        expect(result.task.subtasks).toEqual([]);
+        expect(result.tokensUsed).toBe(150);
       }
     );
 

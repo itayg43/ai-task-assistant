@@ -7,6 +7,11 @@ declare global {
       requestId?: string;
       validatedQuery?: Record<string, unknown>;
       validatedParams?: Record<string, unknown>;
+      tokenUsage?: {
+        tokensReserved: number;
+        windowStartTimestamp: number;
+        actualTokens?: number;
+      };
     }
   }
 }
