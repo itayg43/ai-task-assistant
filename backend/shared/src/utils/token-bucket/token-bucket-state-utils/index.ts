@@ -1,8 +1,6 @@
 export {
-  decrementTokenUsage,
+  decrementTokenBucket,
   getTokenBucketState,
-  getTokenUsageState,
-  incrementTokenUsage,
-  resetTokenUsageWindow,
-  setTokenBucketState,
+  incrementTokenBucket,
+  updateTokenBucketTimestamp,
 } from "./token-bucket-state-utils";

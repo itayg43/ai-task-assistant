@@ -11,7 +11,7 @@ import {
   getTokenUsageState,
   incrementTokenUsage,
   resetTokenUsageWindow,
-} from "./token-bucket-state-utils";
+} from "./token-usage-state-utils";
 
 describe("tokenUsageStateUtils", () => {
   let mockRedisClient: Redis;
@@ -72,7 +72,7 @@ describe("tokenUsageStateUtils", () => {
         mockTtlSeconds
       );
 
-      expect(mockRedisClient.hmset).toHaveBeenCalledWith(
+      expect(mockRedisClient.hset).toHaveBeenCalledWith(
         mockKey,
         TOKEN_USAGE_FIELD_TOKENS_USED,
         0,
