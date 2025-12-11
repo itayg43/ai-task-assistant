@@ -30,9 +30,8 @@ graph TB
 - **Monorepo Code Organization**: NPM Workspaces for simplified dependency management and code sharing
 - **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
 - **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
-- **Distributed Rate Limiting & OpenAI Usage Tracking**: Redis + Redlock token bucket plus OpenAI window limits with token reservation/reconciliation
-- **Database Persistence**: PostgreSQL database with Prisma ORM for reliable task and subtask storage
-- **Task Retrieval with Pagination**: Paginated task retrieval with filtering, sorting, current page, and total pages
+- **Distributed Rate Limiting & OpenAI Usage**: Redis + Redlock token bucket plus OpenAI window limits with token hold/release for each request
+- **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval (filters, sorting, current page, total pages)
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
 
 ### Tech Stack
@@ -302,7 +301,7 @@ POST /capabilities/parse-task?pattern=sync
 }
 ```
 
-**Token usage behavior:** The Tasks service reserves estimated OpenAI tokens when a create request begins, then reconciles with actual usage after the AI service returns metadata (response IDs, token counts, durations). Reservations are released or adjusted even on errors to keep window-based limits accurate.
+**Token usage handling:** The Tasks service holds an estimated amount of OpenAI tokens when a create request begins, then adjusts to the actual usage after the AI service returns metadata (response IDs, token counts, durations). On errors (including vague input), held tokens are released or adjusted to keep window-based limits accurate.
 
 ### Vague Input Error
 
@@ -370,8 +369,6 @@ POST /capabilities/parse-task?pattern=sync
   "tasksServiceRequestId": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
 }
 ```
-
-**Token usage reconciliation on errors:** When validation fails (e.g., vague input), the token usage error handler releases or adjusts the reserved tokens via the OpenAI token usage updater. Suggestions are returned to the client; OpenAI metadata and response IDs are available in service logs for tracing.
 
 ### OpenAI API Error
 
