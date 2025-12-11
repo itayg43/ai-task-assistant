@@ -55,7 +55,8 @@ describe("updateTokenUsage", () => {
 
     await updateTokenUsage(
       mockRedisClient,
-      mockTokenUsageConfig,
+      mockTokenUsageConfig.serviceName,
+      mockTokenUsageConfig.rateLimiterName,
       mockUserId,
       actualTokens,
       reservedTokens,
@@ -81,7 +82,8 @@ describe("updateTokenUsage", () => {
 
     await updateTokenUsage(
       mockRedisClient,
-      mockTokenUsageConfig,
+      mockTokenUsageConfig.serviceName,
+      mockTokenUsageConfig.rateLimiterName,
       mockUserId,
       actualTokens,
       reservedTokens,
@@ -107,7 +109,8 @@ describe("updateTokenUsage", () => {
 
     await updateTokenUsage(
       mockRedisClient,
-      mockTokenUsageConfig,
+      mockTokenUsageConfig.serviceName,
+      mockTokenUsageConfig.rateLimiterName,
       mockUserId,
       actualTokens,
       reservedTokens,
@@ -134,7 +137,8 @@ describe("updateTokenUsage", () => {
 
     await updateTokenUsage(
       mockRedisClient,
-      mockTokenUsageConfig,
+      mockTokenUsageConfig.serviceName,
+      mockTokenUsageConfig.rateLimiterName,
       mockUserId,
       actualTokens,
       reservedTokens,

@@ -3,7 +3,6 @@ import Redis from "ioredis";
 import Redlock from "redlock";
 
 import { createLogger } from "../../../config/create-logger";
-import type { TokenUsageRateLimiterConfig } from "../../../types";
 import { getAuthenticationContext } from "../../../utils/authentication-context";
 import { getTokenBucketLockKey } from "../../../utils/token-bucket/key-utils";
 import { updateTokenUsage as updateTokenUsageUtil } from "../../../utils/token-bucket/update-token-usage";
@@ -15,7 +14,9 @@ export const createUpdateTokenUsageMiddleware =
   (
     redisClient: Redis,
     redlockClient: Redlock,
-    config: TokenUsageRateLimiterConfig
+    serviceName: string,
+    rateLimiterName: string,
+    lockTtlMs: number
   ) =>
   async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -31,18 +32,19 @@ export const createUpdateTokenUsageMiddleware =
       const { userId } = getAuthenticationContext(res);
 
       const lockKey = getTokenBucketLockKey(
-        config.serviceName,
-        config.rateLimiterName,
+        serviceName,
+        rateLimiterName,
         userId
       );
 
       // Update token usage asynchronously to not block the response
       setImmediate(async () => {
         try {
-          await withLock(redlockClient, lockKey, config.lockTtlMs, async () => {
+          await withLock(redlockClient, lockKey, lockTtlMs, async () => {
             return await updateTokenUsageUtil(
               redisClient,
-              config,
+              serviceName,
+              rateLimiterName,
               userId,
               actualTokens,
               tokensReserved,

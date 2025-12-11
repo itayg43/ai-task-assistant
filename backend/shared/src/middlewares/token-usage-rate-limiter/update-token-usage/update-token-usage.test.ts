@@ -43,7 +43,9 @@ describe("createUpdateTokenUsageMiddleware", () => {
     const middleware = createUpdateTokenUsageMiddleware(
       mockRedisClient,
       mockRedlockClient,
-      mockTokenUsageConfig
+      mockTokenUsageConfig.serviceName,
+      mockTokenUsageConfig.rateLimiterName,
+      mockTokenUsageConfig.lockTtlMs
     );
 
     await middleware(
@@ -120,7 +122,8 @@ describe("createUpdateTokenUsageMiddleware", () => {
     );
     expect(mockedUpdateTokenUsage).toHaveBeenCalledWith(
       mockRedisClient,
-      mockTokenUsageConfig,
+      mockTokenUsageConfig.serviceName,
+      mockTokenUsageConfig.rateLimiterName,
       mockUserId,
       mockActualTokens,
       mockTokensReserved,

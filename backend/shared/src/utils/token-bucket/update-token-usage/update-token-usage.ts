@@ -1,7 +1,6 @@
 import Redis from "ioredis";
 
 import { createLogger } from "../../../config/create-logger";
-import type { TokenUsageRateLimiterConfig } from "../../../types";
 import { getTokenBucketKey } from "../key-utils";
 import {
   decrementTokenUsage,
@@ -13,17 +12,14 @@ const logger = createLogger("updateTokenUsage");
 
 export const updateTokenUsage = async (
   redisClient: Redis,
-  config: TokenUsageRateLimiterConfig,
+  serviceName: string,
+  rateLimiterName: string,
   userId: number,
   actualTokens: number,
   reservedTokens: number,
   windowStartTimestamp: number
 ): Promise<void> => {
-  const key = getTokenBucketKey(
-    config.serviceName,
-    config.rateLimiterName,
-    userId
-  );
+  const key = getTokenBucketKey(serviceName, rateLimiterName, userId);
 
   const { tokensUsed, windowStartTimestamp: currentWindowStart } =
     await getTokenUsageState(redisClient, key, windowStartTimestamp);

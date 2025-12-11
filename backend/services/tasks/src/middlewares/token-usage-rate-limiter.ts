@@ -29,10 +29,10 @@ export const openaiTokenUsageRateLimiter = {
   ),
 } as const;
 
-export const openaiUpdateTokenUsage = {
-  createTask: createUpdateTokenUsageMiddleware(
-    redis,
-    redlock,
-    createTaskTokenUsageRateLimiterConfig
-  ),
-} as const;
+export const openaiUpdateTokenUsage = createUpdateTokenUsageMiddleware(
+  redis,
+  redlock,
+  env.SERVICE_NAME,
+  env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
+  env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS
+);
