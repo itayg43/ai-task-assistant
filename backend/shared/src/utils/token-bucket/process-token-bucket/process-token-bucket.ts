@@ -35,16 +35,16 @@ export const processTokenBucket = async (
   // Calculate how much time has passed since the last update (in seconds)
   const elapsed = (now - last) / MS_PER_SECOND;
   // Calculate how many tokens to add based on the elapsed time and refill rate
-  const tokensToAdd = elapsed * config.refillRate;
+  const tokensToAdd = parseInt((elapsed * config.refillRate).toString(), 10);
   // Store the previous token count for logging
   const prevTokens = tokens;
   // Add tokens, but do not exceed the bucket's maximum size
   tokens = Math.min(config.bucketSize, tokens + tokensToAdd);
 
   logger.info(`Token bucket state before processing for user ${userId}`, {
-    tokensBefore: prevTokens.toFixed(2),
-    tokensToAdd: tokensToAdd.toFixed(2),
-    tokensAfterRefill: tokens.toFixed(2),
+    prevTokens,
+    tokensToAdd,
+    tokensAfterRefill: tokens,
     elapsedSec: parseFloat(elapsed.toFixed(2)),
   });
 
@@ -55,7 +55,7 @@ export const processTokenBucket = async (
 
     return {
       allowed: false,
-      tokensLeft: Math.max(0, tokens),
+      tokensLeft: 0,
     };
   }
 
@@ -64,7 +64,7 @@ export const processTokenBucket = async (
   await setTokenBucketState(redisClient, key, config, tokens, now);
 
   logger.info(`Token bucket allowed request for user ${userId}`, {
-    tokensLeft: tokens.toFixed(2),
+    tokensLeft: tokens,
   });
 
   return {

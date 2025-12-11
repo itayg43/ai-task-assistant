@@ -15,8 +15,8 @@ export const getTokenBucketState = async (
   const bucket = await redisClient.hgetall(key);
 
   return {
-    tokens: bucket?.tokens ? parseFloat(bucket.tokens) : config.bucketSize,
-    last: bucket?.last ? parseInt(bucket.last) : timestamp,
+    tokens: bucket?.tokens ? parseInt(bucket.tokens, 10) : config.bucketSize,
+    last: bucket?.last ? parseInt(bucket.last, 10) : timestamp,
   };
 };
 
@@ -28,7 +28,7 @@ export const setTokenBucketState = async (
   timestamp: number
 ) => {
   await Promise.all([
-    redisClient.hmset(key, "tokens", tokens, "last", timestamp),
+    redisClient.hset(key, "tokens", tokens, "last", timestamp),
     redisClient.expire(key, config.bucketTtlSeconds),
   ]);
 };
@@ -57,7 +57,7 @@ export const resetTokenUsageWindow = async (
   ttlSeconds: number
 ) => {
   await Promise.all([
-    redisClient.hmset(
+    redisClient.hset(
       key,
       TOKEN_USAGE_FIELD_TOKENS_USED,
       0,
