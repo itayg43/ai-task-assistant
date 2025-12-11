@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 
+import { PARSE_TASK_VAGUE_INPUT_ERROR } from "@constants";
 import { openaiUpdateTokenUsage } from "@middlewares/token-usage-rate-limiter";
+import { BadRequestError, BaseError } from "@shared/errors";
+import { TAiErrorData } from "@types";
 import { extractOpenaiTokenUsage } from "@utils/extract-openai-token-usage";
 
 export const tokenUsageErrorHandler = (
@@ -12,18 +15,31 @@ export const tokenUsageErrorHandler = (
   const tokenUsage = res.locals.tokenUsage;
 
   if (tokenUsage && tokenUsage.actualTokens === undefined) {
-    const errorMetadata = (err as any)?.openaiMetadata;
-    const actualTokens =
-      errorMetadata && typeof errorMetadata === "object"
-        ? extractOpenaiTokenUsage(errorMetadata)
-        : 0;
+    if (
+      err instanceof BaseError &&
+      err.context &&
+      err.context.type === PARSE_TASK_VAGUE_INPUT_ERROR
+    ) {
+      const { message, suggestions, openaiMetadata } =
+        err.context as TAiErrorData;
 
-    tokenUsage.actualTokens = actualTokens;
-    (tokenUsage as any).updateTriggered = true;
+      tokenUsage.actualTokens = extractOpenaiTokenUsage(openaiMetadata);
 
-    // Fire-and-forget: run the same update middleware (with lock) without blocking response
-    void openaiUpdateTokenUsage(req, res, () => {});
+      void openaiUpdateTokenUsage(req, res, () => {});
+
+      next(
+        new BadRequestError(message, {
+          suggestions,
+        })
+      );
+
+      return;
+    } else {
+      tokenUsage.actualTokens = 0;
+    }
   }
+
+  void openaiUpdateTokenUsage(req, res, () => {});
 
   next(err);
 };
