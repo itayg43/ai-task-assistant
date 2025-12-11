@@ -1,6 +1,8 @@
 import Redis from "ioredis";
 
 import {
+  TOKEN_BUCKET_FIELD_LAST,
+  TOKEN_BUCKET_FIELD_TOKENS,
   TOKEN_USAGE_FIELD_TOKENS_USED,
   TOKEN_USAGE_FIELD_WINDOW_START_TIMESTAMP,
 } from "../../../constants";
@@ -15,21 +17,40 @@ export const getTokenBucketState = async (
   const bucket = await redisClient.hgetall(key);
 
   return {
-    tokens: bucket?.tokens ? parseInt(bucket.tokens, 10) : config.bucketSize,
-    last: bucket?.last ? parseInt(bucket.last, 10) : timestamp,
+    tokens: bucket?.[TOKEN_BUCKET_FIELD_TOKENS]
+      ? parseInt(bucket[TOKEN_BUCKET_FIELD_TOKENS], 10)
+      : config.bucketSize,
+    last: bucket?.[TOKEN_BUCKET_FIELD_LAST]
+      ? parseInt(bucket[TOKEN_BUCKET_FIELD_LAST], 10)
+      : timestamp,
   };
 };
 
-export const setTokenBucketState = async (
+export const incrementTokenBucket = async (
   redisClient: Redis,
   key: string,
-  config: TokenBucketRateLimiterConfig,
-  tokens: number,
-  timestamp: number
-) => {
+  amount: number
+): Promise<number> => {
+  return await redisClient.hincrby(key, TOKEN_BUCKET_FIELD_TOKENS, amount);
+};
+
+export const decrementTokenBucket = async (
+  redisClient: Redis,
+  key: string,
+  amount: number
+): Promise<number> => {
+  return await redisClient.hincrby(key, TOKEN_BUCKET_FIELD_TOKENS, -amount);
+};
+
+export const updateTokenBucketTimestamp = async (
+  redisClient: Redis,
+  key: string,
+  timestamp: number,
+  ttlSeconds: number
+): Promise<void> => {
   await Promise.all([
-    redisClient.hset(key, "tokens", tokens, "last", timestamp),
-    redisClient.expire(key, config.bucketTtlSeconds),
+    redisClient.hset(key, TOKEN_BUCKET_FIELD_LAST, timestamp),
+    redisClient.expire(key, ttlSeconds),
   ]);
 };
 

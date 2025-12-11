@@ -1,27 +1,26 @@
 import Redis from "ioredis";
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 
-import { createRedisClientMock } from "../../../mocks/redis-mock";
-import { TokenBucketRateLimiterConfig } from "../../../types";
 import {
+  TOKEN_BUCKET_FIELD_LAST,
+  TOKEN_BUCKET_FIELD_TOKENS,
+} from "../../../constants";
+import { createRedisClientMock } from "../../../mocks/redis-mock";
+import {
+  decrementTokenBucket,
   getTokenBucketState,
-  setTokenBucketState,
+  incrementTokenBucket,
+  updateTokenBucketTimestamp,
 } from "../token-bucket-state-utils";
+import {
+  mockTokenBucketConfig,
+  mockTokenBucketKey,
+  mockTimestamp,
+  mockTokens,
+} from "../__tests__/token-bucket-test-constants";
 
 describe("bucketStateUtils", () => {
   let mockRedisClient: Redis;
-
-  const mockKey = "token:bucket:state";
-  const mockConfig: TokenBucketRateLimiterConfig = {
-    serviceName: "service",
-    rateLimiterName: "test",
-    bucketSize: 100,
-    refillRate: 1,
-    bucketTtlSeconds: 100,
-    lockTtlMs: 500,
-  };
-  let mockTokens = 50;
-  let mockTimestamp = 0;
 
   beforeEach(() => {
     mockRedisClient = createRedisClientMock();
@@ -37,25 +36,25 @@ describe("bucketStateUtils", () => {
 
       const result = await getTokenBucketState(
         mockRedisClient,
-        mockKey,
-        mockConfig,
+        mockTokenBucketKey,
+        mockTokenBucketConfig,
         mockTimestamp
       );
 
-      expect(result.tokens).toBe(mockConfig.bucketSize);
+      expect(result.tokens).toBe(mockTokenBucketConfig.bucketSize);
       expect(result.last).toBe(mockTimestamp);
     });
 
     it("should return the data stored in redis", async () => {
       (mockRedisClient.hgetall as Mock).mockResolvedValue({
-        tokens: mockTokens,
-        last: mockTimestamp,
+        [TOKEN_BUCKET_FIELD_TOKENS]: mockTokens,
+        [TOKEN_BUCKET_FIELD_LAST]: mockTimestamp,
       });
 
       const result = await getTokenBucketState(
         mockRedisClient,
-        mockKey,
-        mockConfig,
+        mockTokenBucketKey,
+        mockTokenBucketConfig,
         mockTimestamp
       );
 
@@ -64,26 +63,70 @@ describe("bucketStateUtils", () => {
     });
   });
 
-  describe("setTokenBucketState", () => {
-    it("should set the updated state and set the expire correctly", async () => {
-      await setTokenBucketState(
+  describe("incrementTokenBucket", () => {
+    it("should use HINCRBY to atomically increment tokens and return new value", async () => {
+      const incrementAmount = 10;
+      const expectedNewValue = mockTokens + incrementAmount;
+
+      (mockRedisClient.hincrby as Mock).mockResolvedValue(expectedNewValue);
+
+      const result = await incrementTokenBucket(
         mockRedisClient,
-        mockKey,
-        mockConfig,
-        mockTokens,
-        mockTimestamp
+        mockTokenBucketKey,
+        incrementAmount
+      );
+
+      expect(mockRedisClient.hincrby).toHaveBeenCalledWith(
+        mockTokenBucketKey,
+        TOKEN_BUCKET_FIELD_TOKENS,
+        incrementAmount
+      );
+      expect(result).toBe(expectedNewValue);
+    });
+  });
+
+  describe("decrementTokenBucket", () => {
+    it("should use HINCRBY to atomically decrement tokens and return new value", async () => {
+      const decrementAmount = 5;
+      const expectedNewValue = mockTokens - decrementAmount;
+
+      (mockRedisClient.hincrby as Mock).mockResolvedValue(expectedNewValue);
+
+      const result = await decrementTokenBucket(
+        mockRedisClient,
+        mockTokenBucketKey,
+        decrementAmount
+      );
+
+      expect(mockRedisClient.hincrby).toHaveBeenCalledWith(
+        mockTokenBucketKey,
+        TOKEN_BUCKET_FIELD_TOKENS,
+        -decrementAmount
+      );
+      expect(result).toBe(expectedNewValue);
+    });
+  });
+
+  describe("updateTokenBucketTimestamp", () => {
+    it("should use HSET to update timestamp and EXPIRE to set TTL", async () => {
+      const timestamp = 1234567890;
+      const ttlSeconds = 100;
+
+      await updateTokenBucketTimestamp(
+        mockRedisClient,
+        mockTokenBucketKey,
+        timestamp,
+        ttlSeconds
       );
 
       expect(mockRedisClient.hset).toHaveBeenCalledWith(
-        mockKey,
-        "tokens",
-        mockTokens,
-        "last",
-        mockTimestamp
+        mockTokenBucketKey,
+        TOKEN_BUCKET_FIELD_LAST,
+        timestamp
       );
       expect(mockRedisClient.expire).toHaveBeenCalledWith(
-        mockKey,
-        mockConfig.bucketTtlSeconds
+        mockTokenBucketKey,
+        ttlSeconds
       );
     });
   });
