@@ -31,8 +31,9 @@ describe("bucketStateUtils", () => {
   });
 
   describe("getTokenBucketState", () => {
-    it("should return the default state when no data in redis", async () => {
+    it("should initialize and return default state when no data in redis", async () => {
       (mockRedisClient.hgetall as Mock).mockResolvedValue(undefined);
+      (mockRedisClient.hset as Mock).mockResolvedValue(1); // Fields were set
 
       const result = await getTokenBucketState(
         mockRedisClient,
@@ -41,11 +42,20 @@ describe("bucketStateUtils", () => {
         mockTimestamp
       );
 
+      // Verify that hset was called to initialize both fields atomically
+      expect(mockRedisClient.hset).toHaveBeenCalledWith(
+        mockTokenBucketKey,
+        TOKEN_BUCKET_FIELD_TOKENS,
+        mockTokenBucketConfig.bucketSize,
+        TOKEN_BUCKET_FIELD_LAST,
+        mockTimestamp
+      );
+
       expect(result.tokens).toBe(mockTokenBucketConfig.bucketSize);
       expect(result.last).toBe(mockTimestamp);
     });
 
-    it("should return the data stored in redis", async () => {
+    it("should return the data stored in redis without initializing", async () => {
       (mockRedisClient.hgetall as Mock).mockResolvedValue({
         [TOKEN_BUCKET_FIELD_TOKENS]: mockTokens,
         [TOKEN_BUCKET_FIELD_LAST]: mockTimestamp,
@@ -57,6 +67,9 @@ describe("bucketStateUtils", () => {
         mockTokenBucketConfig,
         mockTimestamp
       );
+
+      // Verify that hset was NOT called since field already exists
+      expect(mockRedisClient.hset).not.toHaveBeenCalled();
 
       expect(result.tokens).toBe(mockTokens);
       expect(result.last).toBe(mockTimestamp);
