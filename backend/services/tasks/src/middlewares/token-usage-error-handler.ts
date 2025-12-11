@@ -14,30 +14,36 @@ export const tokenUsageErrorHandler = (
 ) => {
   const tokenUsage = res.locals.tokenUsage;
 
-  if (tokenUsage && tokenUsage.actualTokens === undefined) {
-    if (
-      err instanceof BaseError &&
-      err.context &&
-      err.context.type === PARSE_TASK_VAGUE_INPUT_ERROR
-    ) {
-      const { message, suggestions, openaiMetadata } =
-        err.context as TAiErrorData;
+  // If no reservation or already reconciled, skip update
+  if (!tokenUsage || tokenUsage.actualTokens !== undefined) {
+    next(err);
 
-      tokenUsage.actualTokens = extractOpenaiTokenUsage(openaiMetadata);
-
-      void openaiUpdateTokenUsage(req, res, () => {});
-
-      next(
-        new BadRequestError(message, {
-          suggestions,
-        })
-      );
-
-      return;
-    } else {
-      tokenUsage.actualTokens = 0;
-    }
+    return;
   }
+
+  if (
+    err instanceof BaseError &&
+    err.context &&
+    err.context.type === PARSE_TASK_VAGUE_INPUT_ERROR
+  ) {
+    const { message, suggestions, openaiMetadata } =
+      err.context as TAiErrorData;
+
+    tokenUsage.actualTokens = extractOpenaiTokenUsage(openaiMetadata);
+
+    void openaiUpdateTokenUsage(req, res, () => {});
+
+    next(
+      new BadRequestError(message, {
+        suggestions,
+      })
+    );
+
+    return;
+  }
+
+  // Other errors: release full reservation
+  tokenUsage.actualTokens = 0;
 
   void openaiUpdateTokenUsage(req, res, () => {});
 
