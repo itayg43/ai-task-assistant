@@ -5,6 +5,7 @@ import {
   TOKEN_BUCKET_FIELD_TOKENS,
 } from "../../../constants";
 import { TokenBucketRateLimiterConfig } from "../../../types";
+import { decrementHashField, incrementHashField } from "../../redis";
 
 export const getTokenBucketState = async (
   redisClient: Redis,
@@ -29,7 +30,12 @@ export const incrementTokenBucket = async (
   key: string,
   amount: number
 ): Promise<number> => {
-  return await redisClient.hincrby(key, TOKEN_BUCKET_FIELD_TOKENS, amount);
+  return await incrementHashField(
+    redisClient,
+    key,
+    TOKEN_BUCKET_FIELD_TOKENS,
+    amount
+  );
 };
 
 export const decrementTokenBucket = async (
@@ -37,7 +43,12 @@ export const decrementTokenBucket = async (
   key: string,
   amount: number
 ): Promise<number> => {
-  return await redisClient.hincrby(key, TOKEN_BUCKET_FIELD_TOKENS, -amount);
+  return await decrementHashField(
+    redisClient,
+    key,
+    TOKEN_BUCKET_FIELD_TOKENS,
+    amount
+  );
 };
 
 export const updateTokenBucketTimestamp = async (

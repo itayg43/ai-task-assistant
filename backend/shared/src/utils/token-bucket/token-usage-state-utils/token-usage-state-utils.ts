@@ -4,6 +4,7 @@ import {
   TOKEN_USAGE_FIELD_TOKENS_USED,
   TOKEN_USAGE_FIELD_WINDOW_START_TIMESTAMP,
 } from "../../../constants";
+import { decrementHashField, incrementHashField } from "../../redis";
 
 export const getTokenUsageState = async (
   redisClient: Redis,
@@ -45,7 +46,12 @@ export const incrementTokenUsage = async (
   key: string,
   amount: number
 ): Promise<number> => {
-  return await redisClient.hincrby(key, TOKEN_USAGE_FIELD_TOKENS_USED, amount);
+  return await incrementHashField(
+    redisClient,
+    key,
+    TOKEN_USAGE_FIELD_TOKENS_USED,
+    amount
+  );
 };
 
 export const decrementTokenUsage = async (
@@ -53,5 +59,10 @@ export const decrementTokenUsage = async (
   key: string,
   amount: number
 ): Promise<number> => {
-  return await redisClient.hincrby(key, TOKEN_USAGE_FIELD_TOKENS_USED, -amount);
+  return await decrementHashField(
+    redisClient,
+    key,
+    TOKEN_USAGE_FIELD_TOKENS_USED,
+    amount
+  );
 };
