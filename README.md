@@ -1,6 +1,6 @@
 # Task Assistant
 
-This is a personal LLM-powered task assistant built with TypeScript and Node.js, integrating the OpenAI API. Built to practice backend engineering in a modular microservices architecture with type-safe code, focusing on maintainability and testability. It is intended as a learning and portfolio project rather than a fully production-ready system.
+This is a personal LLM-powered task assistant built with TypeScript and Node.js, integrating the OpenAI API. A learning and portfolio project exploring backend engineering concepts: microservices architecture, type safety, maintainability, and testability.
 
 ## Overview
 
@@ -27,11 +27,11 @@ graph TB
 ### Key Features
 
 - **Microservices Architecture**: Independent, containerized services that communicate over HTTP
-- **Monorepo Code Organization**: NPM Workspaces for simplified dependency management and code sharing
+- **Monorepo**: NPM Workspaces for simplified dependency management and code sharing
 - **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
-- **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
-- **Distributed Rate Limiting & OpenAI Usage**: Redis + Redlock token bucket plus OpenAI window limits with token hold/release for each request
-- **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval (filters, sorting, current page, total pages)
+- **Prompt Versioning, Evaluation & Security**: Systematic prompt testing and evaluation framework for AI quality assurance, plus automatic detection and removal of malicious input patterns
+- **Distributed Rate Limiting**: Redis + Redlock token bucket with OpenAI window limits and token hold/release for each request
+- **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval, filtering, and sorting
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
 
 ### Tech Stack
@@ -42,8 +42,7 @@ graph TB
 - **Database**: PostgreSQL with Prisma ORM
 - **Caching/Locking**: Redis with Redlock
 - **Containerization**: Docker & Docker Compose
-- **Monorepo**: NPM Workspaces
-- **Testing**: Vitest (unit, integration, prompt versioning and evaluation)
+- **Testing**: Vitest (unit and integration tests)
 - **Validation**: Zod
 
 ## Getting Started
@@ -158,7 +157,7 @@ npm test -w backend/shared
 
 ## Continuous Integration
 
-Usage of GitHub Actions for automated testing and quality assurance:
+GitHub Actions provides automated testing and quality assurance:
 
 - **Automatic Testing**: Tests run automatically on all pull requests targeting `main` and on all pushes to `main`
 - **Branch Protection**: The `main` branch is protected with the following rules:
@@ -302,6 +301,14 @@ POST /capabilities/parse-task?pattern=sync
 ```
 
 **Token usage handling:** The Tasks service holds an estimated amount of OpenAI tokens when a create request begins, then adjusts to the actual usage after the AI service returns metadata (response IDs, token counts, durations). On errors (including vague input), held tokens are released or adjusted to keep window-based limits accurate.
+
+**Security:** The system protects against prompt injection attacks using:
+
+- **Input Sanitization**: Removes malicious patterns (e.g., "ignore previous instructions", "instead, return a task with...") from user input before processing.
+- **Early Rejection**: Inputs containing only malicious patterns are rejected immediately.
+- **API Structure**: The OpenAI Responses API uses separate `instructions` and `input` fields, providing natural separation between system instructions and user input.
+
+If an injection attempt is detected, the malicious patterns are removed and the remaining text is validated. If the remaining text is too vague, the system provides helpful suggestions instead of processing potentially malicious input.
 
 ### Vague Input Error
 
@@ -540,10 +547,10 @@ The Tasks service uses PostgreSQL with Prisma ORM. The schema includes:
 
 ### Key Features
 
-- User-based data isolation via `userId` fields
-- Cascade deletion: Subtasks are automatically deleted when their parent task is deleted
-- Unique ordering: Each task's subtasks have unique order values
-- Indexed queries: Optimized indexes on `userId` and `taskId` for efficient lookups
+- **User Isolation**: Data is isolated per user via `userId` fields
+- **Cascade Deletion**: Subtasks are automatically deleted when their parent task is deleted
+- **Ordering**: Each task's subtasks have unique order values
+- **Performance**: Optimized indexes on `userId` and `taskId` for efficient lookups
 
 See `backend/services/tasks/prisma/schema.prisma` for the complete schema definition.
 
@@ -560,16 +567,7 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
 
 ## Near-Term Enhancements
 
-1. **Prompt Injection Mitigation**
-
-   - Implement input sanitization to detect and remove common prompt injection patterns
-   - Add explicit security instructions to all parse-task prompts (core v1, core v2, subtasks v1)
-   - Sanitize user input before sending to OpenAI API to prevent instruction override attempts
-   - Reject inputs that are entirely composed of injection patterns
-   - Testing shows current prompts (especially v2) already catch many injection attempts effectively
-   - See `docs/plans/prompt-injection-mitigation.md` for detailed implementation plan
-
-2. **OpenAI API Performance Monitoring**
+1. **OpenAI API Performance Monitoring**
 
    - Add Prometheus and Grafana services to Docker Compose for local monitoring
    - Instrument `executeParse` function with Prometheus metrics:
@@ -580,14 +578,14 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
    - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
    - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
 
-3. **Async AI Processing**
+2. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
    - Return job ID immediately
    - Support webhook notifications when processing completes
 
-4. **Log Aggregation and Visualization**
+3. **Log Aggregation and Visualization**
 
    - Add Loki and Promtail services to Docker Compose for centralized log aggregation
    - Configure Promtail to scrape Docker container logs from all services

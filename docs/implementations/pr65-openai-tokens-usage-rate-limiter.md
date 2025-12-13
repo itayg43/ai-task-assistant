@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the implementation of the **Token Usage Rate Limiter** feature from PR #65. This feature adds distributed rate limiting for OpenAI token usage, tracking actual token consumption during task creation and adjusting held tokens based on real usage. The system uses Redis for distributed state management and Redlock for distributed locking to ensure consistency across multiple service instances.
+This document summarizes the implementation of the **Token Usage Rate Limiter** feature. This feature adds distributed rate limiting for OpenAI token usage, tracking actual token consumption during task creation and adjusting held tokens based on real usage. The system uses Redis for distributed state management and Redlock for distributed locking to ensure consistency across multiple service instances.
 
 ## Architecture Changes
 
@@ -193,7 +193,7 @@ type TokenUsageRateLimiterConfig = {
 
 6. **Error Handling**: Logs errors but doesn't fail the request (best-effort adjustment)
 
-**Key Design Decision**: Updates happen asynchronously to avoid blocking the HTTP response
+**Design Decision**: Updates happen asynchronously using `setImmediate` to avoid blocking the HTTP response
 
 ### 6. Token Usage Error Handler
 

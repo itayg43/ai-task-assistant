@@ -24,6 +24,7 @@ import { createLogger } from "@shared/config/create-logger";
 import { BadRequestError } from "@shared/errors";
 import { exhaustiveSwitch } from "@shared/utils/exhaustive-switch";
 import { CapabilityResponse } from "@types";
+import { sanitizeInput } from "@utils/prompt-injection-sanitizer";
 
 const logger = createLogger("parseTaskHandler");
 
@@ -126,10 +127,12 @@ export const parseTaskHandler = async (
 ): Promise<CapabilityResponse<typeof parseTaskOutputSchema>> => {
   const { naturalLanguage, config } = input.body;
 
+  const sanitizedInput = sanitizeInput(naturalLanguage, requestId);
+
   const corePromptVersion = env.PARSE_TASK_CORE_PROMPT_VERSION;
   const coreResponse = await coreHandler(
     corePromptVersion,
-    naturalLanguage,
+    sanitizedInput,
     config,
     requestId
   );
@@ -137,7 +140,7 @@ export const parseTaskHandler = async (
   const subtasksPromptVersion = env.PARSE_TASK_SUBTASKS_PROMPT_VERSION;
   const subtasksResponse = await subtasksHandler(
     subtasksPromptVersion,
-    naturalLanguage,
+    sanitizedInput,
     requestId
   );
 
