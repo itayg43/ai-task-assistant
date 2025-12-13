@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the implementation of task number 1 from the "Near-Term Enhancements" section: **Tasks Retrieval with Pagination**. The implementation adds a paginated `GET /tasks` endpoint with filtering, sorting, and pagination support, always filtering by `userId` for security.
+This document summarizes the implementation of **Tasks Retrieval with Pagination**. The implementation adds a paginated `GET /tasks` endpoint with filtering, sorting, and pagination support, always filtering by `userId` for security.
 
 ## Architecture Changes
 
@@ -10,7 +10,7 @@ This document summarizes the implementation of task number 1 from the "Near-Term
 
 - **Route**: `GET /api/v1/tasks` (changed from `/api/v1/tasks/tasks`)
 - **Method**: GET
-- **Authentication**: Required (userId extracted from authentication context)
+- **Authentication**: Required (userId extracted from authentication context for security)
 - **Query Parameters**:
   - `skip` (optional): Number of records to skip (default: 0)
   - `take` (optional): Number of records to return (default: 10, min: 1, max: 100)
@@ -121,10 +121,10 @@ totalPages: result.totalCount > 0 ? Math.ceil(result.totalCount / take) : 0;
   - Uses `.pipe()` for post-transform validation
   - Converts empty strings to `undefined` for optional filters (`category`, `priorityLevel`)
 
-**Key Features**:
+**Key Implementation Details**:
 
-- Type coercion for numeric query parameters
-- Nullish coalescing (`??`) for default values
+- Type coercion for numeric query parameters using `z.coerce.number()`
+- Nullish coalescing (`??`) for default values (preserves `0` and `false`)
 - Logical OR (`||`) for converting empty strings to `undefined`
 - Type-safe defaults using `satisfies` operator
 
@@ -191,102 +191,3 @@ totalPages: result.totalCount > 0 ? Math.ceil(result.totalCount / take) : 0;
   - Changed `POST /create` to `POST /`
   - Changed `GET /tasks` to `GET /`
   - Both endpoints now use the same base path `/` with different HTTP methods (RESTful design)
-
-## Code Organization Improvements
-
-### Constants Centralization
-
-- **Before**: Constants defined inline in schema files
-- **After**: All GET /tasks constants moved to `backend/services/tasks/src/constants/get-tasks.ts`
-- **Benefits**: Single source of truth, easier maintenance, better reusability
-
-### Type Definitions Organization
-
-- **Before**: Types defined alongside schemas and controllers
-- **After**: Types organized into dedicated files:
-  - `types/tasks-controller-input.ts`: Input types (inferred from schemas)
-  - `types/tasks-controller-response.ts`: Response types
-- **Benefits**: Clear separation of concerns, easier to find and maintain types
-
-### Mock Data Consolidation
-
-- **Before**: Duplicated mock definitions across multiple test files
-- **After**: All mocks centralized in `mocks/tasks-mocks.ts`
-- **New Mocks**:
-  - `mockGetTasksInputQuery`: Mock query parameters for GET /tasks
-  - `mockFindTasksResult`: Mock repository result
-- **Benefits**: DRY principle, consistent test data, easier updates
-
-## Technical Decisions
-
-### 1. Type Safety with `satisfies`
-
-- **Decision**: Use `satisfies` operator for default values in schema transforms
-- **Rationale**: Provides compile-time type checking without widening types
-- **Example**: `orderBy: (data.orderBy ?? "createdAt") satisfies TaskOrderByFields`
-
-### 2. Zod Coercion
-
-- **Decision**: Use `z.coerce.number()` for `skip` and `take` parameters
-- **Rationale**: Query parameters are strings, coercion handles conversion automatically
-- **Benefit**: Cleaner code, automatic type conversion
-
-### 3. Nullish Coalescing vs Logical OR
-
-- **Decision**: Use `??` for defaults, `||` for empty string conversion
-- **Rationale**:
-  - `??` only checks for `null`/`undefined` (preserves `0` and `false`)
-  - `||` converts falsy values (including empty strings) to `undefined`
-- **Usage**:
-  - `skip: data.skip ?? GET_TASKS_DEFAULT_SKIP` (preserves `0`)
-  - `category: data.category || undefined` (converts `""` to `undefined`)
-
-### 4. Standalone Schema for GET Requests
-
-- **Decision**: `getTasksSchema` is a standalone `z.object`, not extending `baseRequestSchema`
-- **Rationale**: GET requests don't have a body, `baseRequestSchema` implicitly required `body`
-- **Benefit**: Avoids validation errors for GET requests
-
-### 5. Storing Validated Query/Params in `res.locals`
-
-- **Decision**: Store validated query and params in `res.locals` instead of `req.query`/`req.params`
-- **Rationale**: Express `req.query` and `req.params` are read-only properties
-- **Implementation**: Added `validatedQuery` and `validatedParams` to `Express.Locals` type
-- **Utility**: Created `getValidatedQuery` and `getValidatedParams` for type-safe access
-
-### 6. Pagination Metadata
-
-- **Decision**: Include `currentPage` and `totalPages` in pagination response
-- **Rationale**: Better UX for clients, enables proper pagination UI
-- **Calculation**:
-  - `currentPage = Math.floor(skip / take) + 1`
-  - `totalPages = totalCount > 0 ? Math.ceil(totalCount / take) : 0`
-- **Edge Case**: Handles `totalCount = 0` to avoid division by zero
-
-### 7. RESTful Route Design
-
-- **Decision**: Use same base path `/` with different HTTP methods
-- **Rationale**: Follows RESTful conventions, cleaner API design
-- **Changes**:
-  - `POST /create` → `POST /`
-  - `GET /tasks` → `GET /`
-
-### 8. Constants Extraction
-
-- **Decision**: Extract all magic numbers and enums to constants file
-- **Rationale**: Single source of truth, easier maintenance, better testability
-- **File**: `backend/services/tasks/src/constants/get-tasks.ts`
-
-### 9. Type Organization
-
-- **Decision**: Separate input and response types into dedicated files
-- **Rationale**: Clear separation of concerns, easier to find and maintain
-- **Files**:
-  - `types/tasks-controller-input.ts`: Input types
-  - `types/tasks-controller-response.ts`: Response types
-
-### 10. Mock Consolidation
-
-- **Decision**: Centralize all test mocks in `mocks/tasks-mocks.ts`
-- **Rationale**: DRY principle, consistent test data, easier updates
-- **Benefits**: Reduced duplication, easier maintenance

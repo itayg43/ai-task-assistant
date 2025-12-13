@@ -2,13 +2,13 @@
 
 ## Overview
 
-This document summarizes the implementation of **Prompt Injection Mitigation** for the parse-task capability. This feature adds essential security protections to prevent malicious user input from overriding system instructions or extracting sensitive prompt information.
+This document summarizes the implementation of **Prompt Injection Mitigation** for the parse-task capability. This feature adds security protections to prevent malicious user input from overriding system instructions or extracting sensitive prompt information.
 
 ## Implementation Plan
 
 The implementation focuses on input sanitization as the primary defense against prompt injection attacks.
 
-**Note**: Initial implementation included prompt hardening (security instructions in prompts), but testing revealed it was unnecessary. The OpenAI Responses API structure (separate `instructions` and `input` fields) provides sufficient protection, and input sanitization removes malicious patterns before they reach the model. Prompt hardening was removed to reduce token usage.
+**Note**: Initial implementation included prompt hardening (security instructions in prompts), but testing revealed it was unnecessary. The OpenAI Responses API structure (separate `instructions` and `input` fields) provides sufficient protection, and input sanitization removes malicious patterns before they reach the model. Prompt hardening was removed to reduce token usage and complexity.
 
 ## Input Sanitization
 
@@ -49,13 +49,6 @@ The implementation focuses on input sanitization as the primary defense against 
 - **Logging**: Tracks injection attempts for monitoring and security analysis
 - **API Structure Protection**: The OpenAI Responses API structure (separate `instructions` and `input` fields) provides additional protection by clearly separating system instructions from user input
 
-**Rationale**:
-
-- Provides first line of defense before API calls
-- Saves tokens and cost by rejecting malicious input early
-- Enables security monitoring through logging
-- Works with API structure to provide comprehensive protection
-
 ### Part 1.2: Integrate Sanitization in Handler
 
 **File**: `backend/services/ai/src/capabilities/parse-task/handler/parse-task-handler.ts`
@@ -81,12 +74,7 @@ The implementation focuses on input sanitization as the primary defense against 
 - Error is caught by existing error handling middleware and returned as 400 response
 - No API calls are made for entirely malicious input (saves tokens/cost)
 
-**Rationale**:
-
-- Early sanitization prevents malicious input from reaching OpenAI API
-- Single point of sanitization ensures consistent protection across all handlers
-- Error handling integrates seamlessly with existing middleware
-- API structure (separate `instructions` and `input` fields) provides additional protection
+**Rationale**: Early sanitization prevents malicious input from reaching the OpenAI API, ensures consistent protection across all handlers, and integrates seamlessly with existing error handling middleware.
 
 ## Testing
 
@@ -117,12 +105,7 @@ The implementation focuses on input sanitization as the primary defense against 
 - Case-insensitive pattern matching
 - Multiple pattern detection and removal
 
-**Rationale**:
-
-- Ensures sanitization function works correctly for all known injection patterns
-- Validates that legitimate inputs are not affected
-- Confirms proper error handling for malicious input
-- Provides regression protection for future changes
+**Rationale**: Ensures sanitization works correctly for all known injection patterns, validates that legitimate inputs are not affected, and provides regression protection for future changes.
 
 ### Part 2.2: Integration Tests
 
@@ -147,9 +130,4 @@ The implementation focuses on input sanitization as the primary defense against 
 - Tests reflect real behavior where injection attempts result in vague input errors, not successful parsing
 - Integration with existing handler logic
 
-**Rationale**:
-
-- Validates end-to-end flow with injection attempts
-- Ensures sanitization doesn't break legitimate task parsing
-- Confirms protection approach works (sanitization + API structure + output validation)
-- Provides confidence that the system handles injection attempts correctly
+**Rationale**: Validates end-to-end flow with injection attempts, ensures sanitization doesn't break legitimate task parsing, and confirms the protection approach works (sanitization + API structure + output validation).
