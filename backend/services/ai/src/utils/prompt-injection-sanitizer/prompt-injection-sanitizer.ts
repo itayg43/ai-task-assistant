@@ -22,8 +22,11 @@ const INJECTION_PATTERNS = [
   /tell\s+me\s+(your\s+)?(\w+\s+)*(instructions?|prompt|system\s+message)/gi,
 
   // Output override attempts (trying to tell model what to return/set)
-  /instead\s*,\s*(return|set|make|assign)/gi,
-  /instead\s+(return|set|make|assign)/gi,
+  // More specific pattern to avoid false positives with legitimate tasks
+  // Requires injection-related keywords (task, category, priority, output, result) after the verb
+  // Also captures common injection payloads that follow (e.g., "with category='...'", "and priority...")
+  /instead\s*,\s*(return|set|make|assign)\s+(a\s+)?(task|category|priority|output|result)(\s+with\s+[^.]*)?(\s+and\s+[^.]*)?/gi,
+  /instead\s+(return|set|make|assign)\s+(a\s+)?(task|category|priority|output|result)(\s+with\s+[^.]*)?(\s+and\s+[^.]*)?/gi,
 
   // Format manipulation attempts
   /##\s*instructions?/gi,
@@ -36,14 +39,12 @@ export const sanitizeInput = (input: string, requestId: string) => {
   let patternsDetected = 0;
 
   for (const pattern of INJECTION_PATTERNS) {
-    // Reset regex lastIndex to avoid state issues
-    pattern.lastIndex = 0;
+    const beforeReplace = sanitized;
 
-    if (pattern.test(sanitized)) {
+    sanitized = sanitized.replace(pattern, "").trim();
+
+    if (sanitized !== beforeReplace) {
       patternsDetected++;
-      // Reset again before replace
-      pattern.lastIndex = 0;
-      sanitized = sanitized.replace(pattern, "").trim();
     }
   }
 
