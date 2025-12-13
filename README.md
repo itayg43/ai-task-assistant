@@ -571,7 +571,17 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
    - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
    - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
 
-2. **Async AI Processing**
+2. **Log Aggregation and Visualization**
+
+   - Add Loki and Promtail services to Docker Compose for centralized log aggregation
+   - Configure Promtail to scrape Docker container logs from all services
+   - Integrate Loki as a data source in Grafana (same instance used for metrics)
+   - Create Grafana dashboards for log exploration, error tracking, and log volume analysis
+   - Optionally update logger to support JSON format for better structured log parsing
+   - Enable correlation between logs and metrics in unified Grafana dashboards
+   - See `docs/plans/log-aggregation.md` for detailed implementation plan
+
+3. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
