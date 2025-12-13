@@ -30,6 +30,7 @@ graph TB
 - **Monorepo Code Organization**: NPM Workspaces for simplified dependency management and code sharing
 - **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
 - **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
+- **Prompt Injection Mitigation**: Detects and removes malicious input patterns before processing, with security instructions in prompts to prevent injection attacks
 - **Distributed Rate Limiting & OpenAI Usage**: Redis + Redlock token bucket plus OpenAI window limits with token hold/release for each request
 - **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval (filters, sorting, current page, total pages)
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
@@ -303,6 +304,8 @@ POST /capabilities/parse-task?pattern=sync
 
 **Token usage handling:** The Tasks service holds an estimated amount of OpenAI tokens when a create request begins, then adjusts to the actual usage after the AI service returns metadata (response IDs, token counts, durations). On errors (including vague input), held tokens are released or adjusted to keep window-based limits accurate.
 
+**Security:** The system protects against prompt injection attacks by removing malicious patterns from user input before sending it to the AI. If input contains only malicious patterns, it's rejected immediately. The AI prompts also include security instructions to ignore any instructions in user input.
+
 ### Vague Input Error
 
 When input is too vague, the system provides helpful suggestions:
@@ -560,16 +563,7 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
 
 ## Near-Term Enhancements
 
-1. **Prompt Injection Mitigation**
-
-   - Implement input sanitization to detect and remove common prompt injection patterns
-   - Add explicit security instructions to all parse-task prompts (core v1, core v2, subtasks v1)
-   - Sanitize user input before sending to OpenAI API to prevent instruction override attempts
-   - Reject inputs that are entirely composed of injection patterns
-   - Testing shows current prompts (especially v2) already catch many injection attempts effectively
-   - See `docs/plans/prompt-injection-mitigation.md` for detailed implementation plan
-
-2. **OpenAI API Performance Monitoring**
+1. **OpenAI API Performance Monitoring**
 
    - Add Prometheus and Grafana services to Docker Compose for local monitoring
    - Instrument `executeParse` function with Prometheus metrics:
@@ -580,14 +574,14 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
    - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
    - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
 
-3. **Async AI Processing**
+2. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
    - Return job ID immediately
    - Support webhook notifications when processing completes
 
-4. **Log Aggregation and Visualization**
+3. **Log Aggregation and Visualization**
 
    - Add Loki and Promtail services to Docker Compose for centralized log aggregation
    - Configure Promtail to scrape Docker container logs from all services
