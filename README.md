@@ -1,6 +1,6 @@
 # Task Assistant
 
-This is a personal LLM-powered task assistant built with TypeScript and Node.js, integrating the OpenAI API. Built to practice backend engineering in a modular microservices architecture with type-safe code, focusing on maintainability and testability. It is intended as a learning and portfolio project rather than a fully production-ready system.
+This is a personal LLM-powered task assistant built with TypeScript and Node.js, integrating the OpenAI API. A learning and portfolio project exploring backend engineering concepts: microservices architecture, type safety, maintainability, and testability.
 
 ## Overview
 
@@ -27,12 +27,11 @@ graph TB
 ### Key Features
 
 - **Microservices Architecture**: Independent, containerized services that communicate over HTTP
-- **Monorepo Code Organization**: NPM Workspaces for simplified dependency management and code sharing
+- **Monorepo**: NPM Workspaces for simplified dependency management and code sharing
 - **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
-- **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
-- **Prompt Injection Mitigation**: Detects and removes malicious input patterns before processing
-- **Distributed Rate Limiting & OpenAI Usage**: Redis + Redlock token bucket plus OpenAI window limits with token hold/release for each request
-- **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval (filters, sorting, current page, total pages)
+- **Prompt Versioning, Evaluation & Security**: Systematic prompt testing and evaluation framework for AI quality assurance, plus automatic detection and removal of malicious input patterns
+- **Distributed Rate Limiting**: Redis + Redlock token bucket with OpenAI window limits and token hold/release for each request
+- **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval, filtering, and sorting
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
 
 ### Tech Stack
@@ -43,8 +42,7 @@ graph TB
 - **Database**: PostgreSQL with Prisma ORM
 - **Caching/Locking**: Redis with Redlock
 - **Containerization**: Docker & Docker Compose
-- **Monorepo**: NPM Workspaces
-- **Testing**: Vitest (unit, integration, prompt versioning and evaluation)
+- **Testing**: Vitest (unit and integration tests)
 - **Validation**: Zod
 
 ## Getting Started
@@ -159,7 +157,7 @@ npm test -w backend/shared
 
 ## Continuous Integration
 
-Usage of GitHub Actions for automated testing and quality assurance:
+GitHub Actions provides automated testing and quality assurance:
 
 - **Automatic Testing**: Tests run automatically on all pull requests targeting `main` and on all pushes to `main`
 - **Branch Protection**: The `main` branch is protected with the following rules:
@@ -549,10 +547,10 @@ The Tasks service uses PostgreSQL with Prisma ORM. The schema includes:
 
 ### Key Features
 
-- User-based data isolation via `userId` fields
-- Cascade deletion: Subtasks are automatically deleted when their parent task is deleted
-- Unique ordering: Each task's subtasks have unique order values
-- Indexed queries: Optimized indexes on `userId` and `taskId` for efficient lookups
+- **User Isolation**: Data is isolated per user via `userId` fields
+- **Cascade Deletion**: Subtasks are automatically deleted when their parent task is deleted
+- **Ordering**: Each task's subtasks have unique order values
+- **Performance**: Optimized indexes on `userId` and `taskId` for efficient lookups
 
 See `backend/services/tasks/prisma/schema.prisma` for the complete schema definition.
 
