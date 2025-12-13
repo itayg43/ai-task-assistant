@@ -48,12 +48,16 @@ This document summarizes the implementation of **Tasks Retrieval with Pagination
   - Always filters by `userId` for security
   - Supports dynamic `where` clause for filtering (category, priorityLevel)
   - Supports dynamic `orderBy` and `orderDirection` for sorting
-  - Returns `FindTasksResult` with `tasks`, `totalCount`, and `hasMore`
+  - Returns `FindTasksResult` with `tasks`, `totalCount`, `hasMore`, `currentPage`, and `totalPages`
+  - Calculates pagination metadata (`currentPage` and `totalPages`) in the repository layer
 
 **Type Definitions**:
 
 ```typescript
-export type TaskOrderByFields = "dueDate" | "priorityScore" | "createdAt";
+export type TaskOrderByFields = Exclude<
+  keyof Prisma.TaskOrderByWithRelationInput,
+  "subtasks"
+>;
 
 export type FindTasksOptions = {
   skip: number;
@@ -69,9 +73,11 @@ export type TaskWhereFields = Omit<
 >;
 
 export type FindTasksResult = {
-  tasks: Task[];
+  tasks: TaskWithSubtasks[];
   totalCount: number;
   hasMore: boolean;
+  currentPage: number;
+  totalPages: number;
 };
 ```
 
@@ -93,15 +99,10 @@ export type FindTasksResult = {
 - **Changes**:
   - Extracts validated query parameters using `getValidatedQuery<GetTasksInput["query"]>(res)`
   - Constructs `where` object from optional `category` and `priorityLevel` filters
-  - Calculates `currentPage` and `totalPages` for pagination metadata
+  - Uses pagination metadata (`currentPage` and `totalPages`) from repository result
   - Returns `GetTasksResponse` with tasks and pagination info
 
-**Pagination Calculation**:
-
-```typescript
-currentPage: Math.floor(skip / take) + 1;
-totalPages: result.totalCount > 0 ? Math.ceil(result.totalCount / take) : 0;
-```
+**Note**: Pagination calculation (`currentPage` and `totalPages`) is performed in the repository layer, not the controller.
 
 ### 4. Schema Validation
 
