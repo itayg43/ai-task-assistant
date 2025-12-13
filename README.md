@@ -30,7 +30,7 @@ graph TB
 - **Monorepo Code Organization**: NPM Workspaces for simplified dependency management and code sharing
 - **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
 - **Prompt Versioning & Evaluation**: Systematic prompt testing and evaluation framework for AI quality assurance
-- **Prompt Injection Mitigation**: Detects and removes malicious input patterns before processing, with security instructions in prompts to prevent injection attacks
+- **Prompt Injection Mitigation**: Detects and removes malicious input patterns before processing
 - **Distributed Rate Limiting & OpenAI Usage**: Redis + Redlock token bucket plus OpenAI window limits with token hold/release for each request
 - **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval (filters, sorting, current page, total pages)
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
@@ -308,7 +308,7 @@ POST /capabilities/parse-task?pattern=sync
 
 - **Input Sanitization**: Removes malicious patterns (e.g., "ignore previous instructions", "instead, return a task with...") from user input before processing.
 - **Early Rejection**: Inputs containing only malicious patterns are rejected immediately.
-- **Prompt Hardening**: All AI prompts include explicit security instructions to ignore any instructions within user input.
+- **API Structure**: The OpenAI Responses API uses separate `instructions` and `input` fields, providing natural separation between system instructions and user input.
 
 If an injection attempt is detected, the malicious patterns are removed and the remaining text is validated. If the remaining text is too vague, the system provides helpful suggestions instead of processing potentially malicious input.
 
