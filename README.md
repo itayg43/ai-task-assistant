@@ -304,7 +304,13 @@ POST /capabilities/parse-task?pattern=sync
 
 **Token usage handling:** The Tasks service holds an estimated amount of OpenAI tokens when a create request begins, then adjusts to the actual usage after the AI service returns metadata (response IDs, token counts, durations). On errors (including vague input), held tokens are released or adjusted to keep window-based limits accurate.
 
-**Security:** The system protects against prompt injection attacks by removing malicious patterns from user input before sending it to the AI. If input contains only malicious patterns, it's rejected immediately. The AI prompts also include security instructions to ignore any instructions in user input.
+**Security:** The system protects against prompt injection attacks using:
+
+- **Input Sanitization**: Removes malicious patterns (e.g., "ignore previous instructions", "instead, return a task with...") from user input before processing.
+- **Early Rejection**: Inputs containing only malicious patterns are rejected immediately.
+- **Prompt Hardening**: All AI prompts include explicit security instructions to ignore any instructions within user input.
+
+If an injection attempt is detected, the malicious patterns are removed and the remaining text is validated. If the remaining text is too vague, the system provides helpful suggestions instead of processing potentially malicious input.
 
 ### Vague Input Error
 

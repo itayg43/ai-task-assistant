@@ -87,8 +87,9 @@ The implementation is divided into two phases:
   - Format manipulation attempts (e.g., markdown/code block instructions)
 - Pattern improvements:
   - Fixed "what are your instructions" pattern to handle optional words between "your" and "instructions" (e.g., "exact", "full", "complete")
-  - Added patterns for "instead" override attempts that try to tell the model what to output
-  - Note: Legitimate task descriptions like "set category" or "set priority" are not blocked (only malicious values are caught by prompt hardening and output validation)
+  - Added specific patterns for "instead" override attempts that require injection-related keywords (task, category, priority, output, result) to avoid false positives
+  - Enhanced "instead" patterns to capture full injection payloads (e.g., "with category='...'", "and priority...")
+  - Note: Legitimate task descriptions like "Instead, return the item to the store" are preserved (only malicious injection attempts are blocked)
 - Removes detected patterns from input while preserving legitimate content
 - Normalizes whitespace after pattern removal
 - Rejects input entirely composed of injection patterns (throws `BadRequestError`)
@@ -155,7 +156,8 @@ The implementation is divided into two phases:
 - Test coverage includes:
   - **Instruction override attempts**: Tests for "ignore previous instructions", "forget instructions", "disregard instructions", "override instructions", "you are now", "your new role", "act as if you are"
   - **Prompt extraction attempts**: Tests for "repeat all your instructions", "what are your instructions", "what are your exact instructions", "tell me your instructions", "show your prompt"
-  - **Output override attempts**: Tests for "instead, return", "instead return", "instead, set", "instead, make"
+  - **Output override attempts**: Tests for "instead, return a task", "instead return a task", "instead, set category", "instead, make priority", and full payload removal
+  - **Legitimate "instead" usage**: Tests to ensure legitimate tasks like "Instead, return the item to the store" are preserved
   - **Format manipulation attempts**: Tests for markdown headers and code block instructions
   - **Legitimate task descriptions**: Tests to ensure legitimate inputs are preserved unchanged
   - **Multiple patterns**: Tests for inputs with multiple injection patterns
