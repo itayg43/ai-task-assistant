@@ -560,7 +560,16 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
 
 ## Near-Term Enhancements
 
-1. **OpenAI API Performance Monitoring**
+1. **Prompt Injection Mitigation**
+
+   - Implement input sanitization to detect and remove common prompt injection patterns
+   - Add explicit security instructions to all parse-task prompts (core v1, core v2, subtasks v1)
+   - Sanitize user input before sending to OpenAI API to prevent instruction override attempts
+   - Reject inputs that are entirely composed of injection patterns
+   - Testing shows current prompts (especially v2) already catch many injection attempts effectively
+   - See `docs/plans/prompt-injection-mitigation.md` for detailed implementation plan
+
+2. **OpenAI API Performance Monitoring**
 
    - Add Prometheus and Grafana services to Docker Compose for local monitoring
    - Instrument `executeParse` function with Prometheus metrics:
@@ -571,7 +580,14 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
    - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
    - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
 
-2. **Log Aggregation and Visualization**
+3. **Async AI Processing**
+
+   - Add message queue (RabbitMQ) to infrastructure
+   - Implement async job processing for AI requests
+   - Return job ID immediately
+   - Support webhook notifications when processing completes
+
+4. **Log Aggregation and Visualization**
 
    - Add Loki and Promtail services to Docker Compose for centralized log aggregation
    - Configure Promtail to scrape Docker container logs from all services
@@ -580,10 +596,3 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
    - Optionally update logger to support JSON format for better structured log parsing
    - Enable correlation between logs and metrics in unified Grafana dashboards
    - See `docs/plans/log-aggregation.md` for detailed implementation plan
-
-3. **Async AI Processing**
-
-   - Add message queue (RabbitMQ) to infrastructure
-   - Implement async job processing for AI requests
-   - Return job ID immediately
-   - Support webhook notifications when processing completes
