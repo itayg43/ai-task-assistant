@@ -10,16 +10,16 @@
       "id": 1,
       "gridPos": {
         "h": 6,
-        "w": 12,
-        "x": 12,
+        "w": 8,
+        "x": 0,
         "y": 0
       },
       "type": "stat",
-      "title": "Total Tokens Used",
-      "description": "Cumulative total of all tokens (input + output) used across all OpenAI API requests",
+      "title": "Total Requests",
+      "description": "Total number of OpenAI API requests (all statuses)",
       "targets": [
         {
-          "expr": "sum(openai_api_tokens_total)",
+          "expr": "sum(openai_api_requests_total)",
           "refId": "A",
           "datasource": "Prometheus"
         }
@@ -61,9 +61,9 @@
       "id": 2,
       "gridPos": {
         "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 8
+        "w": 8,
+        "x": 8,
+        "y": 0
       },
       "type": "stat",
       "title": "Success Rate",
@@ -86,7 +86,7 @@
             "steps": [
               {
                 "color": "red",
-                "value": null
+                "value": 90
               },
               {
                 "color": "yellow",
@@ -121,56 +121,25 @@
     {
       "id": 3,
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 14
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 0
       },
-      "type": "timeseries",
-      "title": "Request Durations - Average by Capability",
-      "description": "Average request durations broken down by capability",
+      "type": "stat",
+      "title": "Average Duration",
+      "description": "Average request duration across all successful requests",
       "targets": [
         {
-          "expr": "sum by (capability) (rate(openai_api_request_duration_ms_sum[5m])) / sum by (capability) (rate(openai_api_request_duration_ms_count[5m]))",
+          "expr": "rate(openai_api_request_duration_ms_sum[5m]) / rate(openai_api_request_duration_ms_count[5m])",
           "refId": "A",
-          "legendFormat": "{{capability}}",
           "datasource": "Prometheus"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
@@ -188,426 +157,16 @@
         "overrides": []
       },
       "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
         },
-        "legend": {
-          "calcs": ["last", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        }
-      }
-    },
-    {
-      "id": 4,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 14
-      },
-      "type": "timeseries",
-      "title": "Request Durations - Average by Operation",
-      "description": "Average request durations broken down by operation",
-      "targets": [
-        {
-          "expr": "sum by (operation) (rate(openai_api_request_duration_ms_sum[5m])) / sum by (operation) (rate(openai_api_request_duration_ms_count[5m]))",
-          "refId": "A",
-          "legendFormat": "{{operation}}",
-          "datasource": "Prometheus"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "ms",
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        },
-        "legend": {
-          "calcs": ["last", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        }
-      }
-    },
-    {
-      "id": 5,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 22
-      },
-      "type": "timeseries",
-      "title": "Average Token Usage by Capability",
-      "description": "Average tokens per request, broken down by capability",
-      "targets": [
-        {
-          "expr": "sum by (capability) (rate(openai_api_tokens_total[5m])) / sum by (capability) (rate(openai_api_requests_total{status=\"success\"}[5m]))",
-          "refId": "A",
-          "legendFormat": "{{capability}}",
-          "datasource": "Prometheus"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        },
-        "legend": {
-          "calcs": ["last", "max", "mean"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        }
-      }
-    },
-    {
-      "id": 6,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 22
-      },
-      "type": "timeseries",
-      "title": "Average Token Usage by Operation",
-      "description": "Average tokens per request, broken down by operation",
-      "targets": [
-        {
-          "expr": "sum by (operation) (rate(openai_api_tokens_total[5m])) / sum by (operation) (rate(openai_api_requests_total{status=\"success\"}[5m]))",
-          "refId": "A",
-          "legendFormat": "{{operation}}",
-          "datasource": "Prometheus"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        },
-        "legend": {
-          "calcs": ["last", "max", "mean"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        }
-      }
-    },
-    {
-      "id": 7,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 30
-      },
-      "type": "timeseries",
-      "title": "Total Requests by Capability",
-      "description": "Total number of requests broken down by capability",
-      "targets": [
-        {
-          "expr": "sum by (capability) (openai_api_requests_total)",
-          "refId": "A",
-          "legendFormat": "{{capability}}",
-          "datasource": "Prometheus"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        },
-        "legend": {
-          "calcs": ["last", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        }
-      }
-    },
-    {
-      "id": 8,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 30
-      },
-      "type": "timeseries",
-      "title": "Total Requests by Operation",
-      "description": "Total number of requests broken down by operation",
-      "targets": [
-        {
-          "expr": "sum by (operation) (openai_api_requests_total)",
-          "refId": "A",
-          "legendFormat": "{{operation}}",
-          "datasource": "Prometheus"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        },
-        "legend": {
-          "calcs": ["last", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        }
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
       }
     }
   ],
