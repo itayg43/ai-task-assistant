@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 
 import { createLogger } from "../../../config/create-logger";
-import { HEALTH_ROUTE } from "../../../constants";
+import { HEALTH_ROUTE, METRICS_ROUTE } from "../../../constants";
 import { ForbiddenError } from "../../../errors";
 
 const logger = createLogger("cors");
@@ -21,8 +21,8 @@ export const createCors =
   };
 
 function handleNoOrigin(req: Request, next: NextFunction) {
-  if (isHealthEndpoint(req.path)) {
-    logger.info("Allowing no-origin request to health endpoint:", {
+  if (isHealthEndpoint(req.path) || isMetricsEndpoint(req.path)) {
+    logger.info("Allowing no-origin request to health/metrics endpoint:", {
       path: req.path,
       method: req.method,
     });
@@ -32,12 +32,13 @@ function handleNoOrigin(req: Request, next: NextFunction) {
     return;
   }
 
-  logger.warn("Blocking no-origin request to non-health endpoint:", {
+  logger.warn("Blocking no-origin request to non-health/metrics endpoint:", {
     path: req.path,
     method: req.method,
   });
 
-  const errorMessage = "No-origin requests only allowed to health endpoints";
+  const errorMessage =
+    "No-origin requests only allowed to health/metrics endpoints";
   next(new ForbiddenError(errorMessage));
 }
 
@@ -71,6 +72,10 @@ function handleWithOrigin(
 
 function isHealthEndpoint(path: string) {
   return path.includes(HEALTH_ROUTE);
+}
+
+function isMetricsEndpoint(path: string) {
+  return path.includes(METRICS_ROUTE);
 }
 
 function isAllowedOrigin(origin: string, allowedOrigins: string[]) {

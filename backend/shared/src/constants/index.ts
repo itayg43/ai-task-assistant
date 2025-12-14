@@ -5,6 +5,7 @@ export { DURATION_UNIT } from "./duration-unit";
 export { DEFAULT_GET_ELAPSED_DURATION_OPTIONS } from "./get-elapsed-duration-options";
 export { HEALTH_ROUTE } from "./health-route";
 export { LOGGER_LOG_LEVEL } from "./logger-log-level";
+export { METRICS_ROUTE } from "./metrics-route";
 export { PROCESS_EXIT_CODE } from "./process-exit-code";
 export { PROCESS_TOKEN_BUCKET_REDIS_KEY_PREFIX } from "./process-token-bucket";
 export { SERVER_SHUTDOWN_STATE } from "./server-shutdown-state";

@@ -19,6 +19,10 @@ import {
   mockPromptVersion,
 } from "@mocks/openai-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
+import {
+  recordOpenAiApiFailureMetrics,
+  recordOpenAiApiSuccessMetrics,
+} from "@metrics/openai-metrics";
 import { InternalError } from "@shared/errors";
 import { Mocked } from "@shared/types";
 import { withDurationAsync } from "@shared/utils/with-duration";
@@ -56,9 +60,16 @@ vi.mock("@shared/utils/with-duration", () => ({
   withDurationAsync: vi.fn(),
 }));
 
+vi.mock("@metrics/openai-metrics", () => ({
+  recordOpenAiApiSuccessMetrics: vi.fn(),
+  recordOpenAiApiFailureMetrics: vi.fn(),
+}));
+
 describe("executeParse", () => {
   let mockedOpenaiParse: Mocked<any>;
   let mockedWithDurationAsync: Mocked<typeof withDurationAsync>;
+  let mockedRecordSuccessMetrics: Mocked<typeof recordOpenAiApiSuccessMetrics>;
+  let mockedRecordFailureMetrics: Mocked<typeof recordOpenAiApiFailureMetrics>;
 
   beforeEach(async () => {
     const { openai } = await import("./openai");
@@ -82,6 +93,9 @@ describe("executeParse", () => {
         durationMs: mockOpenaiDurationMs,
       };
     });
+
+    mockedRecordSuccessMetrics = vi.mocked(recordOpenAiApiSuccessMetrics);
+    mockedRecordFailureMetrics = vi.mocked(recordOpenAiApiFailureMetrics);
   });
 
   afterEach(() => {
@@ -108,6 +122,18 @@ describe("executeParse", () => {
       },
       durationMs: mockOpenaiDurationMs,
     });
+
+    // Verify success metrics are recorded with correct parameters
+    expect(mockedRecordSuccessMetrics).toHaveBeenCalledTimes(1);
+    expect(mockedRecordSuccessMetrics).toHaveBeenCalledWith(
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_CORE_OPERATION,
+      mockPrompt.model,
+      mockOpenaiDurationMs,
+      mockOpenaiTokenUsage.input,
+      mockOpenaiTokenUsage.output
+    );
+    expect(mockedRecordFailureMetrics).not.toHaveBeenCalled();
   });
 
   it("should throw error when OpenAI API error occurs", async () => {
@@ -139,6 +165,14 @@ describe("executeParse", () => {
         type: AI_ERROR_TYPE.OPENAI_API_ERROR,
       });
     }
+
+    // Verify failure metrics are recorded with correct parameters
+    expect(mockedRecordFailureMetrics).toHaveBeenCalledTimes(1);
+    expect(mockedRecordFailureMetrics).toHaveBeenCalledWith(
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_CORE_OPERATION
+    );
+    expect(mockedRecordSuccessMetrics).not.toHaveBeenCalled();
   });
 
   it("should throw error when status is not completed", async () => {
@@ -170,6 +204,14 @@ describe("executeParse", () => {
         openaiResponseId: mockOpenaiResponseId,
       });
     }
+
+    // Verify failure metrics are recorded with correct parameters
+    expect(mockedRecordFailureMetrics).toHaveBeenCalledTimes(1);
+    expect(mockedRecordFailureMetrics).toHaveBeenCalledWith(
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_CORE_OPERATION
+    );
+    expect(mockedRecordSuccessMetrics).not.toHaveBeenCalled();
   });
 
   it("should throw error when output_parsed is null", async () => {
@@ -201,5 +243,13 @@ describe("executeParse", () => {
         openaiResponseId: mockOpenaiResponseId,
       });
     }
+
+    // Verify failure metrics are recorded with correct parameters
+    expect(mockedRecordFailureMetrics).toHaveBeenCalledTimes(1);
+    expect(mockedRecordFailureMetrics).toHaveBeenCalledWith(
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_CORE_OPERATION
+    );
+    expect(mockedRecordSuccessMetrics).not.toHaveBeenCalled();
   });
 });

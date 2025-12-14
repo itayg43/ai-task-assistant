@@ -3,6 +3,10 @@ import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/res
 
 import { env } from "@config/env";
 import { AI_ERROR_TYPE, CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
+import {
+  recordOpenAiApiFailureMetrics,
+  recordOpenAiApiSuccessMetrics,
+} from "@metrics/openai-metrics";
 import { createLogger } from "@shared/config/create-logger";
 import { InternalError } from "@shared/errors";
 import { withDurationAsync } from "@shared/utils/with-duration";
@@ -61,6 +65,15 @@ export const executeParse = async <TOutput>(
       durationMs: response.durationMs,
     };
 
+    recordOpenAiApiSuccessMetrics(
+      capability,
+      operation,
+      prompt.model,
+      response.durationMs,
+      result.usage.tokens.input,
+      result.usage.tokens.output
+    );
+
     logger.info("executeParse - succeeded", {
       ...baseLogContext,
       result,
@@ -68,6 +81,8 @@ export const executeParse = async <TOutput>(
 
     return result;
   } catch (error) {
+    recordOpenAiApiFailureMetrics(capability, operation);
+
     if (error instanceof OpenAI.APIError) {
       const openaiRequestId = error.requestID;
 
