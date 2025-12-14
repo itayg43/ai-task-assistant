@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: "ai-task-assistant"
+
+scrape_configs:
+  - job_name: "ai-service"
+    static_configs:
+      - targets: ["ai:3002"]
+        labels:
+          service: "ai"
+          environment: "development"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    scrape_timeout: 10s
