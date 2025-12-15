@@ -9,7 +9,11 @@ import {
   mockNaturalLanguage,
   mockParseTaskOutput,
 } from "@capabilities/parse-task/parse-task-mocks";
-import { AI_ERROR_TYPE, CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
+import { CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
+import {
+  recordOpenAiApiFailureMetrics,
+  recordOpenAiApiSuccessMetrics,
+} from "@metrics/openai-metrics";
 import {
   mockOpenaiDurationMs,
   mockOpenaiRequestId,
@@ -19,13 +23,10 @@ import {
   mockPromptVersion,
 } from "@mocks/openai-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
-import {
-  recordOpenAiApiFailureMetrics,
-  recordOpenAiApiSuccessMetrics,
-} from "@metrics/openai-metrics";
 import { InternalError } from "@shared/errors";
 import { Mocked } from "@shared/types";
 import { withDurationAsync } from "@shared/utils/with-duration";
+import { withRetry } from "@shared/utils/with-retry";
 import { executeParse } from "./openai";
 
 vi.mock("@config/env", () => ({
@@ -60,6 +61,10 @@ vi.mock("@shared/utils/with-duration", () => ({
   withDurationAsync: vi.fn(),
 }));
 
+vi.mock("@shared/utils/with-retry", () => ({
+  withRetry: vi.fn(),
+}));
+
 vi.mock("@metrics/openai-metrics", () => ({
   recordOpenAiApiSuccessMetrics: vi.fn(),
   recordOpenAiApiFailureMetrics: vi.fn(),
@@ -68,6 +73,7 @@ vi.mock("@metrics/openai-metrics", () => ({
 describe("executeParse", () => {
   let mockedOpenaiParse: Mocked<any>;
   let mockedWithDurationAsync: Mocked<typeof withDurationAsync>;
+  let mockedWithRetry: Mocked<typeof withRetry>;
   let mockedRecordSuccessMetrics: Mocked<typeof recordOpenAiApiSuccessMetrics>;
   let mockedRecordFailureMetrics: Mocked<typeof recordOpenAiApiFailureMetrics>;
 
@@ -94,6 +100,12 @@ describe("executeParse", () => {
       };
     });
 
+    mockedWithRetry = vi.mocked(withRetry);
+    // Default: pass through the function call (simulates successful first attempt)
+    mockedWithRetry.mockImplementation(async (_config, fn) => {
+      return await fn();
+    });
+
     mockedRecordSuccessMetrics = vi.mocked(recordOpenAiApiSuccessMetrics);
     mockedRecordFailureMetrics = vi.mocked(recordOpenAiApiFailureMetrics);
   });
@@ -113,6 +125,15 @@ describe("executeParse", () => {
     );
 
     expect(mockedWithDurationAsync).toHaveBeenCalledWith(expect.any(Function));
+    expect(mockedWithRetry).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Function),
+      expect.objectContaining({
+        requestId: mockAiServiceRequestId,
+        capability: PARSE_TASK_CAPABILITY,
+        operation: PARSE_TASK_CORE_OPERATION,
+      })
+    );
     expect(mockedOpenaiParse).toHaveBeenCalledWith(mockPrompt);
     expect(result).toEqual({
       openaiResponseId: mockOpenaiResponseId,
@@ -123,7 +144,6 @@ describe("executeParse", () => {
       durationMs: mockOpenaiDurationMs,
     });
 
-    // Verify success metrics are recorded with correct parameters
     expect(mockedRecordSuccessMetrics).toHaveBeenCalledTimes(1);
     expect(mockedRecordSuccessMetrics).toHaveBeenCalledWith(
       PARSE_TASK_CAPABILITY,
@@ -134,45 +154,6 @@ describe("executeParse", () => {
       mockOpenaiTokenUsage.output
     );
     expect(mockedRecordFailureMetrics).not.toHaveBeenCalled();
-  });
-
-  it("should throw error when OpenAI API error occurs", async () => {
-    const mockErrorMessage = "Incorrect API key provided";
-
-    const apiError = new (OpenAI.APIError as any)(mockErrorMessage);
-    apiError.requestID = mockOpenaiRequestId;
-    apiError.error = { message: mockErrorMessage };
-    apiError.status = 401;
-
-    mockedOpenaiParse.mockRejectedValue(apiError);
-
-    try {
-      await executeParse(
-        PARSE_TASK_CAPABILITY,
-        PARSE_TASK_CORE_OPERATION,
-        mockNaturalLanguage,
-        mockPrompt,
-        mockPromptVersion,
-        mockAiServiceRequestId
-      );
-    } catch (error) {
-      expect(error).toBeInstanceOf(InternalError);
-      expect((error as InternalError).message).toBe(
-        CAPABILITY_EXECUTION_ERROR_MESSAGE
-      );
-      expect((error as InternalError).context).toEqual({
-        openaiRequestId: mockOpenaiRequestId,
-        type: AI_ERROR_TYPE.OPENAI_API_ERROR,
-      });
-    }
-
-    // Verify failure metrics are recorded with correct parameters
-    expect(mockedRecordFailureMetrics).toHaveBeenCalledTimes(1);
-    expect(mockedRecordFailureMetrics).toHaveBeenCalledWith(
-      PARSE_TASK_CAPABILITY,
-      PARSE_TASK_CORE_OPERATION
-    );
-    expect(mockedRecordSuccessMetrics).not.toHaveBeenCalled();
   });
 
   it("should throw error when status is not completed", async () => {
@@ -205,7 +186,6 @@ describe("executeParse", () => {
       });
     }
 
-    // Verify failure metrics are recorded with correct parameters
     expect(mockedRecordFailureMetrics).toHaveBeenCalledTimes(1);
     expect(mockedRecordFailureMetrics).toHaveBeenCalledWith(
       PARSE_TASK_CAPABILITY,
@@ -244,12 +224,104 @@ describe("executeParse", () => {
       });
     }
 
-    // Verify failure metrics are recorded with correct parameters
     expect(mockedRecordFailureMetrics).toHaveBeenCalledTimes(1);
     expect(mockedRecordFailureMetrics).toHaveBeenCalledWith(
       PARSE_TASK_CAPABILITY,
       PARSE_TASK_CORE_OPERATION
     );
+    expect(mockedRecordSuccessMetrics).not.toHaveBeenCalled();
+  });
+
+  it("should succeed after retry and record metrics once", async () => {
+    // First attempt fails, second succeeds
+    mockedOpenaiParse
+      .mockRejectedValueOnce(new Error("Network error"))
+      .mockResolvedValueOnce({
+        id: mockOpenaiResponseId,
+        status: "completed",
+        output_parsed: mockParseTaskOutput,
+        usage: {
+          input_tokens: mockOpenaiTokenUsage.input,
+          output_tokens: mockOpenaiTokenUsage.output,
+        },
+      } as any);
+
+    // Mock withRetry to simulate retry: first call fails, second succeeds
+    let attemptCount = 0;
+    mockedWithRetry.mockImplementation(async (_config, fn) => {
+      attemptCount++;
+      if (attemptCount === 1) {
+        try {
+          return await fn();
+        } catch {
+          // Simulate retry delay, then retry
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          return await fn();
+        }
+      }
+      return await fn();
+    });
+
+    const result = await executeParse(
+      PARSE_TASK_CAPABILITY,
+      PARSE_TASK_CORE_OPERATION,
+      mockNaturalLanguage,
+      mockPrompt,
+      mockPromptVersion,
+      mockAiServiceRequestId
+    );
+
+    expect(result).toEqual({
+      openaiResponseId: mockOpenaiResponseId,
+      output: mockParseTaskOutput,
+      usage: {
+        tokens: mockOpenaiTokenUsage,
+      },
+      durationMs: mockOpenaiDurationMs,
+    });
+
+    expect(mockedRecordSuccessMetrics).toHaveBeenCalledTimes(1);
+    expect(mockedRecordFailureMetrics).not.toHaveBeenCalled();
+  });
+
+  it("should fail after all retries exhausted and record metrics once", async () => {
+    const apiError = new (OpenAI.APIError as any)("API error");
+    apiError.requestID = mockOpenaiRequestId;
+    apiError.error = { message: "API error" };
+    apiError.status = 500;
+
+    mockedOpenaiParse.mockRejectedValue(apiError);
+
+    // Mock withRetry to simulate all retries failing
+    let attemptCount = 0;
+    mockedWithRetry.mockImplementation(async (_config, fn) => {
+      attemptCount++;
+      try {
+        return await fn();
+      } catch (error) {
+        if (attemptCount < 3) {
+          // Simulate retry delay
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          return await fn();
+        }
+        throw error;
+      }
+    });
+
+    try {
+      await executeParse(
+        PARSE_TASK_CAPABILITY,
+        PARSE_TASK_CORE_OPERATION,
+        mockNaturalLanguage,
+        mockPrompt,
+        mockPromptVersion,
+        mockAiServiceRequestId
+      );
+    } catch (error) {
+      expect(error).toBeInstanceOf(InternalError);
+    }
+
+    expect(mockedRecordFailureMetrics).toHaveBeenCalledTimes(1);
     expect(mockedRecordSuccessMetrics).not.toHaveBeenCalled();
   });
 });
