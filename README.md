@@ -21,6 +21,9 @@ graph TB
     OpenAI -->|AI Response| AI
     AI -->|Response| Tasks
 
+    AI -->|Metrics| Prometheus[Prometheus<br/>Metrics Collection<br/>Port 9090]
+    Prometheus -->|Query| Grafana[Grafana<br/>Dashboards & Visualization<br/>Port 3000]
+
     Tasks -->|Final Response| Client
 ```
 
@@ -32,6 +35,7 @@ graph TB
 - **Prompt Versioning, Evaluation & Security**: Systematic prompt testing and evaluation framework for AI quality assurance, plus automatic detection and removal of malicious input patterns
 - **Distributed Rate Limiting**: Redis + Redlock token bucket with OpenAI window limits and token hold/release for each request
 - **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval, filtering, and sorting
+- **Observability & Monitoring**: Prometheus metrics collection and Grafana dashboards for OpenAI API performance monitoring (request volume, success rates, duration percentiles, token usage)
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
 
 ### Tech Stack
@@ -41,6 +45,7 @@ graph TB
 - **AI**: OpenAI API
 - **Database**: PostgreSQL with Prisma ORM
 - **Caching/Locking**: Redis with Redlock
+- **Monitoring**: Prometheus (metrics collection) and Grafana (visualization)
 - **Containerization**: Docker & Docker Compose
 - **Testing**: Vitest (unit and integration tests)
 - **Validation**: Zod
@@ -72,7 +77,7 @@ graph TB
    ```bash
    # Root level
    cp .env.example .env
-   # Edit .env with PostgreSQL credentials
+   # Edit .env with PostgreSQL and Grafana credentials
 
    # AI Service
    cd backend/services/ai
@@ -105,6 +110,8 @@ graph TB
    - **AI Service**: `http://localhost:3002`
    - **Redis**: `localhost:6379`
    - **PostgreSQL**: `localhost:5432`
+   - **Prometheus**: `http://localhost:9090`
+   - **Grafana**: `http://localhost:3000` (default credentials: admin/admin)
 
 ### Additional Commands
 
@@ -565,32 +572,71 @@ npm run prisma:seed
 
 The seed file is located at `backend/services/tasks/prisma/seed.ts` and will automatically replace `@postgres:5432` with `@localhost:5432` when running locally. See `backend/services/tasks/prisma/README.md` for more details.
 
+## Monitoring & Observability
+
+The application includes comprehensive monitoring for OpenAI API operations using Prometheus and Grafana.
+
+### Infrastructure
+
+- **Prometheus**: Collects metrics from the AI service via the `/metrics` endpoint
+- **Grafana**: Provides dashboards and visualization for collected metrics
+- **Metrics Endpoint**: Exposed at `http://localhost:3002/metrics` (AI service)
+
+### Metrics Tracked
+
+The AI service exposes the following Prometheus metrics:
+
+- **`openai_api_requests_total`**: Total number of OpenAI API requests (labeled by capability, operation, status)
+- **`openai_api_request_duration_ms`**: Request duration histogram with percentiles (P95, P99 available)
+- **`openai_api_tokens_total`**: Total token usage (labeled by capability, operation, type, model)
+
+### Grafana Dashboard
+
+A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization of:
+
+- **Total Requests**: Request volume over time
+- **Success Rate**: Percentage of successful requests with color-coded thresholds
+- **Average Duration**: Average request duration in milliseconds
+- **Total Tokens**: Token usage aggregated across all operations
+
 ## Near-Term Enhancements
 
-1. **OpenAI API Performance Monitoring**
+1. **Core Tasks Operations Monitoring**
 
-   - Add Prometheus and Grafana services to Docker Compose for local monitoring
-   - Instrument `executeParse` function with Prometheus metrics:
-     - Success rate (track success and failure counts)
-     - Duration metrics (average and P95, with P99 available if needed)
-     - Total token usage (input and output tracked separately, average can be derived)
-   - Expose `/metrics` endpoint in AI service for Prometheus scraping
-   - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
-   - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
+   - Add Prometheus metrics to core tasks operations (create, get)
+   - Track success rate and average duration for:
+     - Task creation operations
+     - Task retrieval operations
+   - Expose metrics via `/metrics` endpoint in Tasks service
+   - Add panels to Grafana dashboard for tasks operations monitoring
 
-2. **Async AI Processing**
+2. **OpenAI API Monitoring - P95 Duration Panel**
+
+   - Add P95 duration panel to OpenAI API monitoring dashboard in Grafana
+   - Use `histogram_quantile(0.95, ...)` query to calculate P95 from existing duration histogram
+   - Provides better visibility into performance outliers and latency spikes
+
+3. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
    - Return job ID immediately
    - Support webhook notifications when processing completes
 
-3. **Log Aggregation and Visualization**
+## Known Issues
 
-   - Add Loki and Promtail services to Docker Compose for centralized log aggregation
-   - Configure Promtail to scrape Docker container logs from all services
-   - Integrate Loki as a data source in Grafana (same instance used for metrics)
-   - Create Grafana dashboards for log exploration, error tracking, and log volume analysis
-   - Optionally update logger to support JSON format for better structured log parsing
-   - Enable correlation between logs and metrics in unified Grafana dashboards
-   - See `docs/plans/log-aggregation.md` for detailed implementation plan
+1. **Prisma Migrations Fail on First Run**
+
+   - **Issue**: When running `docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch` for the first time, the tasks service attempts to run Prisma migrations before the PostgreSQL database is fully ready, resulting in:
+     ```
+     Error: P1001: Can't reach database server at `postgres:5432`
+     ```
+   - **Workaround**: Wait for the database to be ready, then restart the tasks service:
+     ```bash
+     docker-compose restart tasks
+     ```
+   - **Root Cause**: The tasks service starts immediately without waiting for the database to be fully initialized
+   - **Potential Solutions**:
+     - Add healthcheck to PostgreSQL service and use `depends_on` with condition
+     - Add retry logic to the Prisma migration script
+     - Use a wait script or tool like `wait-for-it` or `dockerize`

@@ -3,9 +3,15 @@ import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/res
 
 import { env } from "@config/env";
 import { AI_ERROR_TYPE, CAPABILITY_EXECUTION_ERROR_MESSAGE } from "@constants";
+import {
+  recordOpenAiApiFailureMetrics,
+  recordOpenAiApiSuccessMetrics,
+} from "@metrics/openai-metrics";
 import { createLogger } from "@shared/config/create-logger";
+import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { InternalError } from "@shared/errors";
 import { withDurationAsync } from "@shared/utils/with-duration";
+import { withRetry } from "@shared/utils/with-retry";
 import { Capability } from "@types";
 
 const logger = createLogger("openai");
@@ -35,9 +41,15 @@ export const executeParse = async <TOutput>(
   try {
     logger.info("executeParse - start", baseLogContext);
 
-    const response = await withDurationAsync(() =>
-      openai.responses.parse<any, TOutput>(prompt)
-    );
+    const response = await withDurationAsync(async () => {
+      return await withRetry(
+        DEFAULT_RETRY_CONFIG,
+        async () => {
+          return await openai.responses.parse<any, TOutput>(prompt);
+        },
+        baseLogContext
+      );
+    });
 
     openaiResponseId = response.result.id;
 
@@ -61,6 +73,15 @@ export const executeParse = async <TOutput>(
       durationMs: response.durationMs,
     };
 
+    recordOpenAiApiSuccessMetrics(
+      capability,
+      operation,
+      prompt.model,
+      response.durationMs,
+      result.usage.tokens.input,
+      result.usage.tokens.output
+    );
+
     logger.info("executeParse - succeeded", {
       ...baseLogContext,
       result,
@@ -68,6 +89,8 @@ export const executeParse = async <TOutput>(
 
     return result;
   } catch (error) {
+    recordOpenAiApiFailureMetrics(capability, operation);
+
     if (error instanceof OpenAI.APIError) {
       const openaiRequestId = error.requestID;
 
