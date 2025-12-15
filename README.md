@@ -567,16 +567,14 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
 
 ## Near-Term Enhancements
 
-1. **OpenAI API Performance Monitoring**
+1. **Core Tasks Operations Monitoring**
 
-   - Add Prometheus and Grafana services to Docker Compose for local monitoring
-   - Instrument `executeParse` function with Prometheus metrics:
-     - Success rate (track success and failure counts)
-     - Duration metrics (average and P95, with P99 available if needed)
-     - Total token usage (input and output tracked separately, average can be derived)
-   - Expose `/metrics` endpoint in AI service for Prometheus scraping
-   - Create Grafana dashboard with panels for request volume, success rate, duration metrics, and token usage
-   - See `docs/plans/openai-api-monitoring.md` for detailed implementation plan
+   - Add Prometheus metrics to core tasks operations (create, get)
+   - Track success rate and average duration for:
+     - Task creation operations
+     - Task retrieval operations
+   - Expose metrics via `/metrics` endpoint in Tasks service
+   - Add panels to Grafana dashboard for tasks operations monitoring
 
 2. **Async AI Processing**
 
@@ -584,3 +582,21 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
    - Implement async job processing for AI requests
    - Return job ID immediately
    - Support webhook notifications when processing completes
+
+## Known Issues
+
+1. **Prisma Migrations Fail on First Run**
+
+   - **Issue**: When running `docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch` for the first time, the tasks service attempts to run Prisma migrations before the PostgreSQL database is fully ready, resulting in:
+     ```
+     Error: P1001: Can't reach database server at `postgres:5432`
+     ```
+   - **Workaround**: Wait for the database to be ready, then restart the tasks service:
+     ```bash
+     docker-compose restart tasks
+     ```
+   - **Root Cause**: The tasks service starts immediately without waiting for the database to be fully initialized
+   - **Potential Solutions**:
+     - Add healthcheck to PostgreSQL service and use `depends_on` with condition
+     - Add retry logic to the Prisma migration script
+     - Use a wait script or tool like `wait-for-it` or `dockerize`

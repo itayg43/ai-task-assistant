@@ -12,7 +12,7 @@ The implementation is broken down into the following parts:
 - [x] **Part 2: Code Setup** - Dependencies, TypeScript config, Metrics module creation
 - [x] **Part 3: Metrics Router Integration** - Integrate metrics router into app
 - [x] **Part 4: Instrument executeParse** - Add metrics tracking to OpenAI client
-- [x] **Part 5: Testing and Verification** - Test metrics endpoint and verify Prometheus scraping
+- [x] **Part 5: Dashboard Provisioning** - Set up Grafana dashboard provisioning and create OpenAI API dashboard
 
 ## Part 1: Infrastructure Setup
 
@@ -59,6 +59,16 @@ Created auto-provisioning configuration for Prometheus data source:
 - Auto-configures Prometheus connection on Grafana startup
 - URL: `http://prometheus:9090`
 - Set as default data source
+
+#### 1.5 Grafana Dashboard Directory
+
+**File**: `docker-compose.yml`
+
+Added volume mount for dashboard provisioning:
+
+- Volume: `./grafana/dashboards:/etc/grafana/dashboards`
+- Allows dashboard JSON files to be stored in version control
+- Dashboards are automatically loaded by Grafana provisioning
 
 ## Part 2: Code Setup
 
@@ -199,3 +209,54 @@ The use of helper functions provides:
 - **Easier maintenance**: Changes to metric recording happen in one place
 - **Better testability**: Helper functions can be tested independently
 - **Accurate metrics**: Retry logic at the API boundary ensures metrics reflect final outcomes
+
+## Part 5: Dashboard Provisioning
+
+#### 5.1 Dashboard Provisioning Configuration
+
+**File**: `grafana/provisioning/dashboards/dashboards.yml`
+
+Created dashboard provisioning configuration:
+
+- **Provider**: File-based dashboard provider
+- **Path**: `/etc/grafana/dashboards` (mounted from `./grafana/dashboards`)
+- **Update Interval**: 10 seconds (auto-reloads dashboard changes)
+- **UI Updates**: Enabled (allows editing dashboards in Grafana UI)
+- **Folder Structure**: Supports subdirectories for organizing dashboards
+
+#### 5.2 Dashboard Directory Structure
+
+**Directory**: `grafana/dashboards/`
+
+Created directory for storing dashboard JSON files:
+
+- Dashboards stored as JSON files in version control
+- Automatically loaded on Grafana startup
+- Changes to JSON files are picked up automatically (every 10 seconds)
+- Supports folder structure for organizing multiple dashboards
+
+#### 5.3 OpenAI API Dashboard
+
+**File**: `grafana/dashboards/openai-api-dashboard.json`
+
+Created comprehensive OpenAI API monitoring dashboard with four key panels:
+
+- **Total Requests**: Shows total number of requests in the selected time range
+
+  - Query: `floor(sum(increase(openai_api_requests_total[$__range])))`
+  - Uses `$__range` variable to respect Grafana's time picker
+
+- **Success Rate**: Displays success rate percentage with color-coded thresholds
+
+  - Query: `sum(increase(openai_api_requests_total{status="success"}[$__range])) / sum(increase(openai_api_requests_total[$__range])) * 100`
+  - Thresholds: Red (<95%), Orange (95-98%), Yellow (98-99%), Green (>99%)
+
+- **Avg Duration**: Shows average request duration in milliseconds
+
+  - Query: `sum(increase(openai_api_request_duration_ms_sum[$__range])) / sum(increase(openai_api_request_duration_ms_count[$__range]))`
+  - Uses histogram sum/count pattern for accurate average calculation
+  - Unit: milliseconds (ms)
+
+- **Total Tokens**: Displays total token usage in the selected time range
+  - Query: `sum(increase(openai_api_tokens_total[$__range]))`
+  - Aggregates all token usage across capabilities, operations, and models
