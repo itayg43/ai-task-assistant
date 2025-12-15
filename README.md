@@ -576,7 +576,13 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
    - Expose metrics via `/metrics` endpoint in Tasks service
    - Add panels to Grafana dashboard for tasks operations monitoring
 
-2. **Async AI Processing**
+2. **OpenAI API Monitoring - P95 Duration Panel**
+
+   - Add P95 duration panel to OpenAI API monitoring dashboard in Grafana
+   - Use `histogram_quantile(0.95, ...)` query to calculate P95 from existing duration histogram
+   - Provides better visibility into performance outliers and latency spikes
+
+3. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
