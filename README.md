@@ -21,6 +21,9 @@ graph TB
     OpenAI -->|AI Response| AI
     AI -->|Response| Tasks
 
+    AI -->|Metrics| Prometheus[Prometheus<br/>Metrics Collection<br/>Port 9090]
+    Prometheus -->|Query| Grafana[Grafana<br/>Dashboards & Visualization<br/>Port 3000]
+
     Tasks -->|Final Response| Client
 ```
 
@@ -32,6 +35,7 @@ graph TB
 - **Prompt Versioning, Evaluation & Security**: Systematic prompt testing and evaluation framework for AI quality assurance, plus automatic detection and removal of malicious input patterns
 - **Distributed Rate Limiting**: Redis + Redlock token bucket with OpenAI window limits and token hold/release for each request
 - **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval, filtering, and sorting
+- **Observability & Monitoring**: Prometheus metrics collection and Grafana dashboards for OpenAI API performance monitoring (request volume, success rates, duration percentiles, token usage)
 - **Type Safety**: TypeScript and Zod schemas throughout the stack
 
 ### Tech Stack
@@ -41,6 +45,7 @@ graph TB
 - **AI**: OpenAI API
 - **Database**: PostgreSQL with Prisma ORM
 - **Caching/Locking**: Redis with Redlock
+- **Monitoring**: Prometheus (metrics collection) and Grafana (visualization)
 - **Containerization**: Docker & Docker Compose
 - **Testing**: Vitest (unit and integration tests)
 - **Validation**: Zod
@@ -72,7 +77,7 @@ graph TB
    ```bash
    # Root level
    cp .env.example .env
-   # Edit .env with PostgreSQL credentials
+   # Edit .env with PostgreSQL and Grafana credentials
 
    # AI Service
    cd backend/services/ai
@@ -105,6 +110,8 @@ graph TB
    - **AI Service**: `http://localhost:3002`
    - **Redis**: `localhost:6379`
    - **PostgreSQL**: `localhost:5432`
+   - **Prometheus**: `http://localhost:9090`
+   - **Grafana**: `http://localhost:3000` (default credentials: admin/admin)
 
 ### Additional Commands
 
@@ -564,6 +571,33 @@ npm run prisma:seed
 ```
 
 The seed file is located at `backend/services/tasks/prisma/seed.ts` and will automatically replace `@postgres:5432` with `@localhost:5432` when running locally. See `backend/services/tasks/prisma/README.md` for more details.
+
+## Monitoring & Observability
+
+The application includes comprehensive monitoring for OpenAI API operations using Prometheus and Grafana.
+
+### Infrastructure
+
+- **Prometheus**: Collects metrics from the AI service via the `/metrics` endpoint
+- **Grafana**: Provides dashboards and visualization for collected metrics
+- **Metrics Endpoint**: Exposed at `http://localhost:3002/metrics` (AI service)
+
+### Metrics Tracked
+
+The AI service exposes the following Prometheus metrics:
+
+- **`openai_api_requests_total`**: Total number of OpenAI API requests (labeled by capability, operation, status)
+- **`openai_api_request_duration_ms`**: Request duration histogram with percentiles (P95, P99 available)
+- **`openai_api_tokens_total`**: Total token usage (labeled by capability, operation, type, model)
+
+### Grafana Dashboard
+
+A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization of:
+
+- **Total Requests**: Request volume over time
+- **Success Rate**: Percentage of successful requests with color-coded thresholds
+- **Average Duration**: Average request duration in milliseconds
+- **Total Tokens**: Token usage aggregated across all operations
 
 ## Near-Term Enhancements
 
