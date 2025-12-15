@@ -42,7 +42,9 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "decimals": 0,
+          "nullValueMode": "null as zero"
         },
         "overrides": []
       },
@@ -73,7 +75,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(openai_api_requests_total[$__range]))",
+          "expr": "floor(sum(increase(openai_api_requests_total[$__range])) or vector(0))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "__auto",
