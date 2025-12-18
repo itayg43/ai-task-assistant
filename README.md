@@ -1,6 +1,6 @@
 # Task Assistant
 
-This is a personal LLM-powered task assistant built with TypeScript and Node.js, integrating the OpenAI API. A learning and portfolio project exploring backend engineering concepts: microservices architecture, type safety, maintainability, and testability.
+This is a personal AI-powered task assistant built with TypeScript and Node.js, integrating the OpenAI API. A learning and portfolio project exploring backend engineering concepts: microservices architecture, type safety, maintainability, and testability.
 
 ## Overview
 
