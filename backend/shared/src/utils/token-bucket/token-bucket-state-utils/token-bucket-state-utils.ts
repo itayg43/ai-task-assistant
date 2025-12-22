@@ -14,11 +14,12 @@ export const getTokenBucketState = async (
   timestamp: number
 ) => {
   const bucket = await redisClient.hgetall(key);
-  const tokensFieldExists = bucket?.[TOKEN_BUCKET_FIELD_TOKENS] !== undefined;
+  // Check both fields are defined (Redis returns strings, not numbers)
+  const bucketExists =
+    bucket?.[TOKEN_BUCKET_FIELD_TOKENS] !== undefined &&
+    bucket?.[TOKEN_BUCKET_FIELD_LAST] !== undefined;
 
-  // If the tokens field doesn't exist, initialize both tokens and last fields atomically
-  // This ensures both fields always exist in Redis, preventing issues when decrementing
-  if (!tokensFieldExists) {
+  if (!bucketExists) {
     await redisClient.hset(
       key,
       TOKEN_BUCKET_FIELD_TOKENS,
@@ -29,13 +30,12 @@ export const getTokenBucketState = async (
   }
 
   return {
-    tokens: tokensFieldExists
+    tokens: bucketExists
       ? parseInt(bucket[TOKEN_BUCKET_FIELD_TOKENS], 10)
       : config.bucketSize,
-    last:
-      tokensFieldExists && bucket?.[TOKEN_BUCKET_FIELD_LAST]
-        ? parseInt(bucket[TOKEN_BUCKET_FIELD_LAST], 10)
-        : timestamp,
+    last: bucketExists
+      ? parseInt(bucket[TOKEN_BUCKET_FIELD_LAST], 10)
+      : timestamp,
   };
 };
 
