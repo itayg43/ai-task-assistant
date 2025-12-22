@@ -9,6 +9,7 @@ import type {
 import { getCurrentTime } from "../../date-time";
 import { getTokenBucketKey } from "../key-utils";
 import {
+  ensureTokenUsageWindowTtl,
   getTokenUsageState,
   incrementTokenUsage,
   resetTokenUsageWindow,
@@ -30,7 +31,6 @@ export const processTokenUsage = async (
   const now = getCurrentTime();
   const windowSizeSecondsMs = config.windowSizeSeconds * MS_PER_SECOND;
   // Calculate current window start: divide time into fixed windows
-  // Example: with 24h window (86400000ms), time 100000000ms is in window starting at 86400000ms
   // Formula: floor(now / windowSize) * windowSize gives the start of the current window
   const calculatedWindowStartTimestamp =
     Math.floor(now / windowSizeSecondsMs) * windowSizeSecondsMs;
@@ -98,6 +98,15 @@ export const processTokenUsage = async (
     estimatedTokens
   );
   const tokensRemaining = config.windowTokensLimit - newTokensUsed;
+
+  // Ensure TTL is set for the current window
+  await ensureTokenUsageWindowTtl(
+    redisClient,
+    key,
+    windowStartTimestamp,
+    config.windowSizeSeconds,
+    now
+  );
 
   logger.info(`Token usage allowed request for user ${userId}`, {
     tokensUsed: newTokensUsed,

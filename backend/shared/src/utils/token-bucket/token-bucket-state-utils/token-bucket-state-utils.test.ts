@@ -57,8 +57,8 @@ describe("bucketStateUtils", () => {
 
     it("should return the data stored in redis without initializing", async () => {
       (mockRedisClient.hgetall as Mock).mockResolvedValue({
-        [TOKEN_BUCKET_FIELD_TOKENS]: mockTokens,
-        [TOKEN_BUCKET_FIELD_LAST]: mockTimestamp,
+        [TOKEN_BUCKET_FIELD_TOKENS]: mockTokens.toString(),
+        [TOKEN_BUCKET_FIELD_LAST]: mockTimestamp.toString(),
       });
 
       const result = await getTokenBucketState(

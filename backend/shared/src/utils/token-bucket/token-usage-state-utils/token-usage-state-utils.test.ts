@@ -2,12 +2,14 @@ import Redis from "ioredis";
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 
 import {
+  MS_PER_SECOND,
   TOKEN_USAGE_FIELD_TOKENS_USED,
   TOKEN_USAGE_FIELD_WINDOW_START_TIMESTAMP,
 } from "../../../constants";
 import { createRedisClientMock } from "../../../mocks/redis-mock";
 import {
   decrementTokenUsage,
+  ensureTokenUsageWindowTtl,
   getTokenUsageState,
   incrementTokenUsage,
   resetTokenUsageWindow,
@@ -30,8 +32,9 @@ describe("tokenUsageStateUtils", () => {
   });
 
   describe("getTokenUsageState", () => {
-    it("should return default state when no data in redis", async () => {
+    it("should initialize key with default values when no data in redis", async () => {
       (mockRedisClient.hgetall as Mock).mockResolvedValue(undefined);
+      (mockRedisClient.hset as Mock).mockResolvedValue(2);
 
       const result = await getTokenUsageState(
         mockRedisClient,
@@ -39,11 +42,20 @@ describe("tokenUsageStateUtils", () => {
         mockWindowStartTimestamp
       );
 
+      // Should initialize both fields
+      expect(mockRedisClient.hset).toHaveBeenCalledWith(
+        mockKey,
+        TOKEN_USAGE_FIELD_TOKENS_USED,
+        0,
+        TOKEN_USAGE_FIELD_WINDOW_START_TIMESTAMP,
+        mockWindowStartTimestamp
+      );
+
       expect(result.tokensUsed).toBe(0);
       expect(result.windowStartTimestamp).toBe(mockWindowStartTimestamp);
     });
 
-    it("should return the data stored in redis", async () => {
+    it("should not initialize when key already exists", async () => {
       (mockRedisClient.hgetall as Mock).mockResolvedValue({
         [TOKEN_USAGE_FIELD_TOKENS_USED]: mockTokensUsed.toString(),
         [TOKEN_USAGE_FIELD_WINDOW_START_TIMESTAMP]:
@@ -55,6 +67,9 @@ describe("tokenUsageStateUtils", () => {
         mockKey,
         mockWindowStartTimestamp
       );
+
+      // Should NOT call hset when key exists
+      expect(mockRedisClient.hset).not.toHaveBeenCalled();
 
       expect(result.tokensUsed).toBe(mockTokensUsed);
       expect(result.windowStartTimestamp).toBe(mockWindowStartTimestamp);
@@ -127,6 +142,101 @@ describe("tokenUsageStateUtils", () => {
         -amount
       );
       expect(result).toBe(expectedNewValue);
+    });
+  });
+
+  describe("ensureTokenUsageWindowTtl", () => {
+    it("should set TTL when key has no expiration", async () => {
+      const mockWindowSizeSeconds = 86400; // 24 hours
+      const mockCurrentTime = mockWindowStartTimestamp + 10000;
+
+      // Mock ttl to return -1 (no expiration)
+      (mockRedisClient.ttl as Mock).mockResolvedValue(-1);
+      (mockRedisClient.expire as Mock).mockResolvedValue(1);
+
+      await ensureTokenUsageWindowTtl(
+        mockRedisClient,
+        mockKey,
+        mockWindowStartTimestamp,
+        mockWindowSizeSeconds,
+        mockCurrentTime
+      );
+
+      // Should check TTL
+      expect(mockRedisClient.ttl).toHaveBeenCalledWith(mockKey);
+
+      // Should set TTL to expire at window end
+      const expectedTtl = Math.ceil(
+        (mockWindowStartTimestamp +
+          mockWindowSizeSeconds * MS_PER_SECOND -
+          mockCurrentTime) /
+          MS_PER_SECOND
+      );
+      expect(mockRedisClient.expire).toHaveBeenCalledWith(mockKey, expectedTtl);
+    });
+
+    it("should not set TTL when key already has expiration", async () => {
+      // Mock ttl to return positive value (has expiration)
+      (mockRedisClient.ttl as Mock).mockResolvedValue(3600);
+      (mockRedisClient.expire as Mock).mockResolvedValue(1);
+
+      await ensureTokenUsageWindowTtl(
+        mockRedisClient,
+        mockKey,
+        mockWindowStartTimestamp,
+        mockTtlSeconds,
+        mockWindowStartTimestamp + 10000
+      );
+
+      // Should check TTL
+      expect(mockRedisClient.ttl).toHaveBeenCalledWith(mockKey);
+
+      // Should NOT set TTL
+      expect(mockRedisClient.expire).not.toHaveBeenCalled();
+    });
+
+    it("should not set TTL when key doesn't exist", async () => {
+      // Mock ttl to return -2 (key doesn't exist)
+      (mockRedisClient.ttl as Mock).mockResolvedValue(-2);
+      (mockRedisClient.expire as Mock).mockResolvedValue(0);
+
+      await ensureTokenUsageWindowTtl(
+        mockRedisClient,
+        mockKey,
+        mockWindowStartTimestamp,
+        mockTtlSeconds,
+        mockWindowStartTimestamp + 10000
+      );
+
+      // Should check TTL
+      expect(mockRedisClient.ttl).toHaveBeenCalledWith(mockKey);
+
+      // Should NOT set TTL (key doesn't exist)
+      expect(mockRedisClient.expire).not.toHaveBeenCalled();
+    });
+
+    it("should calculate correct TTL to expire at window end", async () => {
+      const mockWindowSizeSeconds = mockTtlSeconds; // Use existing mock value
+      const mockCurrentTime = mockWindowStartTimestamp + 1000;
+
+      (mockRedisClient.ttl as Mock).mockResolvedValue(-1);
+      (mockRedisClient.expire as Mock).mockResolvedValue(1);
+
+      await ensureTokenUsageWindowTtl(
+        mockRedisClient,
+        mockKey,
+        mockWindowStartTimestamp,
+        mockWindowSizeSeconds,
+        mockCurrentTime
+      );
+
+      const windowEndMs =
+        mockWindowStartTimestamp + mockWindowSizeSeconds * MS_PER_SECOND;
+      const expectedTtl = Math.ceil(
+        (windowEndMs - mockCurrentTime) / MS_PER_SECOND
+      );
+
+      expect(mockRedisClient.expire).toHaveBeenCalledWith(mockKey, expectedTtl);
     });
   });
 });

@@ -1,5 +1,6 @@
 export {
   decrementTokenUsage,
+  ensureTokenUsageWindowTtl,
   getTokenUsageState,
   incrementTokenUsage,
   resetTokenUsageWindow,
