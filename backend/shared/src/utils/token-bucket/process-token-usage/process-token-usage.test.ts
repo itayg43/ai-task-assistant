@@ -16,6 +16,7 @@ import {
   getTokenUsageState,
   incrementTokenUsage,
   resetTokenUsageWindow,
+  ensureTokenUsageWindowTtl,
 } from "../token-usage-state-utils";
 
 vi.mock("../../date-time");
@@ -24,6 +25,7 @@ vi.mock("../token-usage-state-utils", () => ({
   resetTokenUsageWindow: vi.fn(),
   getTokenUsageState: vi.fn(),
   incrementTokenUsage: vi.fn(),
+  ensureTokenUsageWindowTtl: vi.fn(),
 }));
 
 describe("processTokenUsage", () => {
@@ -32,6 +34,7 @@ describe("processTokenUsage", () => {
   let mockedGetTokenUsageState: Mocked<typeof getTokenUsageState>;
   let mockedResetTokenUsageWindow: Mocked<typeof resetTokenUsageWindow>;
   let mockedIncrementTokenUsage: Mocked<typeof incrementTokenUsage>;
+  let mockedEnsureTokenUsageWindowTtl: Mocked<typeof ensureTokenUsageWindowTtl>;
 
   let mockRedisClient: Redis;
 
@@ -46,6 +49,7 @@ describe("processTokenUsage", () => {
     mockedGetTokenUsageState = vi.mocked(getTokenUsageState);
     mockedResetTokenUsageWindow = vi.mocked(resetTokenUsageWindow);
     mockedIncrementTokenUsage = vi.mocked(incrementTokenUsage);
+    mockedEnsureTokenUsageWindowTtl = vi.mocked(ensureTokenUsageWindowTtl);
 
     mockRedisClient = createRedisClientMock();
   });
@@ -81,6 +85,15 @@ describe("processTokenUsage", () => {
     expect(result.tokensUsed).toBe(100);
     expect(result.tokensReserved).toBe(100);
     expect(result.tokensRemaining).toBe(900);
+
+    // Verify ensureTokenUsageWindowTtl was called with correct parameters
+    expect(mockedEnsureTokenUsageWindowTtl).toHaveBeenCalledWith(
+      mockRedisClient,
+      mockKey,
+      calculatedWindowStart,
+      mockTokenUsageConfig.windowSizeSeconds,
+      mockNow
+    );
 
     // Second request: allowed, tokensUsed = 200
     mockedGetTokenUsageState.mockResolvedValue({
@@ -149,6 +162,15 @@ describe("processTokenUsage", () => {
     expect(result.allowed).toBe(true);
     expect(result.tokensUsed).toBe(100); // After reset and increment
     expect(result.windowStartTimestamp).toBe(newWindowStart);
+
+    // Verify ensureTokenUsageWindowTtl was called with the new window
+    expect(mockedEnsureTokenUsageWindowTtl).toHaveBeenCalledWith(
+      mockRedisClient,
+      mockKey,
+      newWindowStart,
+      mockTokenUsageConfig.windowSizeSeconds,
+      mockNow
+    );
   });
 
   it("should reset window but deny if still exceeds limit after reset", async () => {
