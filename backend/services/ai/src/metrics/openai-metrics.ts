@@ -1,7 +1,6 @@
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
-import { Counter, Histogram, Registry } from "prom-client";
-
-export const register = new Registry();
+import { Counter, Histogram } from "prom-client";
+import { register } from "@clients/prom";
 
 // Counter for total API requests
 // Tracks success and failure counts to calculate success rate

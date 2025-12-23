@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { register } from "@metrics/openai-metrics";
+import { register } from "@clients/prom";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
 import { metricsRouter } from "./metrics-router";
 
@@ -12,7 +12,7 @@ const { mockMetricsFn, mockLoggerError } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@metrics/openai-metrics", () => {
+vi.mock("@clients/prom", () => {
   return {
     register: {
       contentType: "text/plain; version=0.0.4; charset=utf-8",

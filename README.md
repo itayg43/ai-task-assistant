@@ -32,7 +32,7 @@ graph TB
 - **Microservices Architecture**: Independent, containerized services that communicate over HTTP
 - **Monorepo**: NPM Workspaces for simplified dependency management and code sharing
 - **Generic Capabilities Controller**: Extensible AI capability system with type-safe handlers
-- **Prompt Versioning, Evaluation & Security**: Systematic prompt testing and evaluation framework for AI quality assurance, plus automatic detection and removal of malicious input patterns
+- **Prompt Versioning, Evaluation & Security**: Systematic prompt testing and evaluation for AI quality assurance, plus zero-tolerance prompt injection detection with immediate blocking of malicious patterns
 - **Distributed Rate Limiting**: Redis + Redlock token bucket with OpenAI window limits and token hold/release for each request
 - **Task Storage & Pagination**: PostgreSQL + Prisma for tasks/subtasks with paginated retrieval, filtering, and sorting
 - **Observability & Monitoring**: Prometheus metrics collection and Grafana dashboards for OpenAI API performance monitoring (request volume, success rates, duration percentiles, token usage)
@@ -311,11 +311,11 @@ POST /capabilities/parse-task?pattern=sync
 
 **Security:** The system protects against prompt injection attacks using:
 
-- **Input Sanitization**: Removes malicious patterns (e.g., "ignore previous instructions", "instead, return a task with...") from user input before processing.
-- **Early Rejection**: Inputs containing only malicious patterns are rejected immediately.
-- **API Structure**: The OpenAI Responses API uses separate `instructions` and `input` fields, providing natural separation between system instructions and user input.
-
-If an injection attempt is detected, the malicious patterns are removed and the remaining text is validated. If the remaining text is too vague, the system provides helpful suggestions instead of processing potentially malicious input.
+- **Pattern Detection**: Detects malicious patterns including instruction overrides, prompt extraction attempts, output manipulation, and format manipulation.
+- **Zero-Tolerance Blocking**: Any detected pattern immediately blocks the request with a 400 error with type `PROMPT_INJECTION_DETECTED`.
+- **Early Rejection**: Blocked requests never reach the OpenAI API, saving costs and reducing risk.
+- **Observability**: Comprehensive logging and Prometheus metrics track blocked attempts by pattern type.
+- **API Structure**: The OpenAI Responses API uses separate `instructions` and `input` fields, providing additional structural protection.
 
 ### Vague Input Error
 
