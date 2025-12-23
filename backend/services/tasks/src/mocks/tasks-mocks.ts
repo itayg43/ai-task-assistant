@@ -1,4 +1,4 @@
-import { PARSE_TASK_VAGUE_INPUT_ERROR } from "@constants";
+import { AI_ERROR_TYPE } from "@constants";
 import { type Subtask } from "@repositories/subtasks-repository";
 import {
   type FindTasksResult,
@@ -46,7 +46,7 @@ export const mockAiCapabilityResponse: TAiCapabilityResponse<TParsedTask> = {
 export const mockAiErrorData: TAiErrorData = {
   message:
     "The input is too vague - it doesn't specify what needs to be planned.",
-  type: PARSE_TASK_VAGUE_INPUT_ERROR,
+  type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
   suggestions: [
     "What specifically needs to be planned? (e.g., 'Plan vacation', 'Plan team meeting')",
     "What is the context or category? (work, personal, etc.)",

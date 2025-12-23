@@ -1,4 +1,4 @@
-export { PARSE_TASK_VAGUE_INPUT_ERROR } from "./ai-error-types";
+export { AI_ERROR_TYPE } from "./ai-error-types";
 export {
   GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
   GET_TASKS_ALLOWED_ORDER_DIRECTIONS,

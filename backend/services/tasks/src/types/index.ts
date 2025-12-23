@@ -7,6 +7,7 @@ export type {
 export type {
   TAiErrorData,
   TAiParseTaskVagueInputErrorData,
+  TAiPromptInjectionDetectedErrorData,
 } from "./ai-error-data";
 export type {
   TParseTaskConfig,

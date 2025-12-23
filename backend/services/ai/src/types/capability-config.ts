@@ -7,4 +7,5 @@ export type CapabilityConfig<TInput, TOutput> = {
   handler: (input: TInput, requestId: string) => Promise<TOutput>;
   inputSchema: z.ZodSchema<TInput>;
   outputSchema: z.ZodSchema<TOutput>;
+  promptInjectionFields: string[];
 };

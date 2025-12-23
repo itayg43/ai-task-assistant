@@ -1,5 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 
+import { AI_ERROR_TYPE } from "@constants";
 import { aiClient } from "@clients/ai";
 import { isHttpError } from "@shared/clients/http";
 import { createLogger } from "@shared/config/create-logger";
@@ -49,20 +50,23 @@ export const executeCapability = async <
       const responseData = error.response?.data as HttpErrorResponseData;
 
       if (!responseData?.message) {
-        logger.error(DEFAULT_ERROR_MESSAGE, error, baseLogContext);
+        logger.error("Execute capability - failed", error, baseLogContext);
 
         throw new InternalError();
       }
 
       const data = responseData as TAiErrorData;
 
-      logger.error(data.message, error, {
+      logger.error("Execute capability - failed", error, {
         ...baseLogContext,
         errorData: data,
       });
 
       if (responseStatus === StatusCodes.BAD_REQUEST) {
-        throw new BadRequestError(data.message, data);
+        const shouldSanitize =
+          data.type === AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED;
+
+        throw new BadRequestError(data.message, shouldSanitize ? {} : data);
       }
 
       throw new InternalError();
