@@ -25,7 +25,7 @@ app.use(
 app.use(METRICS_ROUTE, metricsRouter);
 app.use(HEALTH_ROUTE, [requestId, requestResponseMetadata], healthRouter);
 app.use(
-  "/api/v1/ai/capabilities",
+  "/api/v1/capabilities",
   [requestId, authentication, requestResponseMetadata],
   capabilitiesRouter
 );
