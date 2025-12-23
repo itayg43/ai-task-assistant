@@ -47,3 +47,36 @@ This document summarizes the implementation of **Prompt Injection Detection & Bl
 - Future capabilities must declare `promptInjectionFields` (use `[]` if no user input)
 - Making field required ensures developers explicitly consider injection detection for every capability
 - If a capability has no user input to validate, developers must explicitly use empty array `[]`, which documents the intentional decision
+
+### Part 4: Error Response Sanitization (PR #75)
+
+**Security Enhancement: Information Hiding**
+
+To prevent attackers from learning about detection mechanisms, error responses are sanitized before reaching the client:
+
+**AI Service Response** (Internal):
+
+- Returns generic message: "Invalid input provided."
+- Includes `type: "PROMPT_INJECTION_DETECTED"` in error context
+- Logs full input details for security analysis
+
+**Tasks Service Response** (Client-facing):
+
+- Detects `AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED` error type from AI service
+- Strips sensitive context (type, aiServiceRequestId) before forwarding
+- Returns only: `{ "message": "Invalid input provided.", "tasksServiceRequestId": "..." }`
+- Logs sanitization event for audit trail
+
+**Implementation Details**:
+
+- Error type constants organized in `AI_ERROR_TYPE` object for consistency with AI service patterns
+- Error sanitization in `ai-capabilities-service.ts` at service boundary
+- Type-safe detection using object constants
+- Defense-in-depth: Multiple layers ensure no information leakage
+- Internal observability preserved through comprehensive logging
+
+**Test Coverage**:
+
+- Integration tests verify generic messages don't contain injection patterns
+- Tests confirm no `type` or `aiServiceRequestId` fields in client responses
+- Both AI and Tasks service layers validated

@@ -2,10 +2,7 @@ import { StatusCodes } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aiClient } from "@clients/ai";
-import {
-  DEFAULT_PARSE_TASK_CONFIG,
-  PARSE_TASK_VAGUE_INPUT_ERROR,
-} from "@constants";
+import { DEFAULT_PARSE_TASK_CONFIG, AI_ERROR_TYPE } from "@constants";
 import {
   mockAiCapabilityResponse,
   mockAiErrorData,
@@ -79,7 +76,7 @@ describe("executeCapability", () => {
     expect(result).toEqual(mockAiCapabilityResponse);
   });
 
-  it(`should handle HTTP 400 errors with ${PARSE_TASK_VAGUE_INPUT_ERROR} type and include suggestions`, async () => {
+  it(`should handle HTTP 400 errors with ${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR} type and include suggestions`, async () => {
     const mockHttpError = createHttpError(
       StatusCodes.BAD_REQUEST,
       mockAiErrorData
@@ -99,7 +96,7 @@ describe("executeCapability", () => {
       expect(badRequestError.context?.suggestions).toEqual(
         (
           mockAiErrorData as {
-            type: typeof PARSE_TASK_VAGUE_INPUT_ERROR;
+            type: typeof AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR;
             suggestions: string[];
           }
         ).suggestions

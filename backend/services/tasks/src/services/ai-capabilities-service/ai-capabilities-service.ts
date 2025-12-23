@@ -1,5 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 
+import { AI_ERROR_TYPE } from "@constants";
 import { aiClient } from "@clients/ai";
 import { isHttpError } from "@shared/clients/http";
 import { createLogger } from "@shared/config/create-logger";
@@ -62,10 +63,10 @@ export const executeCapability = async <
       });
 
       if (responseStatus === StatusCodes.BAD_REQUEST) {
-        throw new BadRequestError(
-          data.message,
-          data.type === "PROMPT_INJECTION_DETECTED" ? {} : data
-        );
+        const shouldSanitize =
+          data.type === AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED;
+
+        throw new BadRequestError(data.message, shouldSanitize ? {} : data);
       }
 
       throw new InternalError();

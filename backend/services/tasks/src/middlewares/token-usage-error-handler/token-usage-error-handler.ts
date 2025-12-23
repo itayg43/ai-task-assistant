@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 
-import { PARSE_TASK_VAGUE_INPUT_ERROR } from "@constants";
+import { AI_ERROR_TYPE } from "@constants";
 import { openaiUpdateTokenUsage } from "@middlewares/token-usage-rate-limiter";
 import { BadRequestError, BaseError } from "@shared/errors";
 import { TAiParseTaskVagueInputErrorData } from "@types";
@@ -24,7 +24,7 @@ export const tokenUsageErrorHandler = (
   if (
     err instanceof BaseError &&
     err.context &&
-    err.context.type === PARSE_TASK_VAGUE_INPUT_ERROR
+    err.context.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR
   ) {
     const { message, suggestions, openaiMetadata } =
       err.context as TAiParseTaskVagueInputErrorData;

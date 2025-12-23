@@ -571,9 +571,11 @@ POST /api/v1/capabilities/parse-task?pattern=sync
 
 **3. AI Service Blocks Request (HTTP 400):**
 
+The AI service detects the injection and returns a generic error (internal logging captures full details):
+
 ```json
 {
-  "message": "Invalid input: Potential prompt injection detected.",
+  "message": "Invalid input provided.",
   "type": "PROMPT_INJECTION_DETECTED",
   "aiServiceRequestId": "bcb228b1-2af8-4a35-b2c1-b08cbd6fc397"
 }
@@ -581,11 +583,11 @@ POST /api/v1/capabilities/parse-task?pattern=sync
 
 **4. Tasks Service Error Response to Client (HTTP 400):**
 
+The Tasks service sanitizes the error before forwarding to prevent information leakage:
+
 ```json
 {
-  "message": "Invalid input: Potential prompt injection detected.",
-  "type": "PROMPT_INJECTION_DETECTED",
-  "aiServiceRequestId": "bcb228b1-2af8-4a35-b2c1-b08cbd6fc397",
+  "message": "Invalid input provided.",
   "tasksServiceRequestId": "83351b92-a14e-4a0f-99eb-1fbe88a20bcc"
 }
 ```

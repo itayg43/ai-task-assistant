@@ -13,6 +13,7 @@ import { AnyCapabilityConfig } from "@types";
 vi.mock("@utils/prompt-injection-detector", () => ({
   detectInjection: vi.fn((input) => {
     // Simulate detection of "malicious" keyword
+    // Note: Returns generic error message (no details about what was detected)
     if (input.toLowerCase().includes("malicious")) {
       throw new BadRequestError("Invalid input provided.", {
         type: "PROMPT_INJECTION_DETECTED",

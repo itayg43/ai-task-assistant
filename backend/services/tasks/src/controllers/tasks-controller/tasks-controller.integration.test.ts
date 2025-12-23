@@ -7,8 +7,7 @@ import {
   GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
   GET_TASKS_DEFAULT_SKIP,
   GET_TASKS_DEFAULT_TAKE,
-  PARSE_TASK_VAGUE_INPUT_ERROR,
-  PROMPT_INJECTION_DETECTED,
+  AI_ERROR_TYPE,
 } from "@constants";
 import {
   mockAiCapabilityResponse,
@@ -188,7 +187,7 @@ describe("tasksController (integration)", () => {
       });
 
       const vagueError = new BadRequestError("Input is too vague to parse", {
-        type: PARSE_TASK_VAGUE_INPUT_ERROR,
+        type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
         suggestions: ["Be more specific"],
         openaiMetadata: {
           core: {
@@ -254,9 +253,12 @@ describe("tasksController (integration)", () => {
     });
 
     it("should handle prompt injection error from AI service and return 400 with generic message", async () => {
+      // Note: The ai-capabilities-service sanitizes prompt injection errors by
+      // stripping the context before throwing, so we mock the already-sanitized
+      // error here (empty context object)
       const promptInjectionError = new BadRequestError(
         "Invalid input provided.",
-        {} // Empty context - sanitized by ai-capabilities-service
+        {} // Context already stripped by ai-capabilities-service
       );
       mockedExecuteCapability.mockRejectedValue(promptInjectionError);
 
