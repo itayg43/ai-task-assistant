@@ -1,4 +1,7 @@
-import { PARSE_TASK_VAGUE_INPUT_ERROR } from "@constants";
+import {
+  PARSE_TASK_VAGUE_INPUT_ERROR,
+  PROMPT_INJECTION_DETECTED,
+} from "@constants";
 import { TOpenaiMetadata } from "@types";
 
 type TBaseAiErrorData = {
@@ -11,4 +14,10 @@ export type TAiParseTaskVagueInputErrorData = TBaseAiErrorData & {
   openaiMetadata: Record<string, TOpenaiMetadata>;
 };
 
-export type TAiErrorData = TAiParseTaskVagueInputErrorData;
+export type TAiPromptInjectionDetectedErrorData = TBaseAiErrorData & {
+  type: typeof PROMPT_INJECTION_DETECTED;
+};
+
+export type TAiErrorData =
+  | TAiParseTaskVagueInputErrorData
+  | TAiPromptInjectionDetectedErrorData;

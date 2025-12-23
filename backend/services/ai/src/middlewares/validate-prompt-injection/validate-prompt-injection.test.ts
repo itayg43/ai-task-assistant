@@ -14,12 +14,9 @@ vi.mock("@utils/prompt-injection-detector", () => ({
   detectInjection: vi.fn((input) => {
     // Simulate detection of "malicious" keyword
     if (input.toLowerCase().includes("malicious")) {
-      throw new BadRequestError(
-        "Invalid input: Potential prompt injection detected.",
-        {
-          type: "PROMPT_INJECTION_DETECTED",
-        }
-      );
+      throw new BadRequestError("Invalid input provided.", {
+        type: "PROMPT_INJECTION_DETECTED",
+      });
     }
 
     return input;

@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import { PARSE_TASK_VAGUE_INPUT_ERROR } from "@constants";
 import { openaiUpdateTokenUsage } from "@middlewares/token-usage-rate-limiter";
 import { BadRequestError, BaseError } from "@shared/errors";
-import { TAiErrorData } from "@types";
+import { TAiParseTaskVagueInputErrorData } from "@types";
 import { extractOpenaiTokenUsage } from "@utils/extract-openai-token-usage";
 
 export const tokenUsageErrorHandler = (
@@ -27,7 +27,7 @@ export const tokenUsageErrorHandler = (
     err.context.type === PARSE_TASK_VAGUE_INPUT_ERROR
   ) {
     const { message, suggestions, openaiMetadata } =
-      err.context as TAiErrorData;
+      err.context as TAiParseTaskVagueInputErrorData;
 
     tokenUsage.actualTokens = extractOpenaiTokenUsage(openaiMetadata);
 

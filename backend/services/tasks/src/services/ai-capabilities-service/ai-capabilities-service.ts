@@ -49,20 +49,23 @@ export const executeCapability = async <
       const responseData = error.response?.data as HttpErrorResponseData;
 
       if (!responseData?.message) {
-        logger.error(DEFAULT_ERROR_MESSAGE, error, baseLogContext);
+        logger.error("Execute capability - failed", error, baseLogContext);
 
         throw new InternalError();
       }
 
       const data = responseData as TAiErrorData;
 
-      logger.error(data.message, error, {
+      logger.error("Execute capability - failed", error, {
         ...baseLogContext,
         errorData: data,
       });
 
       if (responseStatus === StatusCodes.BAD_REQUEST) {
-        throw new BadRequestError(data.message, data);
+        throw new BadRequestError(
+          data.message,
+          data.type === "PROMPT_INJECTION_DETECTED" ? {} : data
+        );
       }
 
       throw new InternalError();

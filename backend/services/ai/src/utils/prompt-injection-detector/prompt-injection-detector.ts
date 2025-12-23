@@ -63,12 +63,9 @@ export const detectInjection = (input: string, requestId: string): string => {
 
       recordPromptInjectionBlocked(patternType);
 
-      throw new BadRequestError(
-        "Invalid input: Potential prompt injection detected.",
-        {
-          type: AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED,
-        }
-      );
+      throw new BadRequestError("Invalid input provided.", {
+        type: AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED,
+      });
     }
   }
 
