@@ -105,4 +105,5 @@ export const mockParseTaskCapabilityConfig: CapabilityConfig<any, any> = {
   handler: async () => mockParseTaskCapabilityResponse,
   inputSchema: parseTaskInputSchema,
   outputSchema: createCapabilityResponseSchema(parseTaskOutputSchema),
+  promptInjectionFields: ["body.naturalLanguage"],
 };

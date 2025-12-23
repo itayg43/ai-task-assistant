@@ -37,3 +37,13 @@ This document summarizes the implementation of **Prompt Injection Detection & Bl
 - Records metric with detected pattern type
 - Logs full input for security analysis
 - Returns trimmed input only if no patterns detected
+
+### Part 3: Automated Middleware Integration
+
+- Created `validate-prompt-injection` middleware
+- Middleware reads required `promptInjectionFields` from capability config
+- Automatically validates specified fields using dot notation paths (e.g., "body.naturalLanguage")
+- Integrated into router middleware chain after input validation
+- Future capabilities must declare `promptInjectionFields` (use `[]` if no user input)
+- Making field required ensures developers explicitly consider injection detection for every capability
+- If a capability has no user input to validate, developers must explicitly use empty array `[]`, which documents the intentional decision

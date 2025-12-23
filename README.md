@@ -640,3 +640,45 @@ A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization 
      - Add healthcheck to PostgreSQL service and use `depends_on` with condition
      - Add retry logic to the Prisma migration script
      - Use a wait script or tool like `wait-for-it` or `dockerize`
+
+## Prompt Injection Detection Architecture
+
+The AI service implements a multi-layered security approach for prompt injection detection:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Router
+    participant ValidateExecutable
+    participant ValidateInput
+    participant ValidateInjection
+    participant Handler
+
+    Client->>Router: POST /api/v1/ai/capabilities/:capability
+    Router->>ValidateExecutable: Check capability exists
+    ValidateExecutable->>Router: Set capabilityConfig in res.locals
+    Router->>ValidateInput: Validate input schema
+    ValidateInput->>Router: Set capabilityValidatedInput in res.locals
+    Router->>ValidateInjection: Check promptInjectionFields
+    ValidateInjection->>ValidateInjection: Extract fields from config
+    ValidateInjection->>ValidateInjection: Run detectInjection() on each field
+    alt Injection Detected
+        ValidateInjection-->>Client: 400 BadRequestError
+    else Clean Input
+        ValidateInjection->>Handler: Continue to handler
+        Handler-->>Client: Process and return result
+    end
+```
+
+**Key Security Features:**
+
+- **Config-Based Detection**: Each capability explicitly declares which fields require injection detection via `promptInjectionFields`
+- **Automatic Middleware Integration**: Validation happens automatically for all capabilities in the middleware chain
+- **Zero-Tolerance Blocking**: Any detected injection pattern immediately blocks the request (400 BadRequestError)
+- **Pattern-Based Detection**: Detects four categories of injection attempts:
+  - Instruction override (e.g., "ignore previous instructions")
+  - Prompt extraction (e.g., "what are your instructions")
+  - Output override (e.g., "instead, return...")
+  - Format manipulation (e.g., markdown/code blocks)
+- **Metrics & Monitoring**: Prometheus metrics track blocked attempts by pattern type for security monitoring
+- **Scalability**: New capabilities automatically inherit protection by declaring `promptInjectionFields` in their config

@@ -12,5 +12,6 @@ export const capabilities = {
     outputSchema: {
       parse: vi.fn(),
     },
+    promptInjectionFields: ["body.naturalLanguage"],
   },
 };
