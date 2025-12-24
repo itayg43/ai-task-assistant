@@ -633,7 +633,7 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
 
 ## Monitoring & Observability
 
-The application includes comprehensive monitoring for OpenAI API operations using Prometheus and Grafana.
+The application includes monitoring for OpenAI API operations using Prometheus and Grafana.
 
 ### Infrastructure
 
@@ -652,12 +652,27 @@ The AI service exposes the following Prometheus metrics:
 
 ### Grafana Dashboard
 
-A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization of:
+A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization of OpenAI API metrics:
+
+**Key Performance Indicators:**
 
 - **Total Requests**: Request volume over time
 - **Success Rate**: Percentage of successful requests with color-coded thresholds
 - **Average Duration**: Average request duration in milliseconds
+- **P95 Duration**: 95th percentile request duration
 - **Total Tokens**: Token usage aggregated across all operations
+
+**Operation Breakdowns:**
+
+- **Requests Distribution**: Pie chart showing core vs subtasks operations
+- **Average Duration Comparison**: Side-by-side comparison of average duration for core vs subtasks
+- **P95 Duration Comparison**: Side-by-side comparison of P95 duration for core vs subtasks
+- **Token Usage Breakdown**: Detailed pie chart showing token distribution by operation (core/subtasks) and type (input/output)
+
+**Security Monitoring:**
+
+- **Prompt Injection Blocked**: Total count of blocked requests
+- **Blocked by Pattern Type**: Breakdown of blocked requests by detection pattern
 
 ## Near-Term Enhancements
 
@@ -667,16 +682,14 @@ A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization 
    - Track success rate and average duration for:
      - Task creation operations
      - Task retrieval operations
+   - Track vague input detections and rate
    - Expose metrics via `/metrics` endpoint in Tasks service
-   - Add panels to Grafana dashboard for tasks operations monitoring
+   - Create new Grafana dashboard for tasks service monitoring with panels for:
+     - Create vs Get operations breakdown
+     - Vague input tracking and trends
+     - Operation-specific performance metrics
 
-2. **OpenAI API Monitoring - P95 Duration Panel**
-
-   - Add P95 duration panel to OpenAI API monitoring dashboard in Grafana
-   - Use `histogram_quantile(0.95, ...)` query to calculate P95 from existing duration histogram
-   - Provides better visibility into performance outliers and latency spikes
-
-3. **Async AI Processing**
+2. **Async AI Processing**
 
    - Add message queue (RabbitMQ) to infrastructure
    - Implement async job processing for AI requests
