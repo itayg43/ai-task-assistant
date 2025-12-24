@@ -676,25 +676,79 @@ A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization 
 
 ## Near-Term Enhancements
 
-1. **Core Tasks Operations Monitoring**
+### Phase 1: Performance & Observability
 
-   - Add Prometheus metrics to core tasks operations (create, get)
-   - Track success rate and average duration for:
-     - Task creation operations
-     - Task retrieval operations
-   - Track vague input detections and rate
+1. **Subtasks Generation Optimization**
+
+   - **Problem**: Monitoring dashboard shows subtasks creation takes longer than core task parsing
+   - **Root Cause**: Prompt complexity and model selection (currently uses same model as core)
+   - **Solution**: Optimize subtasks prompt through:
+     - Reduce token complexity in subtasks prompt
+     - Consider using GPT-3.5-turbo for subtasks vs GPT-4 for core (cost/speed tradeoff)
+   - **Impact**: Faster task creation, lower OpenAI costs, better user experience
+
+2. **Core Tasks Operations Monitoring**
+
+   - Add Prometheus metrics to tasks service (currently only AI service has metrics)
+   - Track per-operation metrics:
+     - Task creation duration and success rate
+     - Task retrieval latency by query pattern (orderBy, filters)
+     - Vague input detection rate
    - Expose metrics via `/metrics` endpoint in Tasks service
-   - Create new Grafana dashboard for tasks service monitoring with panels for:
-     - Create vs Get operations breakdown
-     - Vague input tracking and trends
-     - Operation-specific performance metrics
 
-2. **Async AI Processing**
+### Phase 2: Async Architecture & Job Tracking
 
-   - Add message queue (RabbitMQ) to infrastructure
-   - Implement async job processing for AI requests
-   - Return job ID immediately
-   - Support webhook notifications when processing completes
+3. **Async AI Processing with RabbitMQ**
+
+   - **Architecture**: Convert synchronous AI requests to async job queue processing
+   - **Flow**:
+     - Client submits task → Tasks service returns `202 Accepted` with `jobId` immediately
+     - Job published to RabbitMQ queue
+     - Worker pool processes jobs independently (scale workers separately from API)
+     - Results stored in Redis with 24-hour TTL
+     - Client notified via webhook or polls `/api/v1/jobs/:jobId` for status
+   - **Implementation Details**:
+     - Reuse existing `requestId` from AI service as `jobId` for unified tracking
+     - Store job state in Redis (not database) with TTL for automatic cleanup
+     - Job states: `pending` → `processing` → `completed` | `failed`
+   - **Benefits**:
+     - API response time drops from O(3-5s) to O(100ms)
+     - Workers scale independently from API tier
+     - Rate limiting prevents queue overflow
+     - Better handles traffic spikes
+   - **Configuration**:
+     - RabbitMQ service in docker-compose
+     - Queue configuration: max retries, DLQ for failed jobs
+     - Worker pool size configurable via environment variables
+
+### Phase 3: Enterprise Features
+
+4. **Multi-Tenant Architecture**
+
+   - **Data Model**:
+     - `Account`: Represents organization/workspace (replaces previous Tenant model)
+     - `User`: Team members within an account (role: owner, admin, member)
+     - `Task`, `Subtask`: Automatically scoped by `accountId`
+   - **Implementation**:
+     - Add `accountId` to all data tables
+     - Add composite indexes: `(accountId, userId)` for efficient queries
+     - Middleware for automatic account context extraction from JWT
+     - Query filtering: All queries automatically filtered by `accountId` for data isolation
+   - **Security**:
+     - Data isolation at query level (can't access other accounts' data)
+
+### Phase 4: Infrastructure & Scaling
+
+5. **Load Balancing & Horizontal Scaling**
+
+   - **Nginx Reverse Proxy**:
+     - Route requests across multiple service instances
+     - Load balancing algorithm: least_conn for optimal distribution
+     - Health checks for automatic failover
+   - **Multi-Instance Support**:
+     - Docker Compose templating for N service instances
+     - Dynamic instance registration with load balancer
+     - Shared state via Redis (no instance affinity required)
 
 ## Known Issues
 
