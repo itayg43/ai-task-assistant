@@ -138,26 +138,38 @@ All helper functions include `logger.debug()` calls for observability.
 
 ### 8. Create Grafana Dashboard
 
+**Dashboard Configuration**:
+
+- Time range: Last 7 days (`now-7d` to `now`)
+- Auto-refresh: Every 5 minutes
+- Timezone: Browser
+
 **Dashboard Structure**:
 
 **Create Task Operation Section**:
 
 - Requests (total count)
 - Success Rate (%) with color thresholds (red <95%, orange 95-98%, yellow 98-99%, green >99%)
-- Avg Duration (ms) with thresholds (green <5000ms, yellow 5000-10000ms, red >10000ms)
-- P95 Duration (ms) with thresholds (green <7500ms, yellow 7500-15000ms, red >15000ms)
+- Avg Duration (ms, success only) with thresholds (green <5000ms, yellow 5000-10000ms, red >10000ms)
+- P95 Duration (ms, success only) with thresholds (green <7500ms, yellow 7500-15000ms, red >15000ms)
 - Vague Input Count (total)
 
 **Get Tasks Operation Section**:
 
 - Requests (total count)
 - Success Rate (%) with same thresholds as create task
-- Avg Duration (ms) with thresholds (green <1000ms, yellow 1000-2500ms, red >2500ms)
-- P95 Duration (ms) with thresholds (green <2500ms, yellow 2500-5000ms, red >5000ms)
+- Avg Duration (ms, all requests) with thresholds (green <1000ms, yellow 1000-2500ms, red >2500ms)
+- P95 Duration (ms, success only) with thresholds (green <2500ms, yellow 2500-5000ms, red >5000ms)
 
 **Grafana Queries Used**:
 
-- Success Rate: `sum(rate(tasks_api_requests_total{status="success"}[...])) / sum(rate(tasks_api_requests_total[...])) * 100`
-- Avg Duration: `rate(tasks_api_request_duration_ms_sum[...]) / rate(tasks_api_request_duration_ms_count[...])`
-- P95 Duration: `histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket[...])) by (le, operation))`
-- Vague Input %: `rate(tasks_vague_input_total[...]) / rate(tasks_api_requests_total{operation="create_task"}[...]) * 100`
+- **Success Rate**: `sum(rate(tasks_api_requests_total{status="success"}[...])) / sum(rate(tasks_api_requests_total[...])) * 100`
+- **Avg Duration (Create Task)**: `rate(tasks_api_request_duration_ms_sum{operation="create_task",status="success"}[...]) / rate(tasks_api_request_duration_ms_count{operation="create_task",status="success"}[...])`
+  - Filters by `status="success"` to exclude failed requests from average calculation
+- **Avg Duration (Get Tasks)**: `rate(tasks_api_request_duration_ms_sum{operation="get_tasks"}[...]) / rate(tasks_api_request_duration_ms_count{operation="get_tasks"}[...])`
+  - Includes all requests (no status filter)
+- **P95 Duration (Create Task)**: `histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket{operation="create_task",status="success"}[...])) by (le))`
+  - Filters by `status="success"` to calculate P95 based only on successful requests
+- **P95 Duration (Get Tasks)**: `histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket{operation="get_tasks",status="success"}[...])) by (le))`
+  - Filters by `status="success"` to calculate P95 based only on successful requests
+- **Vague Input %**: `rate(tasks_vague_input_total[...]) / rate(tasks_api_requests_total{operation="create_task"}[...]) * 100`

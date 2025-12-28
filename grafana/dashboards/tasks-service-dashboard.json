@@ -303,7 +303,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(tasks_api_request_duration_ms_sum{operation=\"create_task\"}[$__range]) / rate(tasks_api_request_duration_ms_count{operation=\"create_task\"}[$__range])",
+          "expr": "rate(tasks_api_request_duration_ms_sum{operation=\"create_task\",status=\"success\"}[$__range]) / rate(tasks_api_request_duration_ms_count{operation=\"create_task\",status=\"success\"}[$__range])",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -375,7 +375,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket{operation=\"create_task\"}[$__range])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket{operation=\"create_task\",status=\"success\"}[$__range])) by (le))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -674,7 +674,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket{operation=\"get_tasks\"}[$__range])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket{operation=\"get_tasks\",status=\"success\"}[$__range])) by (le))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -685,19 +685,19 @@
     }
   ],
   "preload": false,
-  "refresh": "",
+  "refresh": "5m",
   "schemaVersion": 42,
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-7d",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Tasks Service",
   "uid": "tasks-service",
-  "version": 4
+  "version": 7
 }
