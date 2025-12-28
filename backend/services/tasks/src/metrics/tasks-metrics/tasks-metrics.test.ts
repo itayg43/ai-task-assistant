@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   recordTasksApiFailure,
@@ -6,6 +6,8 @@ import {
   recordVagueInput,
 } from "@metrics/tasks-metrics";
 
+// Note: Can't use imported factory functions in vi.hoisted()
+// because imports aren't available yet. Mocks must be inlined.
 const {
   mockLoggerDebug,
   mockCounterInc,
@@ -15,9 +17,10 @@ const {
 } = vi.hoisted(() => {
   const mockCounterInc = vi.fn();
   const mockHistogramObserve = vi.fn();
+  const mockLoggerDebug = vi.fn();
 
   return {
-    mockLoggerDebug: vi.fn(),
+    mockLoggerDebug,
     mockCounterInc,
     mockHistogramObserve,
     mockCounter: vi.fn(() => ({
@@ -29,23 +32,19 @@ const {
   };
 });
 
-vi.mock("@shared/config/create-logger", () => {
-  return {
-    createLogger: vi.fn(() => ({
-      debug: mockLoggerDebug,
-    })),
-  };
-});
+vi.mock("@shared/config/create-logger", () => ({
+  createLogger: vi.fn(() => ({
+    debug: mockLoggerDebug,
+  })),
+}));
 
-vi.mock("@shared/clients/prom", () => {
-  return {
-    Counter: mockCounter,
-    Histogram: mockHistogram,
-    register: {
-      metrics: vi.fn(),
-    },
-  };
-});
+vi.mock("@shared/clients/prom", () => ({
+  Counter: mockCounter,
+  Histogram: mockHistogram,
+  register: {
+    metrics: vi.fn(),
+  },
+}));
 
 describe("tasksMetrics", () => {
   afterEach(() => {

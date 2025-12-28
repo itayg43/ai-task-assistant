@@ -1,7 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MetricsRecorder, OperationsMap } from "../../types";
+import { createMetricsRecorderMock } from "../../mocks/prom-mock";
+import { OperationsMap } from "../../types";
 import * as performanceUtils from "../../utils/performance";
 import { createMetricsMiddleware } from "./metrics-middleware";
 
@@ -10,7 +11,8 @@ describe("createMetricsMiddleware", () => {
   let mockResponse: Partial<Response>;
   let mockNext: NextFunction;
 
-  let mockRecorder: MetricsRecorder;
+  const { mockRecorder, mockRecordSuccess, mockRecordFailure } =
+    createMetricsRecorderMock();
   let operationsMap: OperationsMap;
 
   let finishCallback: () => void;
@@ -36,11 +38,6 @@ describe("createMetricsMiddleware", () => {
 
     mockNext = vi.fn();
 
-    mockRecorder = {
-      recordSuccess: vi.fn(),
-      recordFailure: vi.fn(),
-    };
-
     operationsMap = {
       POST: "create_task",
       GET: "get_tasks",
@@ -64,12 +61,12 @@ describe("createMetricsMiddleware", () => {
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
       finishCallback();
 
-      expect(mockRecorder.recordSuccess).toHaveBeenCalledWith(
+      expect(mockRecordSuccess).toHaveBeenCalledWith(
         "create_task",
         2500,
         "test-request-id"
       );
-      expect(mockRecorder.recordFailure).not.toHaveBeenCalled();
+      expect(mockRecordFailure).not.toHaveBeenCalled();
       expect(mockNext).toHaveBeenCalledTimes(1);
     });
 
@@ -84,12 +81,12 @@ describe("createMetricsMiddleware", () => {
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
       finishCallback();
 
-      expect(mockRecorder.recordFailure).toHaveBeenCalledWith(
+      expect(mockRecordFailure).toHaveBeenCalledWith(
         "create_task",
         2500,
         "test-request-id"
       );
-      expect(mockRecorder.recordSuccess).not.toHaveBeenCalled();
+      expect(mockRecordSuccess).not.toHaveBeenCalled();
       expect(mockNext).toHaveBeenCalledTimes(1);
     });
 
@@ -104,8 +101,8 @@ describe("createMetricsMiddleware", () => {
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockResponse.on).not.toHaveBeenCalled();
-      expect(mockRecorder.recordSuccess).not.toHaveBeenCalled();
-      expect(mockRecorder.recordFailure).not.toHaveBeenCalled();
+      expect(mockRecordSuccess).not.toHaveBeenCalled();
+      expect(mockRecordFailure).not.toHaveBeenCalled();
       expect(mockNext).toHaveBeenCalledTimes(1);
     });
   });
@@ -122,7 +119,7 @@ describe("createMetricsMiddleware", () => {
 
       expect(performanceUtils.getStartTimestamp).toHaveBeenCalledTimes(1);
       expect(performanceUtils.getElapsedDuration).toHaveBeenCalledWith(1000);
-      expect(mockRecorder.recordSuccess).toHaveBeenCalledWith(
+      expect(mockRecordSuccess).toHaveBeenCalledWith(
         "create_task",
         2500,
         "test-request-id"
@@ -142,8 +139,8 @@ describe("createMetricsMiddleware", () => {
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
       finishCallback();
 
-      expect(mockRecorder.recordSuccess).toHaveBeenCalled();
-      expect(mockRecorder.recordFailure).not.toHaveBeenCalled();
+      expect(mockRecordSuccess).toHaveBeenCalled();
+      expect(mockRecordFailure).not.toHaveBeenCalled();
     });
 
     it("should treat 4xx status codes as failure", () => {
@@ -157,8 +154,8 @@ describe("createMetricsMiddleware", () => {
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
       finishCallback();
 
-      expect(mockRecorder.recordFailure).toHaveBeenCalled();
-      expect(mockRecorder.recordSuccess).not.toHaveBeenCalled();
+      expect(mockRecordFailure).toHaveBeenCalled();
+      expect(mockRecordSuccess).not.toHaveBeenCalled();
     });
 
     it("should treat 5xx status codes as failure", () => {
@@ -172,8 +169,8 @@ describe("createMetricsMiddleware", () => {
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
       finishCallback();
 
-      expect(mockRecorder.recordFailure).toHaveBeenCalled();
-      expect(mockRecorder.recordSuccess).not.toHaveBeenCalled();
+      expect(mockRecordFailure).toHaveBeenCalled();
+      expect(mockRecordSuccess).not.toHaveBeenCalled();
     });
   });
 
@@ -191,7 +188,7 @@ describe("createMetricsMiddleware", () => {
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
       finishCallback();
 
-      expect(mockRecorder.recordSuccess).toHaveBeenCalledWith(
+      expect(mockRecordSuccess).toHaveBeenCalledWith(
         "create_task",
         2500,
         "custom-request-id-123"
@@ -209,11 +206,7 @@ describe("createMetricsMiddleware", () => {
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
       finishCallback();
 
-      expect(mockRecorder.recordSuccess).toHaveBeenCalledWith(
-        "create_task",
-        2500,
-        ""
-      );
+      expect(mockRecordSuccess).toHaveBeenCalledWith("create_task", 2500, "");
     });
   });
 });
