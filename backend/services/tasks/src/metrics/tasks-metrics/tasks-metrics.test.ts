@@ -1,15 +1,31 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   recordTasksApiFailure,
   recordTasksApiSuccess,
   recordVagueInput,
 } from "@metrics/tasks-metrics";
-import { register } from "@shared/clients/prom";
 
-const { mockLoggerDebug } = vi.hoisted(() => {
+const {
+  mockLoggerDebug,
+  mockCounterInc,
+  mockHistogramObserve,
+  mockCounter,
+  mockHistogram,
+} = vi.hoisted(() => {
+  const mockCounterInc = vi.fn();
+  const mockHistogramObserve = vi.fn();
+
   return {
     mockLoggerDebug: vi.fn(),
+    mockCounterInc,
+    mockHistogramObserve,
+    mockCounter: vi.fn(() => ({
+      inc: mockCounterInc,
+    })),
+    mockHistogram: vi.fn(() => ({
+      observe: mockHistogramObserve,
+    })),
   };
 });
 
@@ -21,30 +37,41 @@ vi.mock("@shared/config/create-logger", () => {
   };
 });
 
+vi.mock("@shared/clients/prom", () => {
+  return {
+    Counter: mockCounter,
+    Histogram: mockHistogram,
+    register: {
+      metrics: vi.fn(),
+    },
+  };
+});
+
 describe("tasksMetrics", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   describe("recordTasksApiSuccess", () => {
-    it("should increment counter with success status", async () => {
+    it("should increment counter with success status", () => {
       recordTasksApiSuccess("create_task", 2500, "test-request-id");
 
-      const metrics = await register.metrics();
-
-      expect(metrics).toContain("tasks_api_requests_total");
-      expect(metrics).toContain('operation="create_task"');
-      expect(metrics).toContain('status="success"');
+      expect(mockCounterInc).toHaveBeenCalledWith({
+        operation: "create_task",
+        status: "success",
+      });
     });
 
-    it("should observe histogram with duration", async () => {
+    it("should observe histogram with duration and success status", () => {
       recordTasksApiSuccess("create_task", 2500, "test-request-id");
 
-      const metrics = await register.metrics();
-
-      expect(metrics).toContain("tasks_api_request_duration_ms");
-      expect(metrics).toContain('operation="create_task"');
-      expect(metrics).toContain('status="success"');
+      expect(mockHistogramObserve).toHaveBeenCalledWith(
+        {
+          operation: "create_task",
+          status: "success",
+        },
+        2500
+      );
     });
 
     it("should log debug message with all parameters", () => {
@@ -60,27 +87,44 @@ describe("tasksMetrics", () => {
         }
       );
     });
+
+    it("should handle get_tasks operation", () => {
+      recordTasksApiSuccess("get_tasks", 750, "another-request-id");
+
+      expect(mockCounterInc).toHaveBeenCalledWith({
+        operation: "get_tasks",
+        status: "success",
+      });
+      expect(mockHistogramObserve).toHaveBeenCalledWith(
+        {
+          operation: "get_tasks",
+          status: "success",
+        },
+        750
+      );
+    });
   });
 
   describe("recordTasksApiFailure", () => {
-    it("should increment counter with failure status", async () => {
+    it("should increment counter with failure status", () => {
       recordTasksApiFailure("create_task", 2500, "test-request-id");
 
-      const metrics = await register.metrics();
-
-      expect(metrics).toContain("tasks_api_requests_total");
-      expect(metrics).toContain('operation="create_task"');
-      expect(metrics).toContain('status="failure"');
+      expect(mockCounterInc).toHaveBeenCalledWith({
+        operation: "create_task",
+        status: "failure",
+      });
     });
 
-    it("should observe histogram with duration", async () => {
+    it("should observe histogram with duration and failure status", () => {
       recordTasksApiFailure("create_task", 2500, "test-request-id");
 
-      const metrics = await register.metrics();
-
-      expect(metrics).toContain("tasks_api_request_duration_ms");
-      expect(metrics).toContain('operation="create_task"');
-      expect(metrics).toContain('status="failure"');
+      expect(mockHistogramObserve).toHaveBeenCalledWith(
+        {
+          operation: "create_task",
+          status: "failure",
+        },
+        2500
+      );
     });
 
     it("should log debug message with all parameters", () => {
@@ -96,15 +140,29 @@ describe("tasksMetrics", () => {
         }
       );
     });
+
+    it("should handle get_tasks operation", () => {
+      recordTasksApiFailure("get_tasks", 1200, "another-request-id");
+
+      expect(mockCounterInc).toHaveBeenCalledWith({
+        operation: "get_tasks",
+        status: "failure",
+      });
+      expect(mockHistogramObserve).toHaveBeenCalledWith(
+        {
+          operation: "get_tasks",
+          status: "failure",
+        },
+        1200
+      );
+    });
   });
 
   describe("recordVagueInput", () => {
-    it("should increment vague input counter", async () => {
+    it("should increment vague input counter", () => {
       recordVagueInput("test-request-id");
 
-      const metrics = await register.metrics();
-
-      expect(metrics).toContain("tasks_vague_input_total");
+      expect(mockCounterInc).toHaveBeenCalledWith();
     });
 
     it("should log debug message with requestId", () => {
