@@ -1,9 +1,9 @@
 import { Request, Response, Router } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { register } from "@clients/prom";
-import { createLogger } from "@shared/config/create-logger";
-import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
+import { register } from "../../clients/prom";
+import { createLogger } from "../../config/create-logger";
+import { DEFAULT_ERROR_MESSAGE } from "../../constants";
 
 const logger = createLogger("metricsRouter");
 

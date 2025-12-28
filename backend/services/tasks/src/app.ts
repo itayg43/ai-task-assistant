@@ -2,33 +2,19 @@ import express from "express";
 import helmet from "helmet";
 
 import { env } from "@config/env";
-import { tokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter";
-import { healthRouter } from "@routers/health-router";
-import { tasksRouter } from "@routers/tasks-router";
-import { HEALTH_ROUTE } from "@shared/constants";
-import { authentication } from "@shared/middlewares/authentication";
+import { cors } from "@middlewares/cors";
+import { routers } from "@routers";
 import { createErrorHandler } from "@shared/middlewares/error-handler";
-import { requestId } from "@shared/middlewares/request-id";
-import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
 
 export const app = express();
 
 app.use(helmet());
+app.use(cors);
 app.use(express.json());
 app.use(
   express.urlencoded({
     extended: true,
   })
 );
-app.use(HEALTH_ROUTE, [requestId, requestResponseMetadata], healthRouter);
-app.use(
-  "/api/v1/tasks",
-  [
-    requestId,
-    authentication,
-    requestResponseMetadata,
-    tokenBucketRateLimiter.api,
-  ],
-  tasksRouter
-);
+app.use("/", routers);
 app.use(createErrorHandler(env.SERVICE_NAME));

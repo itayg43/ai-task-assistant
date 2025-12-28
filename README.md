@@ -22,6 +22,7 @@ graph TB
     AI -->|Response| Tasks
 
     AI -->|Metrics| Prometheus[Prometheus<br/>Metrics Collection<br/>Port 9090]
+    Tasks -->|Metrics| Prometheus
     Prometheus -->|Query| Grafana[Grafana<br/>Dashboards & Visualization<br/>Port 3000]
 
     Tasks -->|Final Response| Client
@@ -755,13 +756,15 @@ The seed file is located at `backend/services/tasks/prisma/seed.ts` and will aut
 
 ## Monitoring & Observability
 
-The application includes monitoring for OpenAI API operations using Prometheus and Grafana.
+The application includes monitoring for both AI and Tasks service operations using Prometheus and Grafana.
 
 ### Infrastructure
 
-- **Prometheus**: Collects metrics from the AI service via the `/metrics` endpoint
+- **Prometheus**: Collects metrics from both AI and Tasks services via the `/metrics` endpoint
 - **Grafana**: Provides dashboards and visualization for collected metrics
-- **Metrics Endpoint**: Exposed at `http://localhost:3002/metrics` (AI service)
+- **Metrics Endpoints**:
+  - AI Service: `http://localhost:3002/metrics`
+  - Tasks Service: `http://localhost:3001/metrics`
 
 ### Metrics Tracked
 
@@ -772,7 +775,15 @@ The AI service exposes the following Prometheus metrics:
 - **`openai_api_tokens_total`**: Total token usage (labeled by capability, operation, type, model)
 - **`prompt_injection_blocked_total`**: Total number of requests blocked due to prompt injection detection (labeled by pattern_type)
 
-### Grafana Dashboard
+The Tasks service exposes the following Prometheus metrics:
+
+- **`tasks_api_requests_total`**: Total number of Tasks API requests (labeled by operation, status)
+- **`tasks_api_request_duration_ms`**: Request duration histogram with percentiles (P95, P99 available)
+- **`tasks_vague_input_total`**: Total number of vague input errors
+
+### Grafana Dashboards
+
+#### AI Service Dashboard
 
 A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization of OpenAI API metrics:
 
@@ -804,22 +815,36 @@ The dashboard calculates costs using OpenAI's pricing for GPT-4.1-mini:
 
 **Note**: Pricing is hardcoded in dashboard queries. If OpenAI pricing changes or new models are used, update the Grafana dashboard queries accordingly.
 
+#### Tasks Service Dashboard
+
+A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualization of Tasks service metrics:
+
+**Create Task Operation:**
+
+- **Requests**: Total request volume for the create task operation
+- **Vague Input Rate**: Percentage of requests rejected as too vague with color-coded thresholds (Green <10%, Yellow 10-20%, Red >20%)
+- **Success Rate**: Percentage of successful requests excluding vague inputs with color-coded thresholds (Red <95%, Orange 95-98%, Yellow 98-99%, Green >99%)
+- **Average Duration**: Average request duration for successful requests with thresholds (Green <5000ms, Yellow 5000-10000ms, Red >10000ms)
+- **P95 Duration**: 95th percentile duration for successful requests with thresholds (Green <7500ms, Yellow 7500-15000ms, Red >15000ms)
+
+**Get Tasks Operation:**
+
+- **Requests**: Total request volume for the get tasks operation
+- **Success Rate**: Percentage of successful requests with color-coded thresholds (Red <95%, Orange 95-98%, Yellow 98-99%, Green >99%)
+- **Average Duration**: Average request duration with thresholds (Green <1000ms, Yellow 1000-2500ms, Red >2500ms)
+- **P95 Duration**: 95th percentile duration for successful requests with thresholds (Green <2500ms, Yellow 2500-5000ms, Red >5000ms)
+
+**Metric Calculation Notes:**
+
+- **Success Rate excludes vague inputs**: Vague inputs are client/user errors, not service failures. Excluding them from success rate provides a true measure of service reliability and operational health.
+- **Vague Input Rate tracked separately**: Shows percentage of requests with unclear input, highlighting UX/prompt quality issues independent of service health.
+- **Duration metrics filter for success only**: Failed requests may have different performance characteristics; tracking successful request durations provides accurate performance baselines.
+
 ## Near-Term Enhancements
 
-### Phase 1: Performance & Observability
+### Phase 1: Async Architecture & Job Tracking
 
-1. **Core Tasks Operations Monitoring**
-
-   - Add Prometheus metrics to tasks service (currently only AI service has metrics)
-   - Track per-operation metrics:
-     - Task creation duration and success rate
-     - Task retrieval latency by query pattern (orderBy, filters)
-     - Vague input detection rate
-   - Expose metrics via `/metrics` endpoint in Tasks service
-
-### Phase 2: Async Architecture & Job Tracking
-
-3. **Async AI Processing with RabbitMQ**
+1. **Async AI Processing with RabbitMQ**
 
    - **Architecture**: Convert synchronous AI requests to async job queue processing
    - **Flow**:
@@ -842,9 +867,9 @@ The dashboard calculates costs using OpenAI's pricing for GPT-4.1-mini:
      - Queue configuration: max retries, DLQ for failed jobs
      - Worker pool size configurable via environment variables
 
-### Phase 3: Enterprise Features
+### Phase 2: Enterprise Features
 
-4. **Multi-Tenant Architecture**
+2. **Multi-Tenant Architecture**
 
    - **Data Model**:
      - `Account`: Represents organization/workspace (replaces previous Tenant model)
@@ -858,9 +883,9 @@ The dashboard calculates costs using OpenAI's pricing for GPT-4.1-mini:
    - **Security**:
      - Data isolation at query level (can't access other accounts' data)
 
-### Phase 4: Infrastructure & Scaling
+### Phase 3: Infrastructure & Scaling
 
-5. **Load Balancing & Horizontal Scaling**
+3. **Load Balancing & Horizontal Scaling**
 
    - **Nginx Reverse Proxy**:
      - Route requests across multiple service instances

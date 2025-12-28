@@ -1,7 +1,6 @@
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
-import { Counter, Histogram } from "prom-client";
 
-import { register } from "@clients/prom";
+import { Counter, Histogram, register } from "@shared/clients/prom";
 import { createLogger } from "@shared/config/create-logger";
 
 const logger = createLogger("openai-metrics");

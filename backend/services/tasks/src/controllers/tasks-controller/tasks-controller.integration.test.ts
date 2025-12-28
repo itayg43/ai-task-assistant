@@ -3,11 +3,11 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  AI_ERROR_TYPE,
   GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
   GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
   GET_TASKS_DEFAULT_SKIP,
   GET_TASKS_DEFAULT_TAKE,
-  AI_ERROR_TYPE,
 } from "@constants";
 import {
   mockAiCapabilityResponse,
@@ -88,6 +88,12 @@ vi.mock("@shared/middlewares/authentication", () => ({
     next();
   },
 }));
+
+// Mock CORS middleware using __mocks__ directory with explicit import path
+// Simple vi.mock() doesn't resolve the @middlewares/cors alias correctly
+vi.mock("@middlewares/cors", () => {
+  return import("../../middlewares/cors/__mocks__/cors");
+});
 
 describe("tasksController (integration)", () => {
   let mockedExecuteCapability: Mocked<typeof executeCapability>;

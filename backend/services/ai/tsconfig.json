@@ -18,6 +18,7 @@
       "@clients/*": ["src/clients/*"],
       "@config/*": ["src/config/*"],
       "@routers/*": ["src/routers/*"],
+      "@routers": ["src/routers"],
       "@middlewares/*": ["src/middlewares/*"],
       "@controllers/*": ["src/controllers/*"],
       "@capabilities": ["src/capabilities"],

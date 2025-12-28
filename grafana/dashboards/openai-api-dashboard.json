@@ -838,8 +838,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "OpenAI API",
+  "title": "OpenAI API Usage",
   "uid": "adcmbx9",
-  "version": 65,
+  "version": 68,
   "weekStart": "sunday"
 }
