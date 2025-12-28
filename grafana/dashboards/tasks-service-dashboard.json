@@ -109,17 +109,27 @@
             "mode": "thresholds"
           },
           "mappings": [],
+          "max": 100,
+          "min": 0,
           "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "yellow",
+                "color": "green",
                 "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 20
               }
             ]
           },
-          "unit": "short"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -153,13 +163,13 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "floor(sum(increase(tasks_vague_input_total[$__range])))",
+          "expr": "sum(increase(tasks_vague_input_total[$__range])) / sum(increase(tasks_api_requests_total{operation=\"create_task\"}[$__range])) * 100",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Vague Inputs",
+      "title": "Vague Input Rate",
       "type": "stat"
     },
     {
@@ -231,7 +241,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(tasks_api_requests_total{operation=\"create_task\",status=\"success\"}[$__range])) / sum(rate(tasks_api_requests_total{operation=\"create_task\"}[$__range])) * 100",
+          "expr": "sum(rate(tasks_api_requests_total{operation=\"create_task\",status=\"success\"}[$__range])) / (sum(rate(tasks_api_requests_total{operation=\"create_task\"}[$__range])) - sum(rate(tasks_vague_input_total[$__range]))) * 100",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"

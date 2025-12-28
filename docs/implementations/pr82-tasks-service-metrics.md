@@ -138,6 +138,12 @@ All helper functions include `logger.debug()` calls for observability.
 
 ### 8. Create Grafana Dashboard
 
+**Metric Calculation Rationale**:
+
+- **Success Rate excludes vague inputs**: Vague inputs are client/user errors, not service failures. Excluding them from success rate provides a true measure of service reliability and operational health.
+- **Vague Input Rate tracked separately**: Shows percentage of requests with unclear input, highlighting UX/prompt quality issues independent of service health.
+- **Duration metrics filter for success only**: Failed requests may have different performance characteristics; tracking successful request durations provides accurate performance baselines.
+
 **Dashboard Configuration**:
 
 - Time range: Last 7 days (`now-7d` to `now`)
@@ -149,10 +155,10 @@ All helper functions include `logger.debug()` calls for observability.
 **Create Task Operation Section**:
 
 - Requests (total count)
-- Success Rate (%) with color thresholds (red <95%, orange 95-98%, yellow 98-99%, green >99%)
+- Vague Input Rate (%) with color thresholds (green <10%, yellow 10-20%, red >20%)
+- Success Rate (%, excludes vague inputs) with color thresholds (red <95%, orange 95-98%, yellow 98-99%, green >99%)
 - Avg Duration (ms, success only) with thresholds (green <5000ms, yellow 5000-10000ms, red >10000ms)
 - P95 Duration (ms, success only) with thresholds (green <7500ms, yellow 7500-15000ms, red >15000ms)
-- Vague Input Count (total)
 
 **Get Tasks Operation Section**:
 
@@ -163,7 +169,14 @@ All helper functions include `logger.debug()` calls for observability.
 
 **Grafana Queries Used**:
 
-- **Success Rate**: `sum(rate(tasks_api_requests_total{status="success"}[...])) / sum(rate(tasks_api_requests_total[...])) * 100`
+- **Success Rate (Create Task)**: `sum(rate(tasks_api_requests_total{operation="create_task",status="success"}[...])) / (sum(rate(tasks_api_requests_total{operation="create_task"}[...])) - sum(rate(tasks_vague_input_total[...]))) * 100`
+  - Excludes vague inputs from denominator to measure service reliability, not input quality
+  - Formula: `successes / (all_requests - vague_inputs)`
+- **Success Rate (Get Tasks)**: `sum(rate(tasks_api_requests_total{operation="get_tasks",status="success"}[...])) / sum(rate(tasks_api_requests_total{operation="get_tasks"}[...])) * 100`
+  - Standard calculation (Get Tasks doesn't have vague inputs)
+- **Vague Input Rate**: `sum(increase(tasks_vague_input_total[...])) / sum(increase(tasks_api_requests_total{operation="create_task"}[...])) * 100`
+  - Shows percentage of create task requests that were rejected as too vague
+  - Thresholds: green <10%, yellow 10-20%, red >20%
 - **Avg Duration (Create Task)**: `rate(tasks_api_request_duration_ms_sum{operation="create_task",status="success"}[...]) / rate(tasks_api_request_duration_ms_count{operation="create_task",status="success"}[...])`
   - Filters by `status="success"` to exclude failed requests from average calculation
 - **Avg Duration (Get Tasks)**: `rate(tasks_api_request_duration_ms_sum{operation="get_tasks"}[...]) / rate(tasks_api_request_duration_ms_count{operation="get_tasks"}[...])`
@@ -172,4 +185,3 @@ All helper functions include `logger.debug()` calls for observability.
   - Filters by `status="success"` to calculate P95 based only on successful requests
 - **P95 Duration (Get Tasks)**: `histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket{operation="get_tasks",status="success"}[...])) by (le))`
   - Filters by `status="success"` to calculate P95 based only on successful requests
-- **Vague Input %**: `rate(tasks_vague_input_total[...]) / rate(tasks_api_requests_total{operation="create_task"}[...]) * 100`
