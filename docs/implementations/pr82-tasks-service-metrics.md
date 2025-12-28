@@ -4,63 +4,6 @@
 
 This document tracks the implementation of **Tasks Service Prometheus Metrics**. The implementation adds comprehensive metrics tracking for the Tasks service operations including request counts, success rates, duration percentiles, and vague input error tracking. Additionally, it refactors the Prometheus registry to be shared between both AI and Tasks services.
 
-## Summary of Changes
-
-### Files Created
-
-#### Shared Package
-
-- `backend/shared/src/clients/prom.ts` - Prometheus registry (moved from AI service)
-- `backend/shared/src/middlewares/metrics/metrics-middleware.ts` - Generic metrics middleware factory
-- `backend/shared/src/middlewares/metrics/index.ts` - Metrics middleware exports
-- `backend/shared/src/middlewares/metrics/metrics-middleware.test.ts` - Metrics middleware tests
-- `backend/shared/src/routers/metrics-router/metrics-router.ts` - Shared metrics router (moved from AI service, reused by Tasks service)
-- `backend/shared/src/routers/metrics-router/metrics-router.test.ts` - Metrics router tests
-- `backend/shared/src/routers/index.ts` - Router exports
-
-#### Tasks Service
-
-- `backend/services/tasks/src/metrics/tasks-metrics/tasks-metrics.ts` - Tasks-specific metrics definitions and helper functions
-- `backend/services/tasks/src/metrics/tasks-metrics/index.ts` - Tasks metrics exports
-- `backend/services/tasks/src/metrics/tasks-metrics/tasks-metrics.test.ts` - Tasks metrics tests
-- `backend/services/tasks/src/middlewares/metrics-middleware/metrics-middleware.ts` - Tasks metrics middleware wrapper
-- `backend/services/tasks/src/middlewares/metrics-middleware/index.ts` - Tasks metrics middleware exports
-- `backend/services/tasks/src/routers/routers.integration.test.ts` - Integration tests for metrics endpoint
-
-#### Configuration
-
-- `grafana/dashboards/tasks-service-dashboard.json` - Grafana dashboard for Tasks service
-
-### Files Modified
-
-#### Shared Package
-
-- `backend/shared/package.json` - Added `prom-client: ^15.1.0` dependency
-
-#### AI Service
-
-- `backend/services/ai/src/metrics/openai-metrics.ts` - Updated import to use `@shared/clients/prom`
-- `backend/services/ai/src/metrics/prompt-injection-metrics.ts` - Updated import to use `@shared/clients/prom`
-- `backend/services/ai/src/routers/index.ts` - Updated import to use `@shared/routers/metricsRouter`
-
-#### Tasks Service
-
-- `backend/services/tasks/tsconfig.json` - Added `@metrics/*` path alias
-- `backend/services/tasks/src/routers/index.ts` - Added metrics router from shared package
-- `backend/services/tasks/src/routers/tasks-router.ts` - Added metrics middleware to routes
-- `backend/services/tasks/src/controllers/tasks-controller/tasks-controller.ts` - Added vague input metric recording
-- `backend/services/tasks/src/controllers/tasks-controller/tasks-controller.unit.test.ts` - Added vague input metric tests
-
-#### Configuration
-
-- `prometheus/prometheus.yml` - Added tasks-service scrape configuration
-
-### Files Deleted
-
-- `backend/services/ai/src/clients/prom.ts` - Moved to `backend/shared/src/clients/prom.ts`
-- `backend/services/ai/src/routers/metrics-router/metrics-router.ts` - Moved to `backend/shared/src/routers/metrics-router/metrics-router.ts`
-- `backend/services/ai/src/routers/metrics-router/metrics-router.test.ts` - Moved to `backend/shared/src/routers/metrics-router/metrics-router.test.ts`
-
 ## Implementation Details
 
 ### 1. Refactor Prometheus Registry and Metrics Router to Shared Package
@@ -90,7 +33,7 @@ This document tracks the implementation of **Tasks Service Prometheus Metrics**.
 - Automatically determines success/failure based on HTTP status codes (2xx = success, 3xx/4xx/5xx = failure)
 - Skips metrics for unmapped HTTP methods
 
-**Tests**: Created comprehensive test suite covering:
+**Tests**: Created test suite covering:
 
 - Operation mapping for different HTTP methods
 - Duration tracking using performance utils
@@ -116,7 +59,6 @@ This document tracks the implementation of **Tasks Service Prometheus Metrics**.
      - 7500-15000ms: Slow operations that may indicate issues
 
 3. **`tasks_vague_input_total`** (Counter)
-   - No labels
    - Tracks vague input errors specifically
 
 **Helper Functions**:
@@ -127,11 +69,13 @@ This document tracks the implementation of **Tasks Service Prometheus Metrics**.
 
 All helper functions include `logger.debug()` calls for observability.
 
-**Tests**: Created test suite covering:
+**Tests**: Created test suite using proper mocks:
 
-- Counter increments for success/failure
-- Histogram observations
-- Debug logging with correct parameters
+- Mocks Counter and Histogram classes using `vi.fn()`
+- Tests counter increments with correct labels for both operations (create_task, get_tasks)
+- Tests histogram observations with correct labels and durations
+- Tests debug logging with correct parameters
+- Fast unit tests that don't depend on Prometheus internals
 
 ### 4. Wire Metrics Middleware to Tasks Router
 
@@ -168,22 +112,19 @@ All helper functions include `logger.debug()` calls for observability.
 - Router placement follows the same pattern as AI service (before authentication middleware)
 - The shared router exposes GET `/metrics` endpoint that returns Prometheus-formatted metrics for all registered metrics (both OpenAI and Tasks metrics)
 
-**Benefits of Reusing Shared Router**:
-
-- **DRY Principle**: Eliminates code duplication between services
-- **Consistency**: Both services use identical metrics endpoint implementation
-- **Single Source of Truth**: Metrics router logic maintained in one place
-- **Easier Maintenance**: Bug fixes and improvements benefit all services
-
 **Tests**:
 
-- Shared metrics router has unit tests in `backend/shared/src/routers/metrics-router/metrics-router.test.ts`
-- Integration tests in `backend/services/tasks/src/routers/routers.integration.test.ts` verify:
-  - `/metrics` endpoint returns 200 OK
-  - Response contains all expected Tasks service metrics
-  - Endpoint is accessible without authentication (for Prometheus scraping)
-  - Metrics are in proper Prometheus format
-- Tasks service metrics are tested via unit tests in `backend/services/tasks/src/metrics/tasks-metrics/tasks-metrics.test.ts`
+- Shared metrics router has unit tests in `backend/shared/src/routers/metrics-router/metrics-router.test.ts`:
+  - Tests successful metrics response
+  - Tests error handling
+  - Uses mocked Prometheus register
+- Tasks service metrics are tested via unit tests in `backend/services/tasks/src/metrics/tasks-metrics/tasks-metrics.test.ts`:
+  - Uses mocked Counter and Histogram
+  - Tests behavior without actual Prometheus dependencies
+  - Fast, isolated unit tests
+- Metrics middleware has unit tests in `backend/shared/src/middlewares/metrics/metrics-middleware.test.ts`:
+  - Uses reusable `createMetricsRecorderMock()` factory
+  - Tests operation mapping, duration tracking, status codes, and request context
 
 ### 7. Update Prometheus Configuration
 
@@ -206,7 +147,6 @@ All helper functions include `logger.debug()` calls for observability.
 - Avg Duration (ms) with thresholds (green <5000ms, yellow 5000-10000ms, red >10000ms)
 - P95 Duration (ms) with thresholds (green <7500ms, yellow 7500-15000ms, red >15000ms)
 - Vague Input Count (total)
-- Vague Input % (percentage of create_task requests)
 
 **Get Tasks Operation Section**:
 
@@ -215,84 +155,9 @@ All helper functions include `logger.debug()` calls for observability.
 - Avg Duration (ms) with thresholds (green <1000ms, yellow 1000-2500ms, red >2500ms)
 - P95 Duration (ms) with thresholds (green <2500ms, yellow 2500-5000ms, red >5000ms)
 
-**Time Series Section**:
-
-- Request Rate Over Time (by operation)
-- Duration Percentiles Over Time (P50 and P95 by operation)
-
 **Grafana Queries Used**:
 
 - Success Rate: `sum(rate(tasks_api_requests_total{status="success"}[...])) / sum(rate(tasks_api_requests_total[...])) * 100`
 - Avg Duration: `rate(tasks_api_request_duration_ms_sum[...]) / rate(tasks_api_request_duration_ms_count[...])`
 - P95 Duration: `histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket[...])) by (le, operation))`
 - Vague Input %: `rate(tasks_vague_input_total[...]) / rate(tasks_api_requests_total{operation="create_task"}[...]) * 100`
-
-## Test Results
-
-All tests pass successfully:
-
-```bash
-npm run test
-# Test Files  47 passed (47)
-# Tests  253 passed (253)
-
-npm run type-check:ci
-# No type errors
-```
-
-## Architectural Improvements Made During Implementation
-
-During implementation, several architectural improvements were identified and applied:
-
-### 1. Moved Metrics Router to Shared Package
-
-**Original Plan**: Create a separate metrics router for Tasks service similar to AI service
-
-**Improvement**: Moved the metrics router from AI service to shared package and reused it in both services
-
-**Benefits**:
-
-- Eliminated code duplication
-- Single source of truth for metrics endpoint behavior
-- Easier maintenance and consistency across services
-- Both services automatically benefit from improvements
-
-### 2. Centralized Router Registration
-
-**Original Plan**: Add metrics router directly in `app.ts`
-
-**Improvement**: Added metrics router in `routers/index.ts` alongside other routers
-
-**Benefits**:
-
-- Consistent with existing routing architecture
-- All route registration in one place
-- Better separation of concerns (app.ts for middleware, routers/index.ts for routes)
-- Matches pattern used in AI service
-
-These improvements demonstrate good engineering judgment and follow the DRY (Don't Repeat Yourself) principle while maintaining architectural consistency across services.
-
-## Future Enhancements
-
-1. **Add metrics to AI service using the shared middleware**: The generic metrics middleware can now be used in the AI service to track capability-level metrics
-2. **Add more granular metrics**: Track metrics by category, priority level, or other dimensions
-3. **Add alerting**: Set up Prometheus alerting rules for high error rates or slow response times
-4. **Add cost tracking**: Similar to OpenAI metrics, track estimated costs based on database operations
-
-## Verification
-
-To verify the implementation:
-
-1. Start the services: `npm run start:dev`
-2. Access Prometheus: `http://localhost:9090`
-   - Query: `tasks_api_requests_total`
-   - Should see metrics being collected
-3. Access Grafana: `http://localhost:3000` (admin/admin)
-   - Navigate to "Tasks Service Dashboard"
-   - Should see all panels displaying data
-4. Make some requests to the Tasks service
-5. Observe metrics updating in real-time in Grafana
-
-## Conclusion
-
-The Tasks Service Metrics implementation successfully adds comprehensive observability to the Tasks service while also improving code reusability by creating a shared metrics middleware factory. The refactored Prometheus registry ensures both services can expose metrics through a unified registry, and the new Grafana dashboard provides clear visibility into Tasks service performance and health.
