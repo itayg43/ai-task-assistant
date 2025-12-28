@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { register } from "@clients/prom";
+import { metricsRouter } from "@routers/metrics-router";
+import { register } from "@shared/clients/prom";
 import { DEFAULT_ERROR_MESSAGE } from "@shared/constants";
-import { metricsRouter } from "./metrics-router";
 
 const { mockMetricsFn, mockLoggerError } = vi.hoisted(() => {
   return {
@@ -12,7 +12,7 @@ const { mockMetricsFn, mockLoggerError } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@clients/prom", () => {
+vi.mock("@shared/clients/prom", () => {
   return {
     register: {
       contentType: "text/plain; version=0.0.4; charset=utf-8",

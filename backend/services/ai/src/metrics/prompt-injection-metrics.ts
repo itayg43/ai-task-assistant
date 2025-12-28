@@ -1,6 +1,4 @@
-import { Counter } from "prom-client";
-
-import { register } from "@clients/prom";
+import { Counter, register } from "@shared/clients/prom";
 
 export const promptInjectionBlockedTotal = new Counter({
   name: "prompt_injection_blocked_total",
