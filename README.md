@@ -97,7 +97,7 @@ graph TB
 4. **Start services**
 
    ```bash
-   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+   npm run start:dev
    ```
 
    Services will be available at:
@@ -754,7 +754,7 @@ A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization 
 
 1. **Prisma Migrations Fail on First Run**
 
-   - **Issue**: When running `docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch` for the first time, the tasks service attempts to run Prisma migrations before the PostgreSQL database is fully ready, resulting in:
+   - **Issue**: When running `npm run start:dev` for the first time, the tasks service attempts to run Prisma migrations before the PostgreSQL database is fully ready, resulting in:
      ```
      Error: P1001: Can't reach database server at `postgres:5432`
      ```
