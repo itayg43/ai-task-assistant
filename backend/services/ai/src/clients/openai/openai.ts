@@ -79,7 +79,8 @@ export const executeParse = async <TOutput>(
       prompt.model,
       response.durationMs,
       result.usage.tokens.input,
-      result.usage.tokens.output
+      result.usage.tokens.output,
+      requestId
     );
 
     logger.info("executeParse - succeeded", {
@@ -89,7 +90,7 @@ export const executeParse = async <TOutput>(
 
     return result;
   } catch (error) {
-    recordOpenAiApiFailureMetrics(capability, operation);
+    recordOpenAiApiFailureMetrics(capability, operation, requestId);
 
     if (error instanceof OpenAI.APIError) {
       const openaiRequestId = error.requestID;

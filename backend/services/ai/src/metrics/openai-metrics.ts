@@ -1,6 +1,10 @@
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import { Counter, Histogram } from "prom-client";
+
 import { register } from "@clients/prom";
+import { createLogger } from "@shared/config/create-logger";
+
+const logger = createLogger("openai-metrics");
 
 // Counter for total API requests
 // Tracks success and failure counts to calculate success rate
@@ -52,7 +56,8 @@ export const recordOpenAiApiSuccessMetrics = (
   model: ResponseCreateParamsNonStreaming["model"],
   durationMs: number,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  requestId: string
 ): void => {
   const status = "success";
 
@@ -87,15 +92,35 @@ export const recordOpenAiApiSuccessMetrics = (
     },
     outputTokens
   );
+
+  logger.debug("Recorded OpenAI API success metrics", {
+    requestId,
+    capability,
+    operation,
+    model,
+    status,
+    durationMs,
+    inputTokens,
+    outputTokens,
+    totalTokens: inputTokens + outputTokens,
+  });
 };
 
 export const recordOpenAiApiFailureMetrics = (
   capability: string,
-  operation: string
+  operation: string,
+  requestId: string
 ): void => {
   const status = "failure";
 
   openaiApiRequestsTotal.inc({
+    capability,
+    operation,
+    status,
+  });
+
+  logger.debug("Recorded OpenAI API failure metrics", {
+    requestId,
     capability,
     operation,
     status,

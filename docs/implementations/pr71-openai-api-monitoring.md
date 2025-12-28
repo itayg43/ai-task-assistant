@@ -174,7 +174,7 @@ Retry logic was moved from the handler level (`execute-sync-pattern`) into `exec
 
 Added metrics recording in success case using `recordOpenAiApiSuccessMetrics()`:
 
-- **Function call**: `recordOpenAiApiSuccessMetrics(capability, operation, prompt.model, durationMs, inputTokens, outputTokens)`
+- **Function call**: `recordOpenAiApiSuccessMetrics(capability, operation, prompt.model, durationMs, inputTokens, outputTokens, requestId)`
 - **Type Safety**: Model parameter uses `ResponseCreateParamsNonStreaming["model"]` type for compile-time validation
 - **Timing**: Metrics are recorded after retries complete successfully (final success only)
 - **Records**:
@@ -187,7 +187,7 @@ Added metrics recording in success case using `recordOpenAiApiSuccessMetrics()`:
 
 Added metrics recording in failure case using `recordOpenAiApiFailureMetrics()`:
 
-- **Function call**: `recordOpenAiApiFailureMetrics(capability, operation)`
+- **Function call**: `recordOpenAiApiFailureMetrics(capability, operation, requestId)`
 - **Timing**: Metrics are recorded after all retries are exhausted (final failure only)
 - **Records**:
   - Request counter with labels `{capability, operation, status: "failure"}`
@@ -239,24 +239,112 @@ Created directory for storing dashboard JSON files:
 
 **File**: `grafana/dashboards/openai-api-dashboard.json`
 
-Created comprehensive OpenAI API monitoring dashboard with four key panels:
+Created comprehensive OpenAI API monitoring dashboard organized into three sections:
 
-- **Total Requests**: Shows total number of requests in the selected time range
+**Key Performance Indicators (Parse Task Capability - Top Row):**
 
-  - Query: `floor(sum(increase(openai_api_requests_total[$__range])))`
+- **Requests**: Shows total number of requests for the parse-task capability in the selected time range
+
+  - Query: `floor(sum(increase(openai_api_requests_total{capability="parse-task"}[$__range])))`
   - Uses `$__range` variable to respect Grafana's time picker
 
-- **Success Rate**: Displays success rate percentage with color-coded thresholds
+- **Success Rate**: Displays success rate percentage for the parse-task capability with color-coded thresholds
 
-  - Query: `sum(increase(openai_api_requests_total{status="success"}[$__range])) / sum(increase(openai_api_requests_total[$__range])) * 100`
+  - Query: `sum(increase(openai_api_requests_total{status="success",capability="parse-task"}[$__range])) / sum(increase(openai_api_requests_total{capability="parse-task"}[$__range])) * 100`
   - Thresholds: Red (<95%), Orange (95-98%), Yellow (98-99%), Green (>99%)
 
-- **Avg Duration**: Shows average request duration in milliseconds
+- **Cost (per 1K tokens)**: Shows total cost for the parse-task capability in the selected time range
+  - Query: `(sum(increase(openai_api_tokens_total{capability="parse-task", type="input", model="gpt-4.1-mini"}[$__range])) * 0.0004 / 1000) + (sum(increase(openai_api_tokens_total{capability="parse-task", type="output", model="gpt-4.1-mini"}[$__range])) * 0.0016 / 1000)`
+  - Pricing: gpt-4.1-mini - Input: $0.0004 per 1K tokens, Output: $0.0016 per 1K tokens
+  - Excludes test usage (gpt-4.1 model)
+  - Unit: USD currency format with 2 decimal places
 
-  - Query: `sum(increase(openai_api_request_duration_ms_sum[$__range])) / sum(increase(openai_api_request_duration_ms_count[$__range]))`
+**Operation Breakdowns (Parse Task Capability - Second Row):**
+
+- **Requests Distribution**: Pie chart showing core vs subtasks operations
+
+  - Query: `floor(sum by (operation) (increase(openai_api_requests_total{capability="parse-task"}[$__range])))`
+
+- **Average Duration**: Line chart comparing average duration for core vs subtasks operations over time
+
+  - Query: `sum by (operation) (increase(openai_api_request_duration_ms_sum{capability="parse-task"}[$__range])) / sum by (operation) (increase(openai_api_request_duration_ms_count{capability="parse-task"}[$__range]))`
   - Uses histogram sum/count pattern for accurate average calculation
   - Unit: milliseconds (ms)
+  - Visualization: Line chart with separate lines for core and subtasks
 
-- **Total Tokens**: Displays total token usage in the selected time range
-  - Query: `sum(increase(openai_api_tokens_total[$__range]))`
-  - Aggregates all token usage across capabilities, operations, and models
+- **P95 Duration**: Line chart comparing 95th percentile duration for core vs subtasks operations over time
+
+  - Query: `histogram_quantile(0.95, sum by (operation, le) (increase(openai_api_request_duration_ms_bucket{capability="parse-task"}[$__range])))`
+  - Unit: milliseconds (ms)
+  - Visualization: Line chart with separate lines for core and subtasks
+
+- **Average Tokens per Request**: Line chart showing average tokens per request broken down by operation (core/subtasks) and type (input/output)
+
+  - Input tokens query: `sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="input"}[$__range])) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))`
+  - Output tokens query: `sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="output"}[$__range])) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))`
+  - Visualization: Line chart with four series: core-input, core-output, subtasks-input, subtasks-output
+  - Unit: tokens (short format, e.g., "1K")
+
+- **Average Cost per 100 Requests**: Line chart showing average cost per 100 requests broken down by operation (core/subtasks) and type (input/output)
+  - Input cost query: `((sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="input", model="gpt-4.1-mini"}[$__range])) * 0.0004 / 1000) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))) * 100`
+  - Output cost query: `((sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="output", model="gpt-4.1-mini"}[$__range])) * 0.0016 / 1000) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))) * 100`
+  - Pricing: gpt-4.1-mini - Input: $0.0004 per 1K tokens, Output: $0.0016 per 1K tokens
+  - Visualization: Line chart with four series: core-input, core-output, subtasks-input, subtasks-output
+  - Unit: USD currency format with 2 decimal places
+  - Note: Shows cost per 100 requests for better readability (multiplied by 100)
+
+**Security Monitoring (Prompt Injection Detection - Third Row):**
+
+- **Prompt Injection Blocked**: Total count of blocked prompt injection attempts
+
+  - Query: `floor(sum(increase(prompt_injection_blocked_total[$__range])))`
+
+- **Blocked by Pattern Type**: Breakdown of blocked prompt injection attempts by detection pattern
+  - Query: `floor(sum by (pattern_type) (increase(prompt_injection_blocked_total[$__range])))`
+  - Visualization: Pie chart showing distribution by pattern type (instruction_override, output_override, prompt_extraction)
+
+## Part 6: Logging Enhancements (PR #80)
+
+#### 6.1 Debug Log Level Addition
+
+**Files**:
+
+- `backend/shared/src/constants/logger-log-level.ts`
+- `backend/shared/src/config/create-logger.ts`
+
+Added `debug` log level to shared logger infrastructure:
+
+- **Constant**: Added `DEBUG: "debug"` to `LOGGER_LOG_LEVEL` constant
+- **Type**: `LoggerLogLevel` type automatically includes `"debug"` via constant derivation (`typeof LOGGER_LOG_LEVEL`)
+- **Logger Method**: Added `debug(message, context?)` method to logger
+- **Output**: Uses `console.debug()` which is visible in development but typically filtered by production log aggregators
+
+**Rationale**: Provides a log level appropriate for high-volume diagnostic information that shouldn't clutter production logs.
+
+#### 6.2 Metrics Logging
+
+**File**: `backend/services/ai/src/metrics/openai-metrics.ts`
+
+Added debug-level logging to metrics recording functions:
+
+- **Success logging**: Records all metric details (requestId, capability, operation, model, status, duration, tokens)
+- **Failure logging**: Records basic context (requestId, capability, operation, status)
+- **Log level**: Debug level to minimize production log volume while maintaining debugging capability
+- **Request correlation**: Includes requestId for tracing requests across logging and metrics systems
+
+**Rationale**:
+
+- Provides audit trail for metrics recording
+- Enables debugging when metrics appear incorrect
+- Correlates metrics with request logs via requestId
+- Uses debug level to avoid log volume issues in production
+- Debug logs are automatically filtered by most production log aggregators
+
+#### 6.3 Request Tracing
+
+Added `requestId` parameter to metrics recording functions to improve traceability:
+
+- `recordOpenAiApiSuccessMetrics(..., requestId?: string)`
+- `recordOpenAiApiFailureMetrics(..., requestId?: string)`
+
+This enables end-to-end request correlation from API entry point through metrics recording.
