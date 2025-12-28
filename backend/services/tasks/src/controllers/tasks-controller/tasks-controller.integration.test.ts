@@ -89,6 +89,12 @@ vi.mock("@shared/middlewares/authentication", () => ({
   },
 }));
 
+// Mock CORS middleware using __mocks__ directory with explicit import path
+// Simple vi.mock() doesn't resolve the @middlewares/cors alias correctly
+vi.mock("@middlewares/cors", () => {
+  return import("../../middlewares/cors/__mocks__/cors");
+});
+
 describe("tasksController (integration)", () => {
   let mockedExecuteCapability: Mocked<typeof executeCapability>;
 
