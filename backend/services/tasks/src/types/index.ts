@@ -20,3 +20,4 @@ export type {
   CreateTaskResponse,
   GetTasksResponse,
 } from "./tasks-controller-response";
+export type { TasksOperation } from "./tasks-operation";

@@ -4,8 +4,9 @@ import helmet from "helmet";
 import { env } from "@config/env";
 import { tokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter";
 import { healthRouter } from "@routers/health-router";
+import { metricsRouter } from "@routers/metrics-router";
 import { tasksRouter } from "@routers/tasks-router";
-import { HEALTH_ROUTE } from "@shared/constants";
+import { HEALTH_ROUTE, METRICS_ROUTE } from "@shared/constants";
 import { authentication } from "@shared/middlewares/authentication";
 import { createErrorHandler } from "@shared/middlewares/error-handler";
 import { requestId } from "@shared/middlewares/request-id";
@@ -20,6 +21,7 @@ app.use(
     extended: true,
   })
 );
+app.use(METRICS_ROUTE, metricsRouter);
 app.use(HEALTH_ROUTE, [requestId, requestResponseMetadata], healthRouter);
 app.use(
   "/api/v1/tasks",

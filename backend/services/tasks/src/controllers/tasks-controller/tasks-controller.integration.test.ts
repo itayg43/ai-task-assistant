@@ -3,11 +3,11 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  AI_ERROR_TYPE,
   GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
   GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
   GET_TASKS_DEFAULT_SKIP,
   GET_TASKS_DEFAULT_TAKE,
-  AI_ERROR_TYPE,
 } from "@constants";
 import {
   mockAiCapabilityResponse,

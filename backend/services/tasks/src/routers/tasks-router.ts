@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { createTask, getTasks } from "@controllers/tasks-controller";
+import { tasksMetricsMiddleware } from "@middlewares/metrics-middleware";
 import { tokenUsageErrorHandler } from "@middlewares/token-usage-error-handler";
 import {
   openaiTokenUsageRateLimiter,
@@ -10,6 +11,8 @@ import { createTaskSchema, getTasksSchema } from "@schemas/tasks-schemas";
 import { validateSchema } from "@shared/middlewares/validate-schema";
 
 export const tasksRouter = Router();
+
+tasksRouter.use(tasksMetricsMiddleware);
 
 tasksRouter.post(
   "/",

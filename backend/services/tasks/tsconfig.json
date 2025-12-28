@@ -23,7 +23,8 @@
       "@schemas/*": ["src/schemas/*"],
       "@repositories/*": ["src/repositories/*"],
       "@mocks/*": ["src/mocks/*"],
-      "@utils/*": ["src/utils/*"]
+      "@utils/*": ["src/utils/*"],
+      "@metrics/*": ["src/metrics/*"]
     }
   },
   "include": ["src/", "prisma/"],
