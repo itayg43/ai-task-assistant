@@ -697,7 +697,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Tasks Service Dashboard",
+  "title": "Tasks Service",
   "uid": "tasks-service",
-  "version": 3
+  "version": 4
 }
