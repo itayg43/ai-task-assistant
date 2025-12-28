@@ -56,7 +56,8 @@ export const recordOpenAiApiSuccessMetrics = (
   model: ResponseCreateParamsNonStreaming["model"],
   durationMs: number,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  requestId: string
 ): void => {
   const status = "success";
 
@@ -92,7 +93,8 @@ export const recordOpenAiApiSuccessMetrics = (
     outputTokens
   );
 
-  logger.info("Recorded OpenAI API success metrics", {
+  logger.debug("Recorded OpenAI API success metrics", {
+    requestId,
     capability,
     operation,
     model,
@@ -106,7 +108,8 @@ export const recordOpenAiApiSuccessMetrics = (
 
 export const recordOpenAiApiFailureMetrics = (
   capability: string,
-  operation: string
+  operation: string,
+  requestId: string
 ): void => {
   const status = "failure";
 
@@ -116,7 +119,8 @@ export const recordOpenAiApiFailureMetrics = (
     status,
   });
 
-  logger.info("Recorded OpenAI API failure metrics", {
+  logger.debug("Recorded OpenAI API failure metrics", {
+    requestId,
     capability,
     operation,
     status,

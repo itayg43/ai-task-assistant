@@ -174,7 +174,7 @@ Retry logic was moved from the handler level (`execute-sync-pattern`) into `exec
 
 Added metrics recording in success case using `recordOpenAiApiSuccessMetrics()`:
 
-- **Function call**: `recordOpenAiApiSuccessMetrics(capability, operation, prompt.model, durationMs, inputTokens, outputTokens)`
+- **Function call**: `recordOpenAiApiSuccessMetrics(capability, operation, prompt.model, durationMs, inputTokens, outputTokens, requestId)`
 - **Type Safety**: Model parameter uses `ResponseCreateParamsNonStreaming["model"]` type for compile-time validation
 - **Timing**: Metrics are recorded after retries complete successfully (final success only)
 - **Records**:
@@ -187,7 +187,7 @@ Added metrics recording in success case using `recordOpenAiApiSuccessMetrics()`:
 
 Added metrics recording in failure case using `recordOpenAiApiFailureMetrics()`:
 
-- **Function call**: `recordOpenAiApiFailureMetrics(capability, operation)`
+- **Function call**: `recordOpenAiApiFailureMetrics(capability, operation, requestId)`
 - **Timing**: Metrics are recorded after all retries are exhausted (final failure only)
 - **Records**:
   - Request counter with labels `{capability, operation, status: "failure"}`
@@ -302,3 +302,49 @@ Created comprehensive OpenAI API monitoring dashboard organized into three secti
 - **Blocked by Pattern Type**: Breakdown of blocked prompt injection attempts by detection pattern
   - Query: `floor(sum by (pattern_type) (increase(prompt_injection_blocked_total[$__range])))`
   - Visualization: Pie chart showing distribution by pattern type (instruction_override, output_override, prompt_extraction)
+
+## Part 6: Logging Enhancements (PR #80)
+
+#### 6.1 Debug Log Level Addition
+
+**Files**:
+
+- `backend/shared/src/constants/logger-log-level.ts`
+- `backend/shared/src/config/create-logger.ts`
+
+Added `debug` log level to shared logger infrastructure:
+
+- **Constant**: Added `DEBUG: "debug"` to `LOGGER_LOG_LEVEL` constant
+- **Type**: `LoggerLogLevel` type automatically includes `"debug"` via constant derivation (`typeof LOGGER_LOG_LEVEL`)
+- **Logger Method**: Added `debug(message, context?)` method to logger
+- **Output**: Uses `console.debug()` which is visible in development but typically filtered by production log aggregators
+
+**Rationale**: Provides a log level appropriate for high-volume diagnostic information that shouldn't clutter production logs.
+
+#### 6.2 Metrics Logging
+
+**File**: `backend/services/ai/src/metrics/openai-metrics.ts`
+
+Added debug-level logging to metrics recording functions:
+
+- **Success logging**: Records all metric details (requestId, capability, operation, model, status, duration, tokens)
+- **Failure logging**: Records basic context (requestId, capability, operation, status)
+- **Log level**: Debug level to minimize production log volume while maintaining debugging capability
+- **Request correlation**: Includes requestId for tracing requests across logging and metrics systems
+
+**Rationale**:
+
+- Provides audit trail for metrics recording
+- Enables debugging when metrics appear incorrect
+- Correlates metrics with request logs via requestId
+- Uses debug level to avoid log volume issues in production
+- Debug logs are automatically filtered by most production log aggregators
+
+#### 6.3 Request Tracing
+
+Added `requestId` parameter to metrics recording functions to improve traceability:
+
+- `recordOpenAiApiSuccessMetrics(..., requestId?: string)`
+- `recordOpenAiApiFailureMetrics(..., requestId?: string)`
+
+This enables end-to-end request correlation from API entry point through metrics recording.

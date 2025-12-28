@@ -673,6 +673,15 @@ A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization 
 - **Prompt Injection Blocked**: Total count of blocked prompt injection attempts
 - **Blocked by Pattern Type**: Breakdown of blocked prompt injection attempts by detection pattern
 
+#### Cost Calculation
+
+The dashboard calculates costs using OpenAI's pricing for GPT-4.1-mini:
+
+- Input tokens: $0.0004 per 1K tokens
+- Output tokens: $0.0016 per 1K tokens
+
+**Note**: Pricing is hardcoded in dashboard queries. If OpenAI pricing changes or new models are used, update the Grafana dashboard queries accordingly.
+
 ## Near-Term Enhancements
 
 ### Phase 1: Performance & Observability

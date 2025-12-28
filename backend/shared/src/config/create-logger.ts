@@ -9,6 +9,8 @@ export const createLogger = (tag: string) => ({
     log("error", tag, message, context, error),
   warn: (message: string, context?: LoggerLogContext) =>
     log("warn", tag, message, context),
+  debug: (message: string, context?: LoggerLogContext) =>
+    log("debug", tag, message, context),
 });
 
 function log(
@@ -32,6 +34,7 @@ function log(
     info: () => console.log(base, ...args),
     error: () => console.error(base, ...args),
     warn: () => console.warn(base, ...args),
+    debug: () => console.debug(base, ...args),
   });
 }
 

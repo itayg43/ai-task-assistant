@@ -151,7 +151,8 @@ describe("executeParse", () => {
       mockPrompt.model,
       mockOpenaiDurationMs,
       mockOpenaiTokenUsage.input,
-      mockOpenaiTokenUsage.output
+      mockOpenaiTokenUsage.output,
+      mockAiServiceRequestId
     );
     expect(mockedRecordFailureMetrics).not.toHaveBeenCalled();
   });
@@ -189,7 +190,8 @@ describe("executeParse", () => {
     expect(mockedRecordFailureMetrics).toHaveBeenCalledTimes(1);
     expect(mockedRecordFailureMetrics).toHaveBeenCalledWith(
       PARSE_TASK_CAPABILITY,
-      PARSE_TASK_CORE_OPERATION
+      PARSE_TASK_CORE_OPERATION,
+      mockAiServiceRequestId
     );
     expect(mockedRecordSuccessMetrics).not.toHaveBeenCalled();
   });
@@ -227,7 +229,8 @@ describe("executeParse", () => {
     expect(mockedRecordFailureMetrics).toHaveBeenCalledTimes(1);
     expect(mockedRecordFailureMetrics).toHaveBeenCalledWith(
       PARSE_TASK_CAPABILITY,
-      PARSE_TASK_CORE_OPERATION
+      PARSE_TASK_CORE_OPERATION,
+      mockAiServiceRequestId
     );
     expect(mockedRecordSuccessMetrics).not.toHaveBeenCalled();
   });
