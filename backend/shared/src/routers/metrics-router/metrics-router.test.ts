@@ -12,7 +12,7 @@ const { mockMetricsFn, mockLoggerError } = vi.hoisted(() => {
   };
 });
 
-vi.mock("../clients/prom", () => {
+vi.mock("../../clients/prom", () => {
   return {
     register: {
       contentType: "text/plain; version=0.0.4; charset=utf-8",
@@ -23,7 +23,7 @@ vi.mock("../clients/prom", () => {
   };
 });
 
-vi.mock("../config/create-logger", () => {
+vi.mock("../../config/create-logger", () => {
   return {
     createLogger: vi.fn(() => ({
       error: mockLoggerError,
