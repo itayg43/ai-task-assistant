@@ -7,6 +7,7 @@
     "backend/services/*"
   ],
   "scripts": {
+    "start:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch",
     "test": "vitest",
     "test:prompts": "npm run test:prompts -w backend/services/ai",
     "test:db": "npm run test:db -w backend/services/tasks",
