@@ -239,24 +239,50 @@ Created directory for storing dashboard JSON files:
 
 **File**: `grafana/dashboards/openai-api-dashboard.json`
 
-Created comprehensive OpenAI API monitoring dashboard with four key panels:
+Created comprehensive OpenAI API monitoring dashboard organized into three sections:
 
-- **Total Requests**: Shows total number of requests in the selected time range
+**Key Performance Indicators (Parse Task Capability - Top Row):**
 
-  - Query: `floor(sum(increase(openai_api_requests_total[$__range])))`
+- **Requests**: Shows total number of requests for the parse-task capability in the selected time range
+
+  - Query: `floor(sum(increase(openai_api_requests_total{capability="parse-task"}[$__range])))`
   - Uses `$__range` variable to respect Grafana's time picker
 
-- **Success Rate**: Displays success rate percentage with color-coded thresholds
-
-  - Query: `sum(increase(openai_api_requests_total{status="success"}[$__range])) / sum(increase(openai_api_requests_total[$__range])) * 100`
+- **Success Rate**: Displays success rate percentage for the parse-task capability with color-coded thresholds
+  - Query: `sum(increase(openai_api_requests_total{status="success",capability="parse-task"}[$__range])) / sum(increase(openai_api_requests_total{capability="parse-task"}[$__range])) * 100`
   - Thresholds: Red (<95%), Orange (95-98%), Yellow (98-99%), Green (>99%)
 
-- **Avg Duration**: Shows average request duration in milliseconds
+**Operation Breakdowns (Parse Task Capability - Second Row):**
 
-  - Query: `sum(increase(openai_api_request_duration_ms_sum[$__range])) / sum(increase(openai_api_request_duration_ms_count[$__range]))`
+- **Requests Distribution**: Pie chart showing core vs subtasks operations
+
+  - Query: `floor(sum by (operation) (increase(openai_api_requests_total{capability="parse-task"}[$__range])))`
+
+- **Average Duration**: Line chart comparing average duration for core vs subtasks operations over time
+
+  - Query: `sum by (operation) (increase(openai_api_request_duration_ms_sum{capability="parse-task"}[$__range])) / sum by (operation) (increase(openai_api_request_duration_ms_count{capability="parse-task"}[$__range]))`
   - Uses histogram sum/count pattern for accurate average calculation
   - Unit: milliseconds (ms)
+  - Visualization: Line chart with separate lines for core and subtasks
 
-- **Total Tokens**: Displays total token usage in the selected time range
-  - Query: `sum(increase(openai_api_tokens_total[$__range]))`
-  - Aggregates all token usage across capabilities, operations, and models
+- **P95 Duration**: Line chart comparing 95th percentile duration for core vs subtasks operations over time
+
+  - Query: `histogram_quantile(0.95, sum by (operation, le) (increase(openai_api_request_duration_ms_bucket{capability="parse-task"}[$__range])))`
+  - Unit: milliseconds (ms)
+  - Visualization: Line chart with separate lines for core and subtasks
+
+- **Average Tokens per Request**: Line chart showing average tokens per request broken down by operation (core/subtasks) and type (input/output)
+  - Input tokens query: `sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="input"}[$__range])) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))`
+  - Output tokens query: `sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="output"}[$__range])) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))`
+  - Visualization: Line chart with four series: core-input, core-output, subtasks-input, subtasks-output
+  - Unit: tokens (short format, e.g., "1K")
+
+**Security Monitoring (Prompt Injection Detection - Third Row):**
+
+- **Prompt Injection Blocked**: Total count of blocked prompt injection attempts
+
+  - Query: `floor(sum(increase(prompt_injection_blocked_total[$__range])))`
+
+- **Blocked by Pattern Type**: Breakdown of blocked prompt injection attempts by detection pattern
+  - Query: `floor(sum by (pattern_type) (increase(prompt_injection_blocked_total[$__range])))`
+  - Visualization: Pie chart showing distribution by pattern type (instruction_override, output_override, prompt_extraction)

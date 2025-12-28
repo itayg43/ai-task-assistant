@@ -654,40 +654,28 @@ The AI service exposes the following Prometheus metrics:
 
 A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization of OpenAI API metrics:
 
-**Key Performance Indicators:**
+**Key Performance Indicators (Parse Task Capability):**
 
-- **Total Requests**: Request volume over time
-- **Success Rate**: Percentage of successful requests with color-coded thresholds
-- **Average Duration**: Average request duration in milliseconds
-- **P95 Duration**: 95th percentile request duration
-- **Total Tokens**: Token usage aggregated across all operations
+- **Requests**: Total request volume for the parse-task capability in the selected time range
+- **Success Rate**: Percentage of successful requests for the parse-task capability with color-coded thresholds (Red <95%, Orange 95-98%, Yellow 98-99%, Green >99%)
 
-**Operation Breakdowns:**
+**Operation Breakdowns (Parse Task Capability):**
 
 - **Requests Distribution**: Pie chart showing core vs subtasks operations
-- **Average Duration Comparison**: Side-by-side comparison of average duration for core vs subtasks
-- **P95 Duration Comparison**: Side-by-side comparison of P95 duration for core vs subtasks
-- **Token Usage Breakdown**: Detailed pie chart showing token distribution by operation (core/subtasks) and type (input/output)
+- **Average Duration**: Line chart comparing average duration for core vs subtasks operations over time
+- **P95 Duration**: Line chart comparing 95th percentile duration for core vs subtasks operations over time
+- **Average Tokens per Request**: Line chart showing average tokens per request broken down by operation (core/subtasks) and type (input/output)
 
-**Security Monitoring:**
+**Security Monitoring (Prompt Injection Detection):**
 
-- **Prompt Injection Blocked**: Total count of blocked requests
-- **Blocked by Pattern Type**: Breakdown of blocked requests by detection pattern
+- **Prompt Injection Blocked**: Total count of blocked prompt injection attempts
+- **Blocked by Pattern Type**: Breakdown of blocked prompt injection attempts by detection pattern
 
 ## Near-Term Enhancements
 
 ### Phase 1: Performance & Observability
 
-1. **Subtasks Generation Optimization**
-
-   - **Problem**: Monitoring dashboard shows subtasks creation takes longer than core task parsing
-   - **Root Cause**: Prompt complexity and model selection (currently uses same model as core)
-   - **Solution**: Optimize subtasks prompt through:
-     - Reduce token complexity in subtasks prompt
-     - Consider using GPT-3.5-turbo for subtasks vs GPT-4 for core (cost/speed tradeoff)
-   - **Impact**: Faster task creation, lower OpenAI costs, better user experience
-
-2. **Core Tasks Operations Monitoring**
+1. **Core Tasks Operations Monitoring**
 
    - Add Prometheus metrics to tasks service (currently only AI service has metrics)
    - Track per-operation metrics:
