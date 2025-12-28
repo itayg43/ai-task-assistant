@@ -249,8 +249,15 @@ Created comprehensive OpenAI API monitoring dashboard organized into three secti
   - Uses `$__range` variable to respect Grafana's time picker
 
 - **Success Rate**: Displays success rate percentage for the parse-task capability with color-coded thresholds
+
   - Query: `sum(increase(openai_api_requests_total{status="success",capability="parse-task"}[$__range])) / sum(increase(openai_api_requests_total{capability="parse-task"}[$__range])) * 100`
   - Thresholds: Red (<95%), Orange (95-98%), Yellow (98-99%), Green (>99%)
+
+- **Cost (per 1K tokens)**: Shows total cost for the parse-task capability in the selected time range
+  - Query: `(sum(increase(openai_api_tokens_total{capability="parse-task", type="input", model="gpt-4.1-mini"}[$__range])) * 0.0004 / 1000) + (sum(increase(openai_api_tokens_total{capability="parse-task", type="output", model="gpt-4.1-mini"}[$__range])) * 0.0016 / 1000)`
+  - Pricing: gpt-4.1-mini - Input: $0.0004 per 1K tokens, Output: $0.0016 per 1K tokens
+  - Excludes test usage (gpt-4.1 model)
+  - Unit: USD currency format with 2 decimal places
 
 **Operation Breakdowns (Parse Task Capability - Second Row):**
 
@@ -272,10 +279,19 @@ Created comprehensive OpenAI API monitoring dashboard organized into three secti
   - Visualization: Line chart with separate lines for core and subtasks
 
 - **Average Tokens per Request**: Line chart showing average tokens per request broken down by operation (core/subtasks) and type (input/output)
+
   - Input tokens query: `sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="input"}[$__range])) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))`
   - Output tokens query: `sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="output"}[$__range])) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))`
   - Visualization: Line chart with four series: core-input, core-output, subtasks-input, subtasks-output
   - Unit: tokens (short format, e.g., "1K")
+
+- **Average Cost per 100 Requests**: Line chart showing average cost per 100 requests broken down by operation (core/subtasks) and type (input/output)
+  - Input cost query: `((sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="input", model="gpt-4.1-mini"}[$__range])) * 0.0004 / 1000) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))) * 100`
+  - Output cost query: `((sum by (operation) (increase(openai_api_tokens_total{capability="parse-task", type="output", model="gpt-4.1-mini"}[$__range])) * 0.0016 / 1000) / sum by (operation) (increase(openai_api_requests_total{capability="parse-task", status="success"}[$__range]))) * 100`
+  - Pricing: gpt-4.1-mini - Input: $0.0004 per 1K tokens, Output: $0.0016 per 1K tokens
+  - Visualization: Line chart with four series: core-input, core-output, subtasks-input, subtasks-output
+  - Unit: USD currency format with 2 decimal places
+  - Note: Shows cost per 100 requests for better readability (multiplied by 100)
 
 **Security Monitoring (Prompt Injection Detection - Third Row):**
 

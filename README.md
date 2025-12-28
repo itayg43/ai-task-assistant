@@ -658,6 +658,7 @@ A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization 
 
 - **Requests**: Total request volume for the parse-task capability in the selected time range
 - **Success Rate**: Percentage of successful requests for the parse-task capability with color-coded thresholds (Red <95%, Orange 95-98%, Yellow 98-99%, Green >99%)
+- **Cost (per 1K tokens)**: Total cost for the parse-task capability in the selected time range, calculated using per 1K token pricing (gpt-4.1-mini: $0.0004/1K input, $0.0016/1K output). Excludes test usage.
 
 **Operation Breakdowns (Parse Task Capability):**
 
@@ -665,6 +666,7 @@ A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization 
 - **Average Duration**: Line chart comparing average duration for core vs subtasks operations over time
 - **P95 Duration**: Line chart comparing 95th percentile duration for core vs subtasks operations over time
 - **Average Tokens per Request**: Line chart showing average tokens per request broken down by operation (core/subtasks) and type (input/output)
+- **Average Cost per 100 Requests**: Line chart showing average cost per 100 requests broken down by operation (core/subtasks) and type (input/output), calculated using per 1K token pricing
 
 **Security Monitoring (Prompt Injection Detection):**
 
