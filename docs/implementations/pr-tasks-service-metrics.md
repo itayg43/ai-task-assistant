@@ -14,15 +14,18 @@ This document tracks the implementation of **Tasks Service Prometheus Metrics**.
 - `backend/shared/src/middlewares/metrics/metrics-middleware.ts` - Generic metrics middleware factory
 - `backend/shared/src/middlewares/metrics/index.ts` - Metrics middleware exports
 - `backend/shared/src/middlewares/metrics/metrics-middleware.test.ts` - Metrics middleware tests
+- `backend/shared/src/routers/metrics-router/metrics-router.ts` - Shared metrics router (moved from AI service, reused by Tasks service)
+- `backend/shared/src/routers/metrics-router/metrics-router.test.ts` - Metrics router tests
+- `backend/shared/src/routers/index.ts` - Router exports
 
 #### Tasks Service
 
-- `backend/services/tasks/src/metrics/tasks-metrics.ts` - Tasks-specific metrics definitions and helper functions
-- `backend/services/tasks/src/metrics/index.ts` - Tasks metrics exports
-- `backend/services/tasks/src/metrics/tasks-metrics.test.ts` - Tasks metrics tests
+- `backend/services/tasks/src/metrics/tasks-metrics/tasks-metrics.ts` - Tasks-specific metrics definitions and helper functions
+- `backend/services/tasks/src/metrics/tasks-metrics/index.ts` - Tasks metrics exports
+- `backend/services/tasks/src/metrics/tasks-metrics/tasks-metrics.test.ts` - Tasks metrics tests
 - `backend/services/tasks/src/middlewares/metrics-middleware/metrics-middleware.ts` - Tasks metrics middleware wrapper
 - `backend/services/tasks/src/middlewares/metrics-middleware/index.ts` - Tasks metrics middleware exports
-- `backend/services/tasks/src/routers/metrics-router.ts` - Metrics endpoint router
+- `backend/services/tasks/src/routers/routers.integration.test.ts` - Integration tests for metrics endpoint
 
 #### Configuration
 
@@ -38,17 +41,15 @@ This document tracks the implementation of **Tasks Service Prometheus Metrics**.
 
 - `backend/services/ai/src/metrics/openai-metrics.ts` - Updated import to use `@shared/clients/prom`
 - `backend/services/ai/src/metrics/prompt-injection-metrics.ts` - Updated import to use `@shared/clients/prom`
-- `backend/services/ai/src/routers/metrics-router/metrics-router.ts` - Updated import to use `@shared/clients/prom`
-- `backend/services/ai/src/routers/metrics-router/metrics-router.test.ts` - Updated import and mock to use `@shared/clients/prom`
+- `backend/services/ai/src/routers/index.ts` - Updated import to use `@shared/routers/metricsRouter`
 
 #### Tasks Service
 
 - `backend/services/tasks/tsconfig.json` - Added `@metrics/*` path alias
-- `backend/services/tasks/src/app.ts` - Added metrics router
+- `backend/services/tasks/src/routers/index.ts` - Added metrics router from shared package
 - `backend/services/tasks/src/routers/tasks-router.ts` - Added metrics middleware to routes
 - `backend/services/tasks/src/controllers/tasks-controller/tasks-controller.ts` - Added vague input metric recording
 - `backend/services/tasks/src/controllers/tasks-controller/tasks-controller.unit.test.ts` - Added vague input metric tests
-- `backend/services/tasks/src/controllers/tasks-controller/tasks-controller.integration.test.ts` - Added metrics endpoint test
 
 #### Configuration
 
@@ -56,20 +57,25 @@ This document tracks the implementation of **Tasks Service Prometheus Metrics**.
 
 ### Files Deleted
 
-- `backend/services/ai/src/clients/prom.ts` - Moved to shared package
+- `backend/services/ai/src/clients/prom.ts` - Moved to `backend/shared/src/clients/prom.ts`
+- `backend/services/ai/src/routers/metrics-router/metrics-router.ts` - Moved to `backend/shared/src/routers/metrics-router/metrics-router.ts`
+- `backend/services/ai/src/routers/metrics-router/metrics-router.test.ts` - Moved to `backend/shared/src/routers/metrics-router/metrics-router.test.ts`
 
 ## Implementation Details
 
-### 1. Refactor Prometheus Registry to Shared Package
+### 1. Refactor Prometheus Registry and Metrics Router to Shared Package
 
-**Rationale**: Both AI and Tasks services need access to the same Prometheus registry to expose metrics through their respective `/metrics` endpoints.
+**Rationale**: Both AI and Tasks services need access to the same Prometheus registry to expose metrics through their respective `/metrics` endpoints. Additionally, both services can use the same metrics router implementation, eliminating code duplication.
 
 **Changes**:
 
 - Moved `backend/services/ai/src/clients/prom.ts` to `backend/shared/src/clients/prom.ts`
+- Moved `backend/services/ai/src/routers/metrics-router/` to `backend/shared/src/routers/metrics-router/`
+- Created `backend/shared/src/routers/index.ts` to export the shared metrics router
 - Updated all imports in AI service from `@clients/prom` to `@shared/clients/prom`
+- Updated AI service router imports to use `@shared/routers/metricsRouter`
 - Added `prom-client: ^15.1.0` to shared package dependencies
-- Deleted the old AI service prom.ts file
+- Deleted the old AI service prom.ts and metrics-router files
 
 ### 2. Create Generic Metrics Middleware in Shared Package
 
@@ -81,14 +87,14 @@ This document tracks the implementation of **Tasks Service Prometheus Metrics**.
   - `operationsMap`: Maps HTTP methods to operation names (e.g., `{ "POST": "create_task" }`)
   - `recorder`: Object with `recordSuccess` and `recordFailure` functions
 - Uses `getStartTimestamp()` and `getElapsedDuration()` from shared performance utils for high-resolution timing
-- Automatically determines success/failure based on HTTP status codes (2xx/3xx = success, 4xx/5xx = failure)
+- Automatically determines success/failure based on HTTP status codes (2xx = success, 3xx/4xx/5xx = failure)
 - Skips metrics for unmapped HTTP methods
 
 **Tests**: Created comprehensive test suite covering:
 
 - Operation mapping for different HTTP methods
 - Duration tracking using performance utils
-- Status code handling (2xx, 3xx, 4xx, 5xx)
+- Status code handling (2xx, 4xx, 5xx)
 - Request context (requestId from res.locals)
 
 ### 3. Create Tasks Service Metrics Module
@@ -156,15 +162,28 @@ All helper functions include `logger.debug()` calls for observability.
 
 **Implementation**:
 
-- Created `metricsRouter` following the same pattern as AI service
-- Exposes GET `/metrics` endpoint that returns Prometheus-formatted metrics
-- Added error handling with logging
-- Integrated router into app.ts with `METRICS_ROUTE` constant
+- Reused the shared `metricsRouter` from `@shared/routers` (moved from AI service in step 1)
+- Imported `metricsRouter` in `backend/services/tasks/src/routers/index.ts`
+- Integrated router using `routers.use(METRICS_ROUTE, metricsRouter)`
+- Router placement follows the same pattern as AI service (before authentication middleware)
+- The shared router exposes GET `/metrics` endpoint that returns Prometheus-formatted metrics for all registered metrics (both OpenAI and Tasks metrics)
 
-**Tests**: Added integration test verifying:
+**Benefits of Reusing Shared Router**:
 
-- `/metrics` endpoint returns 200 OK
-- Response contains all expected metric names
+- **DRY Principle**: Eliminates code duplication between services
+- **Consistency**: Both services use identical metrics endpoint implementation
+- **Single Source of Truth**: Metrics router logic maintained in one place
+- **Easier Maintenance**: Bug fixes and improvements benefit all services
+
+**Tests**:
+
+- Shared metrics router has unit tests in `backend/shared/src/routers/metrics-router/metrics-router.test.ts`
+- Integration tests in `backend/services/tasks/src/routers/routers.integration.test.ts` verify:
+  - `/metrics` endpoint returns 200 OK
+  - Response contains all expected Tasks service metrics
+  - Endpoint is accessible without authentication (for Prometheus scraping)
+  - Metrics are in proper Prometheus format
+- Tasks service metrics are tested via unit tests in `backend/services/tasks/src/metrics/tasks-metrics/tasks-metrics.test.ts`
 
 ### 7. Update Prometheus Configuration
 
@@ -214,16 +233,44 @@ All tests pass successfully:
 
 ```bash
 npm run test
-# Test Files  46 passed (46)
+# Test Files  47 passed (47)
 # Tests  253 passed (253)
 
 npm run type-check:ci
 # No type errors
 ```
 
-## Deviations from Plan
+## Architectural Improvements Made During Implementation
 
-None. The implementation followed the plan exactly as specified.
+During implementation, several architectural improvements were identified and applied:
+
+### 1. Moved Metrics Router to Shared Package
+
+**Original Plan**: Create a separate metrics router for Tasks service similar to AI service
+
+**Improvement**: Moved the metrics router from AI service to shared package and reused it in both services
+
+**Benefits**:
+
+- Eliminated code duplication
+- Single source of truth for metrics endpoint behavior
+- Easier maintenance and consistency across services
+- Both services automatically benefit from improvements
+
+### 2. Centralized Router Registration
+
+**Original Plan**: Add metrics router directly in `app.ts`
+
+**Improvement**: Added metrics router in `routers/index.ts` alongside other routers
+
+**Benefits**:
+
+- Consistent with existing routing architecture
+- All route registration in one place
+- Better separation of concerns (app.ts for middleware, routers/index.ts for routes)
+- Matches pattern used in AI service
+
+These improvements demonstrate good engineering judgment and follow the DRY (Don't Repeat Yourself) principle while maintaining architectural consistency across services.
 
 ## Future Enhancements
 

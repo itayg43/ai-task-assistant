@@ -13,7 +13,7 @@ const tasksApiRequestsTotal = new Counter({
 });
 
 // Histogram for request duration
-// Bucket selection rationale:
+// Bucket selection rationale (based on initial estimates):
 //   - GET tasks: Fast DB queries (500-1000ms typical)
 //   - CREATE task: AI service call (~2500-3000ms) + DB operations
 //   - 500-1000ms: Fast GET operations
