@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { register } from "../clients/prom";
-import { DEFAULT_ERROR_MESSAGE } from "../constants";
+import { register } from "../../clients/prom";
+import { DEFAULT_ERROR_MESSAGE } from "../../constants";
 import { metricsRouter } from "./metrics-router";
 
 const { mockMetricsFn, mockLoggerError } = vi.hoisted(() => {
