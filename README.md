@@ -192,6 +192,128 @@ sequenceDiagram
     end
 ```
 
+## Tasks Service: Request Flow & Rate Limiting
+
+The Tasks service implements a two-tier rate limiting strategy to protect both the API and OpenAI resources:
+
+1. **API Token Bucket Rate Limiter**: Controls overall request rate to the service
+2. **OpenAI Token Usage Rate Limiter**: Manages OpenAI API token consumption within sliding windows
+
+### Create Task Flow
+
+When creating a task, the request goes through multiple rate limiting and validation layers before calling the AI service and persisting data:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant TokenBucket as API Token Bucket
+    participant Validation
+    participant TokenUsageRL as Token Usage Rate Limiter
+    participant Controller
+    participant AIService as AI Service
+    participant Database as PostgreSQL
+    participant UpdateUsage as Update Token Usage
+
+    Client->>TokenBucket: POST /api/v1/tasks
+    TokenBucket->>TokenBucket: Check bucket, consume token
+    alt Rate Limited
+        TokenBucket-->>Client: 429 Too Many Requests
+    else Allowed
+        TokenBucket->>Validation: Continue
+        Validation->>Validation: Validate input schema
+        alt Invalid Input
+            Validation-->>Client: 400 Bad Request
+        else Valid
+            Validation->>TokenUsageRL: Continue
+            TokenUsageRL->>TokenUsageRL: Reserve estimated tokens
+            alt Window Limit Exceeded
+                TokenUsageRL-->>Client: 429 Too Many Requests
+            else Reservation OK
+                TokenUsageRL->>Controller: Continue
+                Controller->>AIService: Parse task request
+                AIService-->>Controller: Parsed task + token metadata
+                Controller->>Database: Create task + subtasks
+                Database-->>Controller: Created task
+                Controller-->>Client: 201 Created
+                Controller->>UpdateUsage: Post-response
+                UpdateUsage->>UpdateUsage: Reconcile actual vs reserved
+            end
+        end
+    end
+```
+
+**Key Points:**
+
+- **Token Reservation**: The service reserves an estimated number of OpenAI tokens before making the AI request
+- **Post-Response Reconciliation**: After the response is sent to the client, actual token usage is reconciled against the reservation
+- **Two-Tier Protection**: Both API-level and OpenAI-level rate limiting prevent resource exhaustion
+
+### Get Tasks Flow
+
+Read operations have simpler flow with only API rate limiting and input validation:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant TokenBucket as API Token Bucket
+    participant Validation
+    participant Controller
+    participant Database as PostgreSQL
+
+    Client->>TokenBucket: GET /api/v1/tasks
+    TokenBucket->>TokenBucket: Check bucket, consume token
+    alt Rate Limited
+        TokenBucket-->>Client: 429 Too Many Requests
+    else Allowed
+        TokenBucket->>Validation: Continue
+        Validation->>Validation: Validate query params
+        alt Invalid Input
+            Validation-->>Client: 400 Bad Request
+        else Valid
+            Validation->>Controller: Continue
+            Controller->>Database: Query tasks with filters
+            Database-->>Controller: Tasks + pagination
+            Controller-->>Client: 200 OK
+        end
+    end
+```
+
+### Error Handling Flow
+
+When errors occur during task creation, the token usage error handler ensures reserved tokens are properly reconciled:
+
+```mermaid
+sequenceDiagram
+    participant Controller
+    participant ErrorHandler as Token Usage Error Handler
+    participant UpdateUsage as Update Token Usage
+    participant GlobalError as Global Error Handler
+    participant Client
+
+    Controller->>ErrorHandler: Error occurs
+    ErrorHandler->>ErrorHandler: Check for token reservation
+    alt No Reservation
+        ErrorHandler->>GlobalError: Pass error through
+    else Has Reservation
+        alt Vague Input Error
+            ErrorHandler->>ErrorHandler: Extract actual tokens from AI response
+            ErrorHandler->>UpdateUsage: Reconcile actual usage
+            ErrorHandler->>GlobalError: BadRequestError with suggestions
+        else Other Error
+            ErrorHandler->>ErrorHandler: Set actual tokens to 0
+            ErrorHandler->>UpdateUsage: Release full reservation
+            ErrorHandler->>GlobalError: Pass original error
+        end
+    end
+    GlobalError-->>Client: Error response
+```
+
+**Error Scenarios:**
+
+- **Vague Input Error**: AI service returns error with token metadata - actual usage is recorded
+- **Other Errors**: Full reservation is released (tokens set to 0) to prevent incorrect window tracking
+- **No Reservation**: Error passes through without token reconciliation
+
 ## API Examples
 
 ### Create Task
