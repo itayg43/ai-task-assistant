@@ -1,0 +1,1215 @@
+---
+description: Project conventions and coding standards for AI Task Assistant
+globs:
+  - "backend/**/*.ts"
+  - "backend/**/*.json"
+---
+
+# AI Task Assistant - Project Conventions
+
+This document outlines the established patterns, coding standards, and architectural decisions used in the AI Task Assistant project. Follow these conventions to maintain consistency across the codebase.
+
+## Project Architecture
+
+### Monorepo Structure
+
+The project uses **npm workspaces** with three main packages:
+
+```json
+{
+  "workspaces": ["backend/shared", "backend/services/*"]
+}
+```
+
+**Packages:**
+
+- `backend/shared` - Reusable utilities, middlewares, error classes, and clients shared across services
+- `backend/services/ai` - AI service for OpenAI integration and capability execution
+- `backend/services/tasks` - Tasks service for task management with PostgreSQL/Prisma
+
+### Service Independence
+
+Each service is an independent Express application that:
+
+- Has its own `package.json` with dependencies
+- Can be developed, tested, and deployed independently
+- Communicates with other services via HTTP
+- Follows the same internal directory structure for consistency
+
+## Directory Structure
+
+### Standard Service Structure
+
+Every service follows this directory layout:
+
+```
+src/
+├── app.ts                    # Express app setup with middleware chain
+├── server.ts                 # Server startup and process event handlers
+├── config/
+│   └── env.ts               # Environment variable configuration
+├── constants/
+│   ├── index.ts             # Barrel file for exports
+│   └── *.ts                 # Constant definitions
+├── controllers/
+│   └── {name}-controller/   # Controller in named directory
+│       ├── index.ts
+│       ├── {name}-controller.ts
+│       ├── {name}-controller.test.ts
+│       └── {name}-controller.integration.test.ts
+├── middlewares/
+│   └── {name}/
+│       ├── index.ts
+│       ├── {name}.ts
+│       └── {name}.test.ts
+├── routers/
+│   ├── index.ts             # Main router aggregator
+│   └── {name}-router.ts     # Individual routers
+├── schemas/
+│   └── {name}-schemas.ts    # Zod validation schemas
+├── types/
+│   ├── index.ts             # Barrel file for exports
+│   ├── express.d.ts         # Express type extensions
+│   └── *.ts                 # Type definitions
+├── utils/
+│   └── {name}/
+│       ├── index.ts
+│       ├── {name}.ts
+│       └── {name}.test.ts
+├── mocks/
+│   └── {name}-mocks.ts      # Test mock data
+├── metrics/
+│   └── {name}-metrics.ts    # Prometheus metrics
+├── clients/
+│   └── {name}.ts            # External service clients
+├── repositories/            # (Tasks service only)
+│   └── {name}-repository/
+│       ├── index.ts
+│       ├── {name}-repository.ts
+│       └── {name}-repository.test.ts
+└── services/                # (Tasks service only)
+    └── {name}-service/
+        ├── index.ts
+        ├── {name}-service.ts
+        └── {name}-service.test.ts
+```
+
+### Barrel Files Pattern
+
+Use `index.ts` files to export from directories for clean imports:
+
+```typescript
+// types/index.ts
+export type { CreateTaskInput, GetTasksInput } from "./tasks-controller-input";
+export type {
+  CreateTaskResponse,
+  GetTasksResponse,
+} from "./tasks-controller-response";
+export type { TParsedTask } from "./parsed-task";
+
+// Usage elsewhere:
+import { CreateTaskInput, TParsedTask } from "@types";
+```
+
+## TypeScript Configuration
+
+### Path Aliases
+
+Each service defines path aliases in `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../../shared/src/*"],
+      "@constants": ["src/constants"],
+      "@types": ["src/types"],
+      "@clients/*": ["src/clients/*"],
+      "@routers/*": ["src/routers/*"],
+      "@routers": ["src/routers"],
+      "@config/*": ["src/config/*"],
+      "@middlewares/*": ["src/middlewares/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@services/*": ["src/services/*"],
+      "@schemas/*": ["src/schemas/*"],
+      "@repositories/*": ["src/repositories/*"],
+      "@mocks/*": ["src/mocks/*"],
+      "@utils/*": ["src/utils/*"],
+      "@metrics/*": ["src/metrics/*"]
+    }
+  }
+}
+```
+
+**Always use path aliases** instead of relative imports:
+
+```typescript
+// ✅ Good
+import { createLogger } from "@shared/config/create-logger";
+import { CreateTaskInput } from "@types";
+import { mockRequestId } from "@mocks/tasks-mocks";
+
+// ❌ Bad
+import { createLogger } from "../../../../shared/src/config/create-logger";
+import { CreateTaskInput } from "../../types/tasks-controller-input";
+```
+
+### Type Definitions
+
+**Type Export Pattern:**
+
+```typescript
+// Define types from Zod schemas
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+export type GetTasksInput = z.infer<typeof getTasksSchema>;
+
+// Use Prisma-generated types
+export type Task = Prisma.TaskGetPayload<{}>;
+export type TaskWithSubtasks = Prisma.TaskGetPayload<{
+  include: { subtasks: true };
+}>;
+```
+
+### Express Type Extensions
+
+Extend `Express.Locals` in each service's `types/express.d.ts`:
+
+```typescript
+// backend/services/tasks/src/types/express.d.ts
+import { AuthenticationContext } from "@shared/types";
+
+declare global {
+  namespace Express {
+    interface Locals {
+      authenticationContext?: AuthenticationContext;
+      requestId: string;
+      tokenUsage?: {
+        tokensReserved: number;
+        windowStartTimestamp: number;
+        actualTokens?: number;
+      };
+    }
+  }
+}
+```
+
+## Validation with Zod
+
+### Schema Definition Pattern
+
+Define schemas in `schemas/` directory:
+
+```typescript
+// schemas/tasks-schemas.ts
+import z from "zod";
+
+export const createTaskSchema = z.object({
+  body: z.object({
+    naturalLanguage: z.string().nonempty(),
+  }),
+});
+
+export const getTasksSchema = z.object({
+  query: z
+    .object({
+      skip: z.coerce.number().int().min(0).nullish(),
+      take: z.coerce.number().int().min(1).max(100).nullish(),
+      orderBy: z.enum(["dueDate", "priorityScore", "createdAt"]).nullish(),
+      orderDirection: z.enum(["asc", "desc"]).nullish(),
+    })
+    .transform((data) => ({
+      skip: data.skip ?? 0,
+      take: data.take ?? 10,
+      orderBy: (data.orderBy ?? "createdAt") as const,
+      orderDirection: (data.orderDirection ?? "desc") as const,
+    })),
+});
+```
+
+### Type Inference from Schemas
+
+```typescript
+// types/tasks-controller-input.ts
+import { createTaskSchema, getTasksSchema } from "@schemas/tasks-schemas";
+import { z } from "zod";
+
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+export type GetTasksInput = z.infer<typeof getTasksSchema>;
+```
+
+### Schema Validation Middleware
+
+Use the shared `validateSchema` middleware:
+
+```typescript
+// routers/tasks-router.ts
+import { validateSchema } from "@shared/middlewares/validate-schema";
+import { createTaskSchema, getTasksSchema } from "@schemas/tasks-schemas";
+
+tasksRouter.post("/", [validateSchema(createTaskSchema)], createTask);
+tasksRouter.get("/", [validateSchema(getTasksSchema)], getTasks);
+```
+
+The middleware:
+
+- Validates `req.body`, `req.query`, and `req.params`
+- Stores validated query in `res.locals.validatedQuery`
+- Stores validated params in `res.locals.validatedParams`
+- Passes Zod errors to error handler via `next(error)`
+
+## Express Patterns
+
+### App Setup
+
+Standard `app.ts` structure:
+
+```typescript
+import express from "express";
+import helmet from "helmet";
+
+import { env } from "@config/env";
+import { cors } from "@middlewares/cors";
+import { routers } from "@routers";
+import { createErrorHandler } from "@shared/middlewares/error-handler";
+
+export const app = express();
+
+app.use(helmet());
+app.use(cors);
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use("/", routers);
+app.use(createErrorHandler(env.SERVICE_NAME));
+```
+
+**Order matters:**
+
+1. Security middleware (helmet)
+2. CORS
+3. Body parsers
+4. Routers
+5. Error handler (must be last)
+
+### Router Pattern
+
+```typescript
+// routers/index.ts
+import { Router } from "express";
+
+export const routers = Router();
+
+routers.use(METRICS_ROUTE, metricsRouter);
+routers.use(HEALTH_ROUTE, [requestId, requestResponseMetadata], healthRouter);
+
+routers.use(
+  "/api/v1/tasks",
+  [
+    requestId,
+    authentication,
+    requestResponseMetadata,
+    tokenBucketRateLimiter.api,
+  ],
+  tasksRouter
+);
+```
+
+**Middleware Chain Pattern:**
+
+- Use array syntax for multiple middleware: `[middleware1, middleware2]`
+- Order: `requestId` → `authentication` → `requestResponseMetadata` → rate limiters → route-specific middleware
+
+### Controller Pattern
+
+```typescript
+export const createTask = async (
+  req: Request<{}, unknown, CreateTaskInput["body"]>,
+  res: Response<CreateTaskResponse>,
+  next: NextFunction
+) => {
+  const { requestId } = res.locals;
+  const { userId } = getAuthenticationContext(res);
+  const { naturalLanguage } = req.body;
+
+  const baseLogContext = {
+    requestId,
+    userId,
+    naturalLanguage,
+  };
+
+  try {
+    logger.info("Create task - starting", baseLogContext);
+
+    const { task, tokensUsed } = await createTaskHandler(
+      requestId,
+      userId,
+      naturalLanguage
+    );
+
+    // Update middleware state if needed
+    if (res.locals.tokenUsage) {
+      res.locals.tokenUsage.actualTokens = tokensUsed;
+    }
+
+    logger.info("Create task - succeeded", {
+      ...baseLogContext,
+      task,
+      tokensUsed,
+    });
+
+    res.status(StatusCodes.CREATED).json({
+      tasksServiceRequestId: requestId,
+      task: taskToResponseDto(task),
+    });
+
+    // Continue to post-response middleware
+    next();
+  } catch (error) {
+    // Handle specific error types if needed
+    if (
+      error instanceof BaseError &&
+      error.context?.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR
+    ) {
+      recordVagueInput(requestId);
+    }
+
+    next(error);
+  }
+};
+```
+
+**Controller Conventions:**
+
+1. Extract data from `req.body`, `res.locals`, and helpers
+2. Create `baseLogContext` with `requestId` and `userId`
+3. Log at start with "Operation - starting"
+4. Perform business logic (delegate to service/handler functions)
+5. Update `res.locals` state if needed for post-response middleware
+6. Log at end with "Operation - succeeded" and results
+7. Send response with appropriate status code
+8. Call `next()` for post-response middleware (if any)
+9. Catch errors, handle special cases, and pass to error handler via `next(error)`
+
+### Response Format
+
+**Always include service request ID:**
+
+```typescript
+// Success response
+res.status(StatusCodes.CREATED).json({
+  tasksServiceRequestId: requestId,
+  task: taskToResponseDto(task),
+});
+
+// Error response (handled by error handler)
+{
+  message: "Error message",
+  tasksServiceRequestId: requestId,
+  // ... additional context
+}
+```
+
+## Error Handling
+
+### Custom Error Classes
+
+Extend `BaseError` from shared package:
+
+```typescript
+import { StatusCodes } from "http-status-codes";
+import { BaseError } from "@shared/errors";
+
+export class BadRequestError extends BaseError {
+  constructor(message: string, context?: Record<string, unknown>) {
+    super(message, StatusCodes.BAD_REQUEST, context);
+  }
+}
+```
+
+**Available Error Classes:**
+
+- `BadRequestError` (400)
+- `AuthenticationError` (401)
+- `ForbiddenError` (403)
+- `NotFoundError` (404)
+- `TooManyRequestsError` (429)
+- `InternalError` (500)
+- `ServiceUnavailableError` (503)
+
+### Error Context
+
+Pass additional context in errors:
+
+```typescript
+throw new BadRequestError("Input is too vague", {
+  type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
+  suggestions: [
+    "Specify what exactly you want to plan",
+    "Provide a timeframe or deadline",
+  ],
+  openaiMetadata: metadata,
+});
+```
+
+### Error Handler
+
+The global error handler:
+
+- Extracts status, message, and context from errors
+- Filters sensitive fields from context
+- Adds `{serviceName}ServiceRequestId` to response
+- Logs errors with full context
+- Returns sanitized response to client
+
+**Do not manually handle common error types** - let the global error handler deal with them:
+
+```typescript
+// ✅ Good - let error handler deal with it
+try {
+  // ... logic
+} catch (error) {
+  next(error);
+}
+
+// ❌ Bad - manually handling what error handler should do
+try {
+  // ... logic
+} catch (error) {
+  logger.error("Error occurred", error);
+  res.status(500).json({ message: "Error occurred" });
+}
+```
+
+## Logging
+
+### Logger Creation
+
+```typescript
+import { createLogger } from "@shared/config/create-logger";
+
+const logger = createLogger("tasksController");
+```
+
+### Logging Patterns
+
+**Structured Logging:**
+
+```typescript
+const baseLogContext = {
+  requestId,
+  userId,
+  naturalLanguage,
+};
+
+logger.info("Create task - starting", baseLogContext);
+
+logger.info("Create task - succeeded", {
+  ...baseLogContext,
+  task,
+  tokensUsed,
+});
+```
+
+**Error Logging:**
+
+```typescript
+logger.error("Failed to create task", error, {
+  requestId,
+  userId,
+  naturalLanguage,
+});
+```
+
+**Log Levels:**
+
+- `logger.info()` - Operation start/end, key state changes
+- `logger.error()` - Errors (handled by error handler, rarely needed in controllers)
+- `logger.warn()` - Warning conditions
+- `logger.debug()` - Detailed information for debugging
+
+**Naming Convention for Log Messages:**
+
+- Format: `"{Operation} - {status}"` (e.g., "Create task - starting", "Get tasks - succeeded")
+- Use present participle for starting: "starting", "processing"
+- Use past tense for completion: "succeeded", "failed"
+
+## Testing
+
+### Test File Naming
+
+- Unit tests: `{name}.test.ts`
+- Integration tests: `{name}.integration.test.ts`
+- Evaluation tests: `evals/{name}.test.ts`
+- Database tests: `{name}.integration.test.ts` (with separate config)
+
+### Test Organization
+
+```typescript
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+describe("tasksController (unit)", () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockNext: NextFunction;
+
+  beforeEach(() => {
+    mockRequest = {};
+    mockResponse = {
+      locals: {
+        requestId: mockRequestId,
+        authenticationContext: { userId: mockUserId },
+      },
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    mockNext = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("createTask", () => {
+    it("should successfully create task and return 201", async () => {
+      // Test implementation
+    });
+
+    it("should handle errors and pass to next", async () => {
+      // Test implementation
+    });
+  });
+});
+```
+
+### Mocking Patterns
+
+**Module-level mocks with vi.hoisted:**
+
+```typescript
+const { mockRecordVagueInput } = vi.hoisted(() => {
+  return {
+    mockRecordVagueInput: vi.fn(),
+  };
+});
+
+vi.mock("@metrics/tasks-metrics", () => ({
+  recordVagueInput: mockRecordVagueInput,
+}));
+```
+
+**Mocking dependencies:**
+
+```typescript
+vi.mock("@services/tasks-service", () => ({
+  createTaskHandler: vi.fn(),
+  getTasksHandler: vi.fn(),
+}));
+
+// In test:
+const mockedCreateTaskHandler = vi.mocked(createTaskHandler);
+mockedCreateTaskHandler.mockResolvedValue({
+  task: mockTaskWithSubtasks,
+  tokensUsed: 150,
+});
+```
+
+### Mock Data Files
+
+Store mock data in `mocks/` directory:
+
+```typescript
+// mocks/tasks-mocks.ts
+export const mockNaturalLanguage = "Submit Q2 report by next Friday";
+export const mockRequestId = "test-request-id-123";
+export const mockUserId = 1;
+
+export const mockParsedTask: TParsedTask = {
+  title: "Submit Q2 report",
+  dueDate: "2024-01-19T23:59:59Z",
+  category: "work",
+  priority: {
+    level: "high",
+    score: 8,
+    reason: "Marked as high priority with a clear deadline",
+  },
+  subtasks: null,
+};
+```
+
+### Integration Test Pattern
+
+```typescript
+import request from "supertest";
+import { app } from "../../app";
+
+describe("tasksController (integration)", () => {
+  beforeEach(() => {
+    // Mock external dependencies
+    vi.mock("@services/ai-capabilities-service");
+    vi.mock("@repositories/tasks-repository");
+  });
+
+  it("should return 201 with task for valid input", async () => {
+    const response = await request(app)
+      .post("/api/v1/tasks")
+      .send({ naturalLanguage: mockNaturalLanguage });
+
+    expect(response.status).toBe(StatusCodes.CREATED);
+    expect(response.body).toMatchObject({
+      tasksServiceRequestId: expect.any(String),
+      task: expect.objectContaining({
+        id: expect.any(Number),
+        title: expect.any(String),
+      }),
+    });
+  });
+});
+```
+
+## Metrics with Prometheus
+
+### Metrics Definition Pattern
+
+```typescript
+import { Counter, Histogram, register } from "@shared/clients/prom";
+import { createLogger } from "@shared/config/create-logger";
+
+const logger = createLogger("tasks-metrics");
+
+const tasksApiRequestsTotal = new Counter({
+  name: "tasks_api_requests_total",
+  help: "Total number of Tasks API requests",
+  labelNames: ["operation", "status"],
+  registers: [register],
+});
+
+const tasksApiRequestDurationMs = new Histogram({
+  name: "tasks_api_request_duration_ms",
+  help: "Duration of Tasks API requests in milliseconds",
+  labelNames: ["operation", "status"],
+  buckets: [500, 1000, 2500, 3000, 4000, 5000, 7500, 10000, 15000],
+  registers: [register],
+});
+```
+
+**Naming Conventions:**
+
+- Use snake_case for metric names
+- Suffix with unit: `_total`, `_ms`, `_bytes`
+- Prefix with service domain: `tasks_api_`, `openai_api_`
+
+### Helper Functions for Recording
+
+```typescript
+export const recordTasksApiSuccess = (
+  operation: TasksOperation,
+  durationMs: number,
+  requestId: string
+): void => {
+  const status = "success";
+
+  tasksApiRequestsTotal.inc({ operation, status });
+  tasksApiRequestDurationMs.observe({ operation, status }, durationMs);
+
+  logger.debug("Recorded tasks API success metrics", {
+    requestId,
+    operation,
+    status,
+    durationMs,
+  });
+};
+
+export const recordTasksApiFailure = (
+  operation: TasksOperation,
+  durationMs: number,
+  requestId: string
+): void => {
+  const status = "failure";
+
+  tasksApiRequestsTotal.inc({ operation, status });
+  tasksApiRequestDurationMs.observe({ operation, status }, durationMs);
+
+  logger.debug("Recorded tasks API failure metrics", {
+    requestId,
+    operation,
+    status,
+    durationMs,
+  });
+};
+```
+
+**Always include:**
+
+- Type-safe label values (use TypeScript enums or unions)
+- Debug logging when recording
+- `requestId` in log context for traceability
+
+### Metrics Middleware Pattern
+
+```typescript
+import { metricsMiddleware } from "@shared/middlewares/metrics";
+import {
+  recordTasksApiSuccess,
+  recordTasksApiFailure,
+} from "@metrics/tasks-metrics";
+
+export const tasksMetricsMiddleware = metricsMiddleware({
+  onSuccess: (operation, durationMs, requestId) => {
+    recordTasksApiSuccess(operation as TasksOperation, durationMs, requestId);
+  },
+  onFailure: (operation, durationMs, requestId) => {
+    recordTasksApiFailure(operation as TasksOperation, durationMs, requestId);
+  },
+  getOperationFromPath: (path: string): string | null => {
+    if (path === "/api/v1/tasks" || path === "/") return "get_tasks";
+    return null;
+  },
+  getOperationFromRequest: (req): string | null => {
+    if (req.method === "POST" && req.path === "/") return "create_task";
+    if (req.method === "GET" && req.path === "/") return "get_tasks";
+    return null;
+  },
+});
+```
+
+## Database with Prisma (Tasks Service)
+
+### Repository Pattern
+
+```typescript
+// repositories/tasks-repository/tasks-repository.ts
+import { Prisma, PrismaClient } from "@shared/clients/prisma";
+import { PrismaTransactionClient } from "@shared/types";
+
+export type Task = Prisma.TaskGetPayload<{}>;
+export type TaskWithSubtasks = Prisma.TaskGetPayload<{
+  include: { subtasks: true };
+}>;
+
+export const createTask = async (
+  client: PrismaClient | PrismaTransactionClient,
+  userId: number,
+  naturalLanguage: string,
+  parsedTask: TParsedTask
+): Promise<Task> => {
+  const { title, dueDate, category, priority } = parsedTask;
+
+  return await client.task.create({
+    data: {
+      userId,
+      naturalLanguage,
+      title,
+      dueDate: dueDate ? new Date(dueDate) : null,
+      category,
+      priorityLevel: priority.level,
+      priorityScore: priority.score,
+      priorityReason: priority.reason,
+    },
+  });
+};
+```
+
+**Repository Conventions:**
+
+- Accept `PrismaClient | PrismaTransactionClient` as first parameter
+- Always include `userId` for data isolation
+- Use Prisma-generated types
+- Export type aliases for common payloads
+
+### Transaction Pattern
+
+```typescript
+import { prisma } from "@clients/prisma";
+
+const task = await prisma.$transaction(async (tx) => {
+  const createdTask = await createTask(tx, userId, naturalLanguage, parsedTask);
+
+  if (parsedTask.subtasks && parsedTask.subtasks.length > 0) {
+    await createManySubtasks(tx, createdTask.id, userId, parsedTask.subtasks);
+  }
+
+  const taskWithSubtasks = await findTaskById(tx, createdTask.id, userId);
+  return taskWithSubtasks!;
+});
+```
+
+## Service Communication
+
+### HTTP Client Pattern
+
+```typescript
+// clients/ai.ts
+import { AI_CAPABILITY_BASE_URL } from "@constants";
+import { createHttpClient } from "@shared/clients/http";
+
+const aiClient = createHttpClient(AI_CAPABILITY_BASE_URL);
+
+export const executeCapability = async <
+  TCapability extends TAiCapability,
+  TResult
+>(
+  requestId: string,
+  config: TExecuteCapabilityConfig<TCapability>
+): Promise<TAiCapabilityResponse<TResult>> => {
+  const response = await aiClient.post<TAiCapabilityResponse<TResult>>(
+    `/api/v1/capabilities/${config.capability}`,
+    {
+      params: { pattern: config.pattern },
+      data: config.params,
+      headers: {
+        "x-request-id": requestId,
+      },
+    }
+  );
+
+  return response.data;
+};
+```
+
+**Conventions:**
+
+- Use shared `createHttpClient` for consistent error handling
+- Pass `requestId` in headers for distributed tracing
+- Type responses with generic parameters
+- Handle errors at service boundary (caller)
+
+## Code Organization Principles
+
+### Single Responsibility
+
+Each file/function should have one clear purpose:
+
+```typescript
+// ✅ Good - focused utility
+export const taskToResponseDto = (task: TaskWithSubtasks): TaskResponse => {
+  return {
+    id: task.id,
+    title: task.title,
+    dueDate: task.dueDate?.toISOString() ?? null,
+    category: task.category,
+    priority: {
+      level: task.priorityLevel,
+      score: task.priorityScore,
+      reason: task.priorityReason,
+    },
+    createdAt: task.createdAt.toISOString(),
+    updatedAt: task.updatedAt.toISOString(),
+    subtasks: task.subtasks.map((subtask) => ({
+      id: subtask.id,
+      title: subtask.title,
+      order: subtask.order,
+    })),
+  };
+};
+```
+
+### Separation of Concerns
+
+**Controller → Service → Repository** pattern (Tasks service):
+
+```typescript
+// Controller: Handle HTTP request/response
+export const createTask = async (req, res, next) => {
+  const { requestId } = res.locals;
+  const { userId } = getAuthenticationContext(res);
+  const { naturalLanguage } = req.body;
+
+  try {
+    const { task, tokensUsed } = await createTaskHandler(
+      requestId,
+      userId,
+      naturalLanguage
+    );
+
+    res.status(StatusCodes.CREATED).json({
+      tasksServiceRequestId: requestId,
+      task: taskToResponseDto(task),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Service: Business logic and orchestration
+export const createTaskHandler = async (
+  requestId: string,
+  userId: number,
+  naturalLanguage: string
+) => {
+  const { result: parsedTask, openaiMetadata } = await executeCapability(
+    requestId,
+    { capability: "parse-task", pattern: "sync", params: { naturalLanguage } }
+  );
+
+  const task = await prisma.$transaction(async (tx) => {
+    const createdTask = await createTask(
+      tx,
+      userId,
+      naturalLanguage,
+      parsedTask
+    );
+    if (parsedTask.subtasks) {
+      await createManySubtasks(tx, createdTask.id, userId, parsedTask.subtasks);
+    }
+    return await findTaskById(tx, createdTask.id, userId);
+  });
+
+  return { task, tokensUsed: extractOpenaiTokenUsage(openaiMetadata) };
+};
+
+// Repository: Data access
+export const createTask = async (
+  client,
+  userId,
+  naturalLanguage,
+  parsedTask
+) => {
+  return await client.task.create({
+    data: {
+      /* ... */
+    },
+  });
+};
+```
+
+### Dependency Injection
+
+Pass dependencies as parameters rather than importing globals:
+
+```typescript
+// ✅ Good - testable
+export const findTasks = async (
+  client: PrismaClient | PrismaTransactionClient,
+  userId: number,
+  options: FindTasksOptions
+): Promise<FindTasksResult> => {
+  // Use client parameter
+};
+
+// ❌ Bad - hard to test
+import { prisma } from "@clients/prisma";
+
+export const findTasks = async (
+  userId: number,
+  options: FindTasksOptions
+): Promise<FindTasksResult> => {
+  // Directly uses global prisma
+};
+```
+
+## Naming Conventions
+
+### Files and Directories
+
+- Use kebab-case: `tasks-controller.ts`, `token-bucket-rate-limiter.ts`
+- Named directories for complex modules: `tasks-controller/`
+- Test files match source: `tasks-controller.test.ts`, `tasks-controller.integration.test.ts`
+- Mock files: `{domain}-mocks.ts` (e.g., `tasks-mocks.ts`)
+
+### Variables and Functions
+
+- camelCase for variables and functions: `createTask`, `requestId`, `naturalLanguage`
+- PascalCase for classes and types: `BaseError`, `CreateTaskInput`, `TaskWithSubtasks`
+- SCREAMING_SNAKE_CASE for constants: `AI_ERROR_TYPE`, `GET_TASKS_DEFAULT_TAKE`
+
+### Type Prefixes
+
+Use prefixes to indicate type categories:
+
+- `T` for domain types: `TParsedTask`, `TOpenaiMetadata`
+- No prefix for DTOs/interfaces: `CreateTaskInput`, `TaskResponse`
+- Suffix for specific variants: `TaskWithSubtasks`, `FindTasksResult`
+
+## Constants
+
+### Organization
+
+```typescript
+// constants/index.ts - Barrel file
+export { AI_ERROR_TYPE } from "./ai-error-types";
+export {
+  GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
+  GET_TASKS_DEFAULT_SKIP,
+  GET_TASKS_DEFAULT_TAKE,
+} from "./get-tasks";
+
+// constants/ai-error-types.ts
+export const AI_ERROR_TYPE = {
+  PARSE_TASK_VAGUE_INPUT_ERROR: "PARSE_TASK_VAGUE_INPUT_ERROR",
+  PROMPT_INJECTION_DETECTED: "PROMPT_INJECTION_DETECTED",
+} as const;
+
+// constants/get-tasks.ts
+export const GET_TASKS_DEFAULT_SKIP = 0;
+export const GET_TASKS_DEFAULT_TAKE = 10;
+export const GET_TASKS_MIN_TAKE = 1;
+export const GET_TASKS_MAX_TAKE = 100;
+
+export const GET_TASKS_ALLOWED_ORDER_BY_FIELDS = [
+  "dueDate",
+  "priorityScore",
+  "createdAt",
+] as const;
+
+export const GET_TASKS_ALLOWED_ORDER_DIRECTIONS = ["asc", "desc"] as const;
+```
+
+### Usage
+
+```typescript
+import {
+  AI_ERROR_TYPE,
+  GET_TASKS_DEFAULT_SKIP,
+  GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
+} from "@constants";
+
+if (error.context?.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR) {
+  // Handle vague input
+}
+```
+
+## Comments and Documentation
+
+### When to Comment
+
+**Comment for:**
+
+- Complex business logic that isn't immediately obvious
+- Workarounds or non-standard approaches (with explanation why)
+- Public APIs and shared utilities (JSDoc)
+- Non-obvious type constraints
+
+**Don't comment for:**
+
+- Self-explanatory code
+- Obvious variable names
+- Restating what code does
+
+### JSDoc for Public APIs
+
+```typescript
+/**
+ * Validates a schema against Express request data.
+ * Stores validated query in res.locals.validatedQuery.
+ * Stores validated params in res.locals.validatedParams.
+ * Passes validation errors to error handler via next(error).
+ */
+export const validateSchema =
+  (schema: z.AnyZodObject) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    // Implementation
+  };
+```
+
+### Inline Comments for Context
+
+```typescript
+// Record vague input metric before passing to error handler
+if (
+  error instanceof BaseError &&
+  error.context?.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR
+) {
+  recordVagueInput(requestId);
+}
+
+// Continue to post-response middleware: "token usage update"
+next();
+```
+
+## Environment Configuration
+
+### Pattern
+
+```typescript
+// config/env.ts
+import dotenv from "dotenv";
+import { z } from "zod";
+
+const envPath = process.env.NODE_ENV === "test" ? ".env.test" : ".env.dev";
+dotenv.config({ path: envPath });
+
+const envSchema = z.object({
+  SERVICE_NAME: z.string(),
+  SERVICE_PORT: z.coerce.number().int().positive(),
+  AI_SERVICE_BASE_URL: z.string().url(),
+  DATABASE_URL: z.string(),
+  REDIS_URL: z.string(),
+  // ... other variables
+});
+
+export const env = envSchema.parse(process.env);
+```
+
+**Always:**
+
+- Use Zod to validate environment variables
+- Provide clear error messages for missing variables
+- Use `.env.dev` for development, `.env.test` for tests
+- Never commit `.env` files (only `.env.example`)
+
+## Version Control
+
+### What to Commit
+
+- Source code (`src/`)
+- Configuration files (`tsconfig.json`, `package.json`, `vitest.config.ts`)
+- Documentation (`README.md`, `docs/`)
+- Schema definitions (`prisma/schema.prisma`)
+- Environment examples (`.env.example`)
+
+### What NOT to Commit
+
+- Compiled output (`dist/`)
+- Dependencies (`node_modules/`)
+- Environment files (`.env`, `.env.dev`, `.env.test`)
+- IDE files (`.idea/`, `.vscode/`)
+- Log files
+
+## AI Service Specific Patterns
+
+### Capability Definition Pattern
+
+```typescript
+// capabilities/index.ts
+import { defineCapability } from "@utils/define-capability";
+
+export const capabilities = {
+  [CAPABILITY.PARSE_TASK]: defineCapability({
+    name: "parse-task",
+    handler: parseTaskHandler,
+    inputSchema: parseTaskInputSchema,
+    outputSchema: createCapabilityResponseSchema(parseTaskOutputSchema),
+    promptInjectionFields: ["body.naturalLanguage"],
+  }),
+} as const;
+```
+
+### Extensible Middleware Chain
+
+Capabilities use consistent middleware:
+
+```typescript
+// routers/capabilities-router.ts
+capabilitiesRouter.post(
+  "/:capability",
+  [
+    validateExecutableCapability, // 1. Validate capability exists
+    validateCapabilityInput, // 2. Validate input schema
+    validatePromptInjection, // 3. Check injection patterns
+  ],
+  capabilitiesController // 4. Execute capability
+);
+```
+
+## Summary
+
+Following these conventions ensures:
+
+- **Consistency**: Code looks familiar across services
+- **Maintainability**: Clear patterns make updates easier
+- **Testability**: Dependency injection and separation of concerns enable testing
+- **Type Safety**: Strong typing catches errors at compile time
+- **Observability**: Structured logging and metrics provide visibility
+- **Scalability**: Clean architecture supports growth
+
+When in doubt, look at existing code in the same service for reference patterns.
