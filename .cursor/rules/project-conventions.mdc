@@ -668,6 +668,48 @@ describe("tasksController (integration)", () => {
 
 ## Metrics with Prometheus
 
+### Metrics Quick Reference
+
+| Service | Service Metrics                                             | Integration Metrics                                           | Domain Metrics                                        |
+| ------- | ----------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
+| Tasks   | `tasks_api_requests_total`, `tasks_api_request_duration_ms` | (calls AI service)                                            | `tasks_vague_input_total`                             |
+| AI      | `ai_api_requests_total`, `ai_api_request_duration_ms`       | `openai_api_requests_total`, `openai_api_request_duration_ms` | `prompt_injection_blocked_total`, `vague_input_total` |
+
+### Service-Level Metrics (REQUIRED for every service)
+
+Every service MUST define its own service-level metrics. These track ALL incoming requests to the service and the full request duration.
+
+| Metric Name                         | Type      | Purpose                                  |
+| ----------------------------------- | --------- | ---------------------------------------- |
+| `{service}_api_requests_total`      | Counter   | Total incoming requests to the service   |
+| `{service}_api_request_duration_ms` | Histogram | Full request duration (entire lifecycle) |
+
+**Labels:**
+
+- `operation` or `capability` - The specific operation being performed
+- `status` - Either `"success"` or `"failure"`
+
+**Examples:**
+
+- Tasks service: `tasks_api_requests_total`, `tasks_api_request_duration_ms`
+- AI service: `ai_api_requests_total`, `ai_api_request_duration_ms`
+
+### Integration Metrics (for external API calls)
+
+External API calls get SEPARATE metrics to track integration health. These are NOT service-level metrics.
+
+```typescript
+// Integration metrics - track external dependency health
+openai_api_requests_total; // OpenAI API call tracking
+openai_api_request_duration_ms; // OpenAI API latency
+openai_api_tokens_total; // Token usage for cost tracking
+```
+
+**Key distinction:**
+
+- **Service metrics** = Track the service's own health (all incoming requests)
+- **Integration metrics** = Track external dependency health (subset of requests that call external APIs)
+
 ### Metrics Definition Pattern
 
 ```typescript
@@ -744,33 +786,67 @@ export const recordTasksApiFailure = (
 - Debug logging when recording
 - `requestId` in log context for traceability
 
-### Metrics Middleware Pattern
+### Metrics Middleware Pattern (REQUIRED)
+
+Every service router MUST apply a metrics middleware to track all incoming requests:
 
 ```typescript
-import { metricsMiddleware } from "@shared/middlewares/metrics";
+// Tasks service
+tasksRouter.use(tasksMetricsMiddleware);
+
+// AI service
+capabilitiesRouter.use(aiMetricsMiddleware);
+```
+
+This ensures ALL requests are tracked, including those that fail early (validation, auth, rate limiting, etc.).
+
+**Implementation pattern:**
+
+```typescript
+import { createMetricsMiddleware } from "@shared/middlewares/metrics";
 import {
   recordTasksApiSuccess,
   recordTasksApiFailure,
 } from "@metrics/tasks-metrics";
 
-export const tasksMetricsMiddleware = metricsMiddleware({
-  onSuccess: (operation, durationMs, requestId) => {
-    recordTasksApiSuccess(operation as TasksOperation, durationMs, requestId);
+export const tasksMetricsMiddleware = createMetricsMiddleware({
+  operationsMap: {
+    POST: "create_task",
+    GET: "get_tasks",
   },
-  onFailure: (operation, durationMs, requestId) => {
-    recordTasksApiFailure(operation as TasksOperation, durationMs, requestId);
-  },
-  getOperationFromPath: (path: string): string | null => {
-    if (path === "/api/v1/tasks" || path === "/") return "get_tasks";
-    return null;
-  },
-  getOperationFromRequest: (req): string | null => {
-    if (req.method === "POST" && req.path === "/") return "create_task";
-    if (req.method === "GET" && req.path === "/") return "get_tasks";
-    return null;
+  recorder: {
+    recordSuccess: (operation, durationMs, requestId) =>
+      recordTasksApiSuccess(operation as TasksOperation, durationMs, requestId),
+    recordFailure: (operation, durationMs, requestId) =>
+      recordTasksApiFailure(operation as TasksOperation, durationMs, requestId),
   },
 });
 ```
+
+### Metrics Anti-Patterns
+
+**❌ Don't use integration metrics for service dashboards:**
+
+```typescript
+// Wrong: Using OpenAI metrics for AI service health
+floor(sum(increase(openai_api_requests_total[$__range])));
+
+// Wrong: Complex calculation that misses edge cases
+openai_api_requests_total + prompt_injection_blocked_total;
+```
+
+**✅ Use service-level metrics:**
+
+```typescript
+// Correct: Using AI service's own metrics (captures ALL requests)
+floor(sum(increase(ai_api_requests_total[$__range])));
+```
+
+**Why this matters:**
+
+- Integration metrics miss requests blocked before the external call (e.g., prompt injections)
+- Integration metrics only track the external call duration, not the full request
+- Complex calculations are error-prone and hard to maintain
 
 ## Database with Prisma (Tasks Service)
 
@@ -1167,6 +1243,44 @@ export const env = envSchema.parse(process.env);
 
 ## AI Service Specific Patterns
 
+### Required Metrics Structure
+
+The AI service MUST have three types of metrics:
+
+**1. Service metrics** (`ai_api_*`) - Track all capability executions:
+
+```typescript
+// metrics/ai-service-metrics/ai-service-metrics.ts
+ai_api_requests_total; // Counter: all incoming requests
+ai_api_request_duration_ms; // Histogram: full request duration
+```
+
+**2. Integration metrics** (`openai_api_*`) - Track OpenAI API calls:
+
+```typescript
+// metrics/openai-metrics.ts
+openai_api_requests_total; // Counter: OpenAI API calls
+openai_api_request_duration_ms; // Histogram: OpenAI call duration
+openai_api_tokens_total; // Counter: token usage
+```
+
+**3. Domain metrics** - Track security and validation events:
+
+```typescript
+// metrics/prompt-injection-metrics.ts
+prompt_injection_blocked_total; // Counter: blocked for security
+
+// metrics/parse-task-metrics.ts
+vague_input_total; // Counter: rejected as too vague
+```
+
+**Dashboard separation:**
+
+| Dashboard  | Metrics        | Purpose                           |
+| ---------- | -------------- | --------------------------------- |
+| AI Service | `ai_api_*`     | Service health, all requests      |
+| OpenAI API | `openai_api_*` | OpenAI integration, costs, tokens |
+
 ### Capability Definition Pattern
 
 ```typescript
@@ -1209,7 +1323,14 @@ Following these conventions ensures:
 - **Maintainability**: Clear patterns make updates easier
 - **Testability**: Dependency injection and separation of concerns enable testing
 - **Type Safety**: Strong typing catches errors at compile time
-- **Observability**: Structured logging and metrics provide visibility
+- **Observability**: Structured logging and service-level metrics provide visibility
 - **Scalability**: Clean architecture supports growth
+
+**Key principles to remember:**
+
+1. Every service MUST have its own service-level metrics (`{service}_api_*`)
+2. Integration metrics track external dependencies, NOT service health
+3. Use metrics middleware at the router level to capture ALL requests
+4. Keep dashboards focused: service dashboard uses service metrics, integration dashboard uses integration metrics
 
 When in doubt, look at existing code in the same service for reference patterns.
