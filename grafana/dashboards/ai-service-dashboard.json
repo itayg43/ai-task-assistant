@@ -302,7 +302,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(ai_api_requests_total{status=\"success\"}[$__range])) / sum(increase(ai_api_requests_total[$__range])) * 100",
+          "expr": "sum(increase(ai_api_requests_total{status=\"success\"}[$__range])) / (sum(increase(ai_api_requests_total[$__range])) - sum(increase(prompt_injection_blocked_total[$__range])) - sum(increase(vague_input_total[$__range]))) * 100",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -627,7 +627,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (capability) (increase(ai_api_requests_total{status=\"success\"}[$__range])) / sum by (capability) (increase(ai_api_requests_total[$__range])) * 100",
+          "expr": "sum by (capability) (increase(ai_api_requests_total{status=\"success\"}[$__range])) / (sum by (capability) (increase(ai_api_requests_total[$__range])) - sum by (capability) (increase(vague_input_total[$__range]))) * 100",
           "legendFormat": "{{capability}}",
           "range": true,
           "refId": "A"

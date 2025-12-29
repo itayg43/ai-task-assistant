@@ -34,6 +34,14 @@ const tasksVagueInputTotal = new Counter({
   registers: [register],
 });
 
+// Counter for prompt injection errors
+const tasksPromptInjectionTotal = new Counter({
+  name: "tasks_prompt_injection_total",
+  help: "Total number of requests that failed due to prompt injection detection",
+  labelNames: ["operation"], // Allows filtering by operation in queries
+  registers: [register],
+});
+
 // Helper functions with debug logging (following openai-metrics pattern)
 
 export const recordTasksApiSuccess = (
@@ -86,5 +94,19 @@ export const recordVagueInput = (requestId: string): void => {
 
   logger.debug("Recorded vague input metric", {
     requestId,
+  });
+};
+
+export const recordPromptInjection = (
+  operation: TasksOperation,
+  requestId: string
+): void => {
+  tasksPromptInjectionTotal.inc({
+    operation,
+  });
+
+  logger.debug("Recorded prompt injection metric", {
+    requestId,
+    operation,
   });
 };

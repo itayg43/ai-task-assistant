@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  recordPromptInjection,
   recordTasksApiFailure,
   recordTasksApiSuccess,
   recordVagueInput,
@@ -159,6 +160,36 @@ describe("tasksMetrics", () => {
           requestId: "test-request-id",
         }
       );
+    });
+  });
+
+  describe("recordPromptInjection", () => {
+    it("should increment prompt injection counter with operation", () => {
+      recordPromptInjection("create_task", "test-request-id");
+
+      expect(mockCounterInc).toHaveBeenCalledWith({
+        operation: "create_task",
+      });
+    });
+
+    it("should log debug message with requestId and operation", () => {
+      recordPromptInjection("create_task", "test-request-id");
+
+      expect(mockLoggerDebug).toHaveBeenCalledWith(
+        "Recorded prompt injection metric",
+        {
+          requestId: "test-request-id",
+          operation: "create_task",
+        }
+      );
+    });
+
+    it("should handle get_tasks operation", () => {
+      recordPromptInjection("get_tasks", "another-request-id");
+
+      expect(mockCounterInc).toHaveBeenCalledWith({
+        operation: "get_tasks",
+      });
     });
   });
 });

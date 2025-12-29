@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AI_ERROR_TYPE } from "@constants";
+import { AI_ERROR_TYPE, TASKS_OPERATION } from "@constants";
 import { createTask, getTasks } from "@controllers/tasks-controller";
 import {
   mockFindTasksResult,
@@ -17,14 +17,16 @@ import { Mocked } from "@shared/types";
 import { CreateTaskResponse, GetTasksResponse } from "@types";
 import { taskToResponseDto } from "@utils/task-to-response-dto";
 
-const { mockRecordVagueInput } = vi.hoisted(() => {
+const { mockRecordVagueInput, mockRecordPromptInjection } = vi.hoisted(() => {
   return {
     mockRecordVagueInput: vi.fn(),
+    mockRecordPromptInjection: vi.fn(),
   };
 });
 
 vi.mock("@metrics/tasks-metrics", () => ({
   recordVagueInput: mockRecordVagueInput,
+  recordPromptInjection: mockRecordPromptInjection,
 }));
 
 vi.mock("@services/tasks-service", () => ({
@@ -128,7 +130,9 @@ describe("tasksController (unit)", () => {
       const { BadRequestError } = await import("@shared/errors");
       const promptInjectionError = new BadRequestError(
         "Invalid input provided.",
-        {} // Empty context for prompt injection errors
+        {
+          type: AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED,
+        }
       );
       mockedCreateTaskHandler.mockRejectedValue(promptInjectionError);
 
@@ -138,6 +142,10 @@ describe("tasksController (unit)", () => {
         mockNext
       );
 
+      expect(mockRecordPromptInjection).toHaveBeenCalledWith(
+        TASKS_OPERATION.CREATE_TASK,
+        mockRequestId
+      );
       expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
       expect(mockResponse.status).not.toHaveBeenCalled();
       expect(mockResponse.json).not.toHaveBeenCalled();

@@ -182,7 +182,7 @@
             "fixedColor": "text",
             "mode": "fixed"
           },
-          "decimals": 2,
+          "decimals": 4,
           "mappings": [],
           "noValue": "0",
           "thresholds": {
@@ -699,6 +699,6 @@
   "timezone": "browser",
   "title": "OpenAI API Usage",
   "uid": "adcmbx9",
-  "version": 68,
+  "version": 70,
   "weekStart": "sunday"
 }

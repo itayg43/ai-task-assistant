@@ -1,8 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { AI_ERROR_TYPE } from "@constants";
-import { recordVagueInput } from "@metrics/tasks-metrics";
+import { AI_ERROR_TYPE, TASKS_OPERATION } from "@constants";
+import {
+  recordPromptInjection,
+  recordVagueInput,
+} from "@metrics/tasks-metrics";
 import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
 import { createLogger } from "@shared/config/create-logger";
 import { BaseError } from "@shared/errors";
@@ -60,12 +63,14 @@ export const createTask = async (
     // Continue to post-response middleware: "token usage update"
     next();
   } catch (error) {
-    // Record vague input metric before passing to error handler
-    if (
-      error instanceof BaseError &&
-      error.context?.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR
-    ) {
-      recordVagueInput(requestId);
+    // Record known error metric before passing to error handler
+    if (error instanceof BaseError && error.context?.type) {
+      const { type } = error.context;
+      if (type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR) {
+        recordVagueInput(requestId);
+      } else if (type === AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED) {
+        recordPromptInjection(TASKS_OPERATION.CREATE_TASK, requestId);
+      }
     }
 
     next(error);
