@@ -20,6 +20,7 @@ import { ParseTaskSubtasksPromptVersion } from "@capabilities/parse-task/prompts
 import { executeParse } from "@clients/openai";
 import { env } from "@config/env";
 import { AI_ERROR_TYPE } from "@constants";
+import { recordVagueInput } from "@metrics/parse-task-metrics";
 import { createLogger } from "@shared/config/create-logger";
 import { BadRequestError } from "@shared/errors";
 import { exhaustiveSwitch } from "@shared/utils/exhaustive-switch";
@@ -63,6 +64,8 @@ const coreHandler = async (
 
       if (!output.success) {
         const { error } = output;
+
+        recordVagueInput();
 
         throw new BadRequestError(error.reason, {
           type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
