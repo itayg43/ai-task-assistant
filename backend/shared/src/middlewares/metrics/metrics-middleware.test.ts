@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createMetricsRecorderMock } from "../../mocks/prom-mock";
-import { OperationsMap } from "../../types";
+import { OperationResolver, OperationsMap } from "../../types";
 import * as performanceUtils from "../../utils/performance";
 import { createMetricsMiddleware } from "./metrics-middleware";
 
@@ -51,7 +51,7 @@ describe("createMetricsMiddleware", () => {
     vi.clearAllMocks();
   });
 
-  describe("operation mapping", () => {
+  describe("static operationsMap", () => {
     it("should call recordSuccess with correct operation for mapped HTTP method", () => {
       const middleware = createMetricsMiddleware({
         operationsMap,
@@ -83,7 +83,6 @@ describe("createMetricsMiddleware", () => {
 
       expect(mockRecordFailure).toHaveBeenCalledWith(
         "create_task",
-        2500,
         "test-request-id"
       );
       expect(mockRecordSuccess).not.toHaveBeenCalled();
@@ -99,11 +98,107 @@ describe("createMetricsMiddleware", () => {
       });
 
       middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      finishCallback();
 
-      expect(mockResponse.on).not.toHaveBeenCalled();
       expect(mockRecordSuccess).not.toHaveBeenCalled();
       expect(mockRecordFailure).not.toHaveBeenCalled();
       expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("dynamic getOperation", () => {
+    it("should call recordSuccess with operation resolved from res.locals", () => {
+      mockResponse.locals = {
+        requestId: "test-request-id",
+        capabilityConfig: { name: "parse-task" },
+      };
+
+      const getOperation: OperationResolver = (_req, res) =>
+        res.locals.capabilityConfig?.name ?? null;
+
+      const middleware = createMetricsMiddleware({
+        getOperation,
+        recorder: mockRecorder,
+      });
+
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      finishCallback();
+
+      expect(mockRecordSuccess).toHaveBeenCalledWith(
+        "parse-task",
+        2500,
+        "test-request-id"
+      );
+      expect(mockRecordFailure).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it("should call recordFailure with operation resolved from res.locals on error status", () => {
+      mockResponse.statusCode = 500;
+      mockResponse.locals = {
+        requestId: "test-request-id",
+        capabilityConfig: { name: "parse-task" },
+      };
+
+      const getOperation: OperationResolver = (_req, res) =>
+        res.locals.capabilityConfig?.name ?? null;
+
+      const middleware = createMetricsMiddleware({
+        getOperation,
+        recorder: mockRecorder,
+      });
+
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      finishCallback();
+
+      expect(mockRecordFailure).toHaveBeenCalledWith(
+        "parse-task",
+        "test-request-id"
+      );
+      expect(mockRecordSuccess).not.toHaveBeenCalled();
+    });
+
+    it("should skip metrics when getOperation returns null", () => {
+      const getOperation: OperationResolver = () => null;
+
+      const middleware = createMetricsMiddleware({
+        getOperation,
+        recorder: mockRecorder,
+      });
+
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      finishCallback();
+
+      expect(mockRecordSuccess).not.toHaveBeenCalled();
+      expect(mockRecordFailure).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it("should resolve operation at finish time, not at middleware invocation", () => {
+      mockResponse.locals = {
+        requestId: "test-request-id",
+      };
+
+      const getOperation: OperationResolver = (_req, res) =>
+        res.locals.capabilityConfig?.name ?? null;
+
+      const middleware = createMetricsMiddleware({
+        getOperation,
+        recorder: mockRecorder,
+      });
+
+      middleware(mockRequest as Request, mockResponse as Response, mockNext);
+
+      // Simulate middleware setting locals after initial call
+      mockResponse.locals!.capabilityConfig = { name: "dynamic-capability" };
+
+      finishCallback();
+
+      expect(mockRecordSuccess).toHaveBeenCalledWith(
+        "dynamic-capability",
+        2500,
+        "test-request-id"
+      );
     });
   });
 

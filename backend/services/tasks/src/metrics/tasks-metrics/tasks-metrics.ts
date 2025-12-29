@@ -2,7 +2,7 @@ import { Counter, Histogram, register } from "@shared/clients/prom";
 import { createLogger } from "@shared/config/create-logger";
 import { TasksOperation } from "@types";
 
-const logger = createLogger("tasks-metrics");
+const logger = createLogger("tasksMetrics");
 
 // Counter for total requests - labeled by operation and status
 const tasksApiRequestsTotal = new Counter({
@@ -65,7 +65,6 @@ export const recordTasksApiSuccess = (
 
 export const recordTasksApiFailure = (
   operation: TasksOperation,
-  durationMs: number,
   requestId: string
 ): void => {
   const status = "failure";
@@ -74,19 +73,11 @@ export const recordTasksApiFailure = (
     operation,
     status,
   });
-  tasksApiRequestDurationMs.observe(
-    {
-      operation,
-      status,
-    },
-    durationMs
-  );
 
   logger.debug("Recorded tasks API failure metrics", {
     requestId,
     operation,
     status,
-    durationMs,
   });
 };
 

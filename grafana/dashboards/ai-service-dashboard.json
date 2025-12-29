@@ -89,7 +89,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "floor(sum(increase(openai_api_requests_total[$__range])) + sum(increase(prompt_injection_blocked_total[$__range])))",
+          "expr": "floor(sum(increase(ai_api_requests_total[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -163,7 +163,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(prompt_injection_blocked_total[$__range])) / (sum(increase(openai_api_requests_total[$__range])) + sum(increase(prompt_injection_blocked_total[$__range]))) * 100",
+          "expr": "sum(increase(prompt_injection_blocked_total[$__range])) / sum(increase(ai_api_requests_total[$__range])) * 100",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -237,7 +237,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(vague_input_total[$__range])) / sum(increase(openai_api_requests_total[$__range])) * 100",
+          "expr": "sum(increase(vague_input_total[$__range])) / sum(increase(ai_api_requests_total[$__range])) * 100",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -315,7 +315,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "(sum(increase(openai_api_requests_total{status=\"success\"}[$__range])) - sum(increase(vague_input_total[$__range]))) / sum(increase(openai_api_requests_total[$__range])) * 100",
+          "expr": "sum(increase(ai_api_requests_total{status=\"success\"}[$__range])) / sum(increase(ai_api_requests_total[$__range])) * 100",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -389,7 +389,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(openai_api_request_duration_ms_sum{status=\"success\"}[$__range]) / rate(openai_api_request_duration_ms_count{status=\"success\"}[$__range])",
+          "expr": "sum(rate(ai_api_request_duration_ms_sum{status=\"success\"}[$__range])) / sum(rate(ai_api_request_duration_ms_count{status=\"success\"}[$__range]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -463,7 +463,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(openai_api_request_duration_ms_bucket{status=\"success\"}[$__range])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(ai_api_request_duration_ms_bucket{status=\"success\"}[$__range])) by (le))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -540,7 +540,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "floor(sum by (capability) (increase(openai_api_requests_total[$__range])))",
+          "expr": "floor(sum by (capability) (increase(ai_api_requests_total[$__range])))",
           "legendFormat": "{{capability}}",
           "range": true,
           "refId": "A"
@@ -640,7 +640,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "(sum by (capability) (increase(openai_api_requests_total{status=\"success\"}[$__range])) - sum by (capability) (increase(vague_input_total[$__range]))) / sum by (capability) (increase(openai_api_requests_total[$__range])) * 100",
+          "expr": "sum by (capability) (increase(ai_api_requests_total{status=\"success\"}[$__range])) / sum by (capability) (increase(ai_api_requests_total[$__range])) * 100",
           "legendFormat": "{{capability}}",
           "range": true,
           "refId": "A"
@@ -736,7 +736,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (capability) (rate(openai_api_request_duration_ms_sum{status=\"success\"}[$__range])) / sum by (capability) (rate(openai_api_request_duration_ms_count{status=\"success\"}[$__range]))",
+          "expr": "sum by (capability) (rate(ai_api_request_duration_ms_sum{status=\"success\"}[$__range])) / sum by (capability) (rate(ai_api_request_duration_ms_count{status=\"success\"}[$__range]))",
           "legendFormat": "{{capability}}",
           "range": true,
           "refId": "A"
@@ -832,7 +832,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (capability, le) (rate(openai_api_request_duration_ms_bucket{status=\"success\"}[$__range])))",
+          "expr": "histogram_quantile(0.95, sum by (capability, le) (rate(ai_api_request_duration_ms_bucket{status=\"success\"}[$__range])))",
           "legendFormat": "{{capability}}",
           "range": true,
           "refId": "A"
