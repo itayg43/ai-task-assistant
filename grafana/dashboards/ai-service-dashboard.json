@@ -22,19 +22,6 @@
   "links": [],
   "panels": [
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "panels": [],
-      "title": "Service Overview",
-      "type": "row"
-    },
-    {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -63,7 +50,7 @@
         "h": 6,
         "w": 4,
         "x": 0,
-        "y": 1
+        "y": 0
       },
       "id": 2,
       "options": {
@@ -137,7 +124,7 @@
         "h": 6,
         "w": 4,
         "x": 4,
-        "y": 1
+        "y": 0
       },
       "id": 3,
       "options": {
@@ -211,7 +198,7 @@
         "h": 6,
         "w": 4,
         "x": 8,
-        "y": 1
+        "y": 0
       },
       "id": 4,
       "options": {
@@ -289,7 +276,7 @@
         "h": 6,
         "w": 4,
         "x": 12,
-        "y": 1
+        "y": 0
       },
       "id": 5,
       "options": {
@@ -363,7 +350,7 @@
         "h": 6,
         "w": 4,
         "x": 16,
-        "y": 1
+        "y": 0
       },
       "id": 6,
       "options": {
@@ -437,7 +424,7 @@
         "h": 6,
         "w": 4,
         "x": 20,
-        "y": 1
+        "y": 0
       },
       "id": 7,
       "options": {
@@ -478,11 +465,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 7
+        "y": 6
       },
       "id": 8,
       "panels": [],
-      "title": "Capability Metrics",
+      "title": "Capabilities",
       "type": "row"
     },
     {
@@ -510,7 +497,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 8
+        "y": 7
       },
       "id": 9,
       "options": {
@@ -546,7 +533,7 @@
           "refId": "A"
         }
       ],
-      "title": "Requests by Capability",
+      "title": "Requests (Per Capability)",
       "type": "piechart"
     },
     {
@@ -616,7 +603,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 8
+        "y": 7
       },
       "id": 10,
       "options": {
@@ -646,7 +633,7 @@
           "refId": "A"
         }
       ],
-      "title": "Success Rate by Capability",
+      "title": "Success Rate (Per Capability)",
       "type": "timeseries"
     },
     {
@@ -712,7 +699,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 8
+        "y": 7
       },
       "id": 11,
       "options": {
@@ -742,7 +729,7 @@
           "refId": "A"
         }
       ],
-      "title": "Average Duration by Capability",
+      "title": "Average Duration (Per Capability)",
       "type": "timeseries"
     },
     {
@@ -808,7 +795,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 8
+        "y": 7
       },
       "id": 12,
       "options": {
@@ -838,7 +825,7 @@
           "refId": "A"
         }
       ],
-      "title": "P95 Duration by Capability",
+      "title": "P95 Duration (Per Capability)",
       "type": "timeseries"
     },
     {
@@ -847,7 +834,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 15
       },
       "id": 13,
       "panels": [],
@@ -889,9 +876,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
+        "w": 12,
         "x": 0,
-        "y": 17
+        "y": 16
       },
       "id": 14,
       "options": {
@@ -934,78 +921,6 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "yellow",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "yellow",
-                "value": 10
-              },
-              {
-                "color": "red",
-                "value": 50
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 17
-      },
-      "id": 15,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.3.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "floor(sum(increase(vague_input_total[$__range])))",
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Vague Inputs Detected",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
             "mode": "palette-classic"
           },
           "custom": {
@@ -1021,9 +936,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 17
+        "w": 12,
+        "x": 12,
+        "y": 16
       },
       "id": 16,
       "options": {
@@ -1059,7 +974,7 @@
           "refId": "A"
         }
       ],
-      "title": "Blocked by Pattern Type",
+      "title": "Breakdown (by Pattern Type)",
       "type": "piechart"
     }
   ],
@@ -1078,6 +993,6 @@
   "timezone": "browser",
   "title": "AI Service",
   "uid": "ai-service",
-  "version": 1,
+  "version": 4,
   "weekStart": "sunday"
 }
