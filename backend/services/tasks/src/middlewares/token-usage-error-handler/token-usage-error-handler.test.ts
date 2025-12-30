@@ -43,7 +43,7 @@ describe("tokenUsageErrorHandler", () => {
     vi.clearAllMocks();
   });
 
-  it("should release reservation and propagate non-vague errors", () => {
+  it("should release reservation and propagate errors", () => {
     const unexpectedError = new Error("unexpected");
 
     executeMiddleware(unexpectedError);

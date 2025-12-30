@@ -1,10 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 
-import { AI_ERROR_TYPE } from "@constants";
 import { openaiUpdateTokenUsage } from "@middlewares/token-usage-rate-limiter";
-import { BadRequestError, BaseError } from "@shared/errors";
-import { TAiParseTaskVagueInputErrorData } from "@types";
-import { extractOpenaiTokenUsage } from "@utils/extract-openai-token-usage";
 
 export const tokenUsageErrorHandler = (
   err: unknown,
@@ -17,27 +13,6 @@ export const tokenUsageErrorHandler = (
   // If no reservation or already reconciled, skip update
   if (!tokenUsage || tokenUsage.actualTokens !== undefined) {
     next(err);
-
-    return;
-  }
-
-  if (
-    err instanceof BaseError &&
-    err.context &&
-    err.context.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR
-  ) {
-    const { message, suggestions, openaiMetadata } =
-      err.context as TAiParseTaskVagueInputErrorData;
-
-    tokenUsage.actualTokens = extractOpenaiTokenUsage(openaiMetadata);
-
-    void openaiUpdateTokenUsage(req, res, () => {});
-
-    next(
-      new BadRequestError(message, {
-        suggestions,
-      })
-    );
 
     return;
   }

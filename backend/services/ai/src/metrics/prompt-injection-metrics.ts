@@ -8,5 +8,7 @@ export const promptInjectionBlockedTotal = new Counter({
 });
 
 export const recordPromptInjectionBlocked = (patternType: string): void => {
-  promptInjectionBlockedTotal.inc({ pattern_type: patternType });
+  promptInjectionBlockedTotal.inc({
+    pattern_type: patternType,
+  });
 };
