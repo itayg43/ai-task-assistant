@@ -414,17 +414,17 @@ if (config.pattern === "async") {
 - Import `Capability` from `@types`
 - Define `TCapabilityJobPayload` type (use `T` prefix for domain types):
      ```typescript
-                              export type TCapabilityJobPayload = {
-                                capability: Capability;
-                                input: unknown; // validated input, including naturalLanguage and config
-                                callbackUrl: string;
-                                requestId: string;
-                                userId: number;
-                                tokenReservation?: {
-                                  tokensReserved: number;
-                                  windowStartTimestamp: number;
-                                };
-                              };
+                                   export type TCapabilityJobPayload = {
+                                     capability: Capability;
+                                     input: unknown; // validated input, including naturalLanguage and config
+                                     callbackUrl: string;
+                                     requestId: string;
+                                     userId: number;
+                                     tokenReservation?: {
+                                       tokensReserved: number;
+                                       windowStartTimestamp: number;
+                                     };
+                                   };
      ```
 
 
@@ -670,10 +670,10 @@ if (config.pattern === "async") {
 - Import `TaskResponse` from `@types/task-response`
 - Export `WebhookCallbackResponse` type:
      ```typescript
-                              export type WebhookCallbackResponse = {
-                                tasksServiceRequestId: string;
-                                task: TaskResponse;
-                              };
+                                   export type WebhookCallbackResponse = {
+                                     tasksServiceRequestId: string;
+                                     task: TaskResponse;
+                                   };
      ```
 
 
@@ -835,9 +835,9 @@ if (config.pattern === "async") {
 
 - Update `TExecuteCapabilityConfig` to support async pattern using discriminated union:
      ```typescript
-                              export type TExecuteCapabilityConfig<TCapability extends TAiCapability> = 
-                                | { capability: TCapability; pattern: "sync"; params: TAiCapabilityMap[TCapability]["params"] }
-                                | { capability: TCapability; pattern: "async"; params: TAiCapabilityMap[TCapability]["params"] & { callbackUrl: string; userId: number; tokenReservation?: { tokensReserved: number; windowStartTimestamp: number } } };
+                                   export type TExecuteCapabilityConfig<TCapability extends TAiCapability> = 
+                                     | { capability: TCapability; pattern: "sync"; params: TAiCapabilityMap[TCapability]["params"] }
+                                     | { capability: TCapability; pattern: "async"; params: TAiCapabilityMap[TCapability]["params"] & { callbackUrl: string; userId: number; tokenReservation?: { tokensReserved: number; windowStartTimestamp: number } } };
      ```
 
 
@@ -916,9 +916,9 @@ if (config.pattern === "async") {
 - Import `StatusCodes` from `http-status-codes`
 - In the `res.on("finish")` handler, add check before recording:
      ```typescript
-                              if (res.statusCode === StatusCodes.ACCEPTED) {
-                                return; // Skip metrics for 202 Accepted responses
-                              }
+                                   if (res.statusCode === StatusCodes.ACCEPTED) {
+                                     return; // Skip metrics for 202 Accepted responses
+                                   }
      ```
 
 
@@ -1093,4 +1093,3 @@ Create `docs/implementations/async-ai-processing-rabbitmq.md` with the following
 - `backend/services/tasks/src/config/env.ts`
 - `backend/services/tasks/src/types/ai-capability.ts`
 - `backend/services/tasks/src/types/index.ts`
-- `backend/services/tasks/src/services/tasks-service/tasks-service.ts`
