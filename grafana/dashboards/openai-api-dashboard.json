@@ -162,7 +162,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(increase(openai_api_requests_total{status=\"success\",capability=\"parse-task\"}[$__range])) / sum(increase(openai_api_requests_total{capability=\"parse-task\"}[$__range])) * 100",
+          "expr": "sum(rate(openai_api_requests_total{status=\"success\",capability=\"parse-task\"}[$__range])) / sum(rate(openai_api_requests_total{capability=\"parse-task\"}[$__range])) * 100",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
