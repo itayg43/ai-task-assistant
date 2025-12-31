@@ -5,7 +5,7 @@ import { aiClient } from "@clients/ai";
 import { DEFAULT_PARSE_TASK_CONFIG, AI_ERROR_TYPE } from "@constants";
 import {
   mockAiCapabilityResponse,
-  mockAiErrorData,
+  mockParseTaskVagueInputErrorData,
   mockNaturalLanguage,
   mockRequestId,
 } from "@mocks/tasks-mocks";
@@ -79,7 +79,7 @@ describe("executeCapability", () => {
   it(`should handle HTTP 400 errors with ${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR} type and include suggestions`, async () => {
     const mockHttpError = createHttpError(
       StatusCodes.BAD_REQUEST,
-      mockAiErrorData
+      mockParseTaskVagueInputErrorData
     );
 
     mockedAiClientPost.mockRejectedValue(mockHttpError);
@@ -92,10 +92,12 @@ describe("executeCapability", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(BadRequestError);
       const badRequestError = error as BadRequestError;
-      expect(badRequestError.message).toBe(mockAiErrorData.message);
+      expect(badRequestError.message).toBe(
+        mockParseTaskVagueInputErrorData.message
+      );
       expect(badRequestError.context?.suggestions).toEqual(
         (
-          mockAiErrorData as {
+          mockParseTaskVagueInputErrorData as {
             type: typeof AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR;
             suggestions: string[];
           }
