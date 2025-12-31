@@ -319,6 +319,76 @@ routers.use(
 - Use array syntax for multiple middleware: `[middleware1, middleware2]`
 - Order: `requestId` → `authentication` → `requestResponseMetadata` → rate limiters → route-specific middleware
 
+### Router-Level Error Handlers
+
+**For domain-specific error handling, place error handlers in the router after routes but before global error handler:**
+
+```typescript
+// routers/tasks-router.ts
+import { Router } from "express";
+import { tasksErrorHandler } from "@middlewares/tasks-error-handler";
+import { tokenUsageErrorHandler } from "@middlewares/token-usage-error-handler";
+
+export const tasksRouter = Router();
+
+tasksRouter.use(tasksMetricsMiddleware);
+
+tasksRouter.post("/", [validateSchema(createTaskSchema)], createTask);
+tasksRouter.get("/", [validateSchema(getTasksSchema)], getTasks);
+
+// Domain-specific error handlers (after routes, before global error handler)
+tasksRouter.use(tasksErrorHandler);
+tasksRouter.use(tokenUsageErrorHandler);
+```
+
+**Router Middleware Order:**
+
+1. **Metrics middleware** - Track all requests (at router level)
+2. **Routes** - Route handlers with validation, rate limiting, etc.
+3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
+4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
+5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
+
+**When to use domain-specific error handlers:**
+
+- Record domain-specific metrics (e.g., `recordVagueInput`, `recordPromptInjection`)
+- Sanitize error context before passing to global handler
+- Reconcile state (e.g., token usage) on errors
+- Transform error types specific to your domain
+
+**Domain error handler pattern:**
+
+```typescript
+// middlewares/tasks-error-handler/tasks-error-handler.ts
+export const tasksErrorHandler = (
+  err: unknown,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const isBaseError = err instanceof BaseError;
+  const isBaseErrorWithoutTypeInContext = isBaseError && !err.context?.type;
+  if (!isBaseError || isBaseErrorWithoutTypeInContext) {
+    next(err); // Pass through to next error handler
+    return;
+  }
+
+  const errorData = err.context as TAiErrorData;
+  switch (errorData.type) {
+    case AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR: {
+      // Record metric, reconcile token usage, sanitize error
+      recordVagueInput(res.locals.requestId);
+      // ... handle error
+      next(new BadRequestError(errorData.message, { suggestions }));
+      break;
+    }
+    default: {
+      next(err); // Pass through unhandled types
+    }
+  }
+};
+```
+
 ### Controller Pattern
 
 ```typescript
@@ -362,17 +432,10 @@ export const createTask = async (
       task: taskToResponseDto(task),
     });
 
-    // Continue to post-response middleware
+    // Continue to post-response middleware (e.g., token usage update)
     next();
   } catch (error) {
-    // Handle specific error types if needed
-    if (
-      error instanceof BaseError &&
-      error.context?.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR
-    ) {
-      recordVagueInput(requestId);
-    }
-
+    // Pass errors to error handler middleware (do NOT handle here)
     next(error);
   }
 };
@@ -388,7 +451,18 @@ export const createTask = async (
 6. Log at end with "Operation - succeeded" and results
 7. Send response with appropriate status code
 8. Call `next()` for post-response middleware (if any)
-9. Catch errors, handle special cases, and pass to error handler via `next(error)`
+9. Catch errors and pass to error handler via `next(error)` - **do NOT handle errors in controllers**
+
+**Post-Response Middleware:**
+
+Call `next()` after sending the response to continue to post-response middleware (e.g., token usage reconciliation, metrics recording). These middlewares run after the response is sent but before the request completes.
+
+```typescript
+res.status(StatusCodes.CREATED).json(response);
+
+// Continue to post-response middleware
+next(); // This allows middleware like openaiUpdateTokenUsage to run
+```
 
 ### Response Format
 
@@ -453,7 +527,12 @@ throw new BadRequestError("Input is too vague", {
 
 ### Error Handler
 
-The global error handler:
+**Two levels of error handling:**
+
+1. **Domain-specific error handlers** (in routers) - Handle domain errors, record metrics, sanitize context
+2. **Global error handler** (in `app.ts`) - Final handler for all unhandled errors
+
+**Global error handler:**
 
 - Extracts status, message, and context from errors
 - Filters sensitive fields from context
@@ -461,7 +540,7 @@ The global error handler:
 - Logs errors with full context
 - Returns sanitized response to client
 
-**Do not manually handle common error types** - let the global error handler deal with them:
+**Do not manually handle common error types in controllers** - let error handler middleware deal with them:
 
 ```typescript
 // ✅ Good - let error handler deal with it
@@ -635,6 +714,119 @@ export const mockParsedTask: TParsedTask = {
   subtasks: null,
 };
 ```
+
+### Base Mock Data Pattern
+
+**For tests with multiple scenarios, define base mock data per describe block and override in individual tests:**
+
+```typescript
+import { mockAiErrorData, mockAiCapabilityResponse } from "@mocks/tasks-mocks";
+import { TAiParseTaskVagueInputErrorData } from "@types";
+
+describe(`${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR}`, () => {
+  // Define base mock data using existing mocks from @mocks/ files
+  const baseVagueInputErrorData: TAiParseTaskVagueInputErrorData = {
+    ...(mockAiErrorData as TAiParseTaskVagueInputErrorData),
+  };
+
+  it("should handle specific scenario", () => {
+    // Override base data for this test
+    const vagueInputErrorData: TAiParseTaskVagueInputErrorData = {
+      ...baseVagueInputErrorData,
+      openaiMetadata: {
+        core: {
+          responseId: "id-1",
+          tokens: { input: 100, output: 50 },
+          durationMs: 500,
+        },
+      },
+    };
+    const vagueInputError = new BadRequestError(
+      vagueInputErrorData.message,
+      vagueInputErrorData
+    );
+
+    executeMiddleware(vagueInputError);
+    // ... assertions
+  });
+
+  it("should handle another scenario", () => {
+    // Override different properties
+    const vagueInputErrorData: TAiParseTaskVagueInputErrorData = {
+      ...baseVagueInputErrorData,
+      suggestions: ["Custom suggestion"],
+      openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
+    };
+    const vagueInputError = new BadRequestError(
+      vagueInputErrorData.message,
+      vagueInputErrorData
+    );
+
+    executeMiddleware(vagueInputError);
+    // ... assertions
+  });
+});
+```
+
+**Key principles:**
+
+1. **Reuse existing mocks**: Always import and use mocks from `@mocks/` files (e.g., `mockAiErrorData`, `mockAiCapabilityResponse`)
+2. **Base data per describe block**: Define `base{Entity}Data` constant at the start of each describe block
+3. **Type safety**: Use proper types (e.g., `TAiParseTaskVagueInputErrorData`) for base data
+4. **Override in tests**: Spread base data and override specific properties: `{ ...baseData, property: newValue }`
+5. **Explicit instantiation**: Create error objects explicitly: `new BadRequestError(data.message, data)`
+6. **No helper functions**: Avoid creating test-specific helper functions; use base data pattern instead
+
+**Benefits:**
+
+- Consistent with existing mock data in the codebase
+- Type-safe with proper TypeScript types
+- Explicit and easy to understand what each test is testing
+- Easy to maintain - changes to base mocks automatically reflect in tests
+- No hidden abstractions - all test data is visible
+
+### Parameterized Tests
+
+**Use `it.each` for testing multiple scenarios with the same structure:**
+
+```typescript
+it.each([
+  {
+    description: "when tokenUsage is missing",
+    setup: () => {
+      res.locals = { requestId: mockRequestId };
+    },
+    errorData: (): TAiParseTaskVagueInputErrorData => ({
+      ...baseVagueInputErrorData,
+      openaiMetadata: {
+        /* ... */
+      },
+    }),
+  },
+  {
+    description: "when openaiMetadata is missing",
+    setup: () => {},
+    errorData: (): TAiParseTaskVagueInputErrorData => {
+      const { openaiMetadata, ...dataWithoutMetadata } =
+        baseVagueInputErrorData;
+      return dataWithoutMetadata as TAiParseTaskVagueInputErrorData;
+    },
+  },
+])("should NOT reconcile token usage $description", ({ setup, errorData }) => {
+  setup();
+  const error = new BadRequestError(errorData().message as string, errorData());
+
+  executeMiddleware(error);
+
+  expect(mockedOpenaiUpdateTokenUsage).not.toHaveBeenCalled();
+});
+```
+
+**Benefits:**
+
+- Reduces duplication when testing similar scenarios
+- Makes it easy to add new test cases
+- Clear test descriptions with template variables
 
 ### Integration Test Pattern
 

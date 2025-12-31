@@ -4,6 +4,13 @@
 
 This document summarizes the implementation of **Tasks Retrieval with Pagination**. The implementation adds a paginated `GET /tasks` endpoint with filtering, sorting, and pagination support, always filtering by `userId` for security.
 
+## Architecture Alignment
+
+This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
+- Controller patterns (no error handling in controllers, only `next(error)`)
+- Schema validation with Zod (using `validateSchema` middleware)
+- Repository pattern (data access layer with dependency injection)
+
 ## Architecture Changes
 
 ### API Endpoint
@@ -192,3 +199,17 @@ export type FindTasksResult = {
   - Changed `POST /create` to `POST /`
   - Changed `GET /tasks` to `GET /`
   - Both endpoints now use the same base path `/` with different HTTP methods (RESTful design)
+
+### 10. Error Handling
+
+Errors are handled by the global error handler in `app.ts`. Domain-specific error handling (if needed) would be added to router-level error handlers following project conventions. Controllers only call `next(error)` without handling errors directly.
+
+### 11. Middleware Chain Order
+
+Following project conventions, the middleware chain follows this order:
+
+1. **Metrics middleware** - Track all requests (at router level)
+2. **Routes** - Route handlers with validation, rate limiting, etc.
+3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
+4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
+5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)

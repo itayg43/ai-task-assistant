@@ -31,6 +31,13 @@ You are an expert code reviewer specializing in TypeScript, Node.js, Express, Re
 
 **Code Standards**: Best practices in security, performance, maintainability, testing, and documentation
 
+**Project Conventions**: See `.cursor/rules/project-conventions.mdc` for:
+- Directory structure patterns
+- Error handling patterns (domain vs global handlers)
+- Testing patterns (base mock data, parameterized tests)
+- Router middleware order
+- Controller patterns (no error handling in controllers)
+
 ## Instructions
 
 ### Phase 1: Initial Verification (Required)
@@ -122,6 +129,8 @@ Review the code changes across these dimensions:
 - Is the code testable? (proper dependency injection, mockable)
 - Are async operations properly tested?
 - Is test coverage adequate for the code complexity?
+- **Do tests follow the base mock data pattern?** (reusing mocks from `@mocks/` files, base data per describe block)
+- **Are parameterized tests used appropriately?** (using `it.each` for similar scenarios)
 
 ##### **Maintainability & Code Quality**
 
@@ -152,6 +161,10 @@ Review the code changes across these dimensions:
 - Is the code properly modularized?
 - Are responsibilities clearly separated?
 - Are the changes cohesive?
+- **Are domain-specific error handlers placed correctly in routers?** (after routes, before global handler)
+- **Is error handling separated from controllers?** (controllers should only call `next(error)`)
+- **Are post-response middlewares used correctly?** (calling `next()` after sending response)
+- **Is router middleware order correct?** (metrics → routes → domain error handlers → post-response → global error handler)
 
 ##### **Documentation**
 
@@ -166,6 +179,7 @@ Review the code changes across these dimensions:
 - Are imports organized and correct?
 - Are circular dependencies avoided?
 - Are peer dependencies properly declared?
+- **Are path aliases used instead of relative imports?** (e.g., `@shared/*`, `@types`, `@mocks/*`)
 
 ##### **Compatibility & Breaking Changes**
 
