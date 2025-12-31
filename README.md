@@ -281,38 +281,48 @@ sequenceDiagram
 
 ### Error Handling Flow
 
-When errors occur during task creation, the token usage error handler ensures reserved tokens are properly reconciled:
+When errors occur during task creation, the system uses a two-level error handling approach: domain-specific error handlers process known error types (vague input, prompt injection), and the token usage error handler ensures reserved tokens are properly reconciled for all errors:
 
 ```mermaid
 sequenceDiagram
     participant Controller
-    participant ErrorHandler as Token Usage Error Handler
+    participant TasksErrorHandler as Tasks Error Handler
+    participant TokenErrorHandler as Token Usage Error Handler
     participant UpdateUsage as Update Token Usage
     participant GlobalError as Global Error Handler
     participant Client
 
-    Controller->>ErrorHandler: Error occurs
-    ErrorHandler->>ErrorHandler: Check for token reservation
-    alt No Reservation
-        ErrorHandler->>GlobalError: Pass error through
-    else Has Reservation
-        alt Vague Input Error
-            ErrorHandler->>ErrorHandler: Extract actual tokens from AI response
-            ErrorHandler->>UpdateUsage: Reconcile actual usage
-            ErrorHandler->>GlobalError: BadRequestError with suggestions
-        else Other Error
-            ErrorHandler->>ErrorHandler: Set actual tokens to 0
-            ErrorHandler->>UpdateUsage: Release full reservation
-            ErrorHandler->>GlobalError: Pass original error
-        end
+    Controller->>TasksErrorHandler: Error occurs
+    TasksErrorHandler->>TasksErrorHandler: Check error type
+    alt Domain Error (Vague Input)
+        TasksErrorHandler->>TasksErrorHandler: Record vague input metric
+        TasksErrorHandler->>TasksErrorHandler: Extract actual tokens from AI response
+        TasksErrorHandler->>UpdateUsage: Reconcile actual usage
+        TasksErrorHandler->>TasksErrorHandler: Sanitize error (keep suggestions)
+        TasksErrorHandler->>TokenErrorHandler: Pass sanitized error
+    else Domain Error (Prompt Injection)
+        TasksErrorHandler->>TasksErrorHandler: Record prompt injection metric
+        TasksErrorHandler->>TasksErrorHandler: Sanitize error (remove all context)
+        TasksErrorHandler->>TokenErrorHandler: Pass sanitized error
+    else Other Error
+        TasksErrorHandler->>TokenErrorHandler: Pass error through
+    end
+    TokenErrorHandler->>TokenErrorHandler: Check for token reservation
+    alt No Reservation or Already Reconciled
+        TokenErrorHandler->>GlobalError: Pass error through
+    else Has Unreconciled Reservation
+        TokenErrorHandler->>TokenErrorHandler: Set actual tokens to 0
+        TokenErrorHandler->>UpdateUsage: Release full reservation
+        TokenErrorHandler->>GlobalError: Pass error
     end
     GlobalError-->>Client: Error response
 ```
 
 **Error Scenarios:**
 
-- **Vague Input Error**: AI service returns error with token metadata - actual usage is recorded
-- **Other Errors**: Full reservation is released (tokens set to 0) to prevent incorrect window tracking
+- **Vague Input Error**: Tasks error handler records metric, reconciles token usage with actual tokens from AI response, and sanitizes error to include only user-facing suggestions
+- **Prompt Injection Error**: Tasks error handler records metric and sanitizes error to prevent information leakage about detection mechanisms
+- **Other Errors**: Token usage error handler releases full reservation (tokens set to 0) to prevent incorrect window tracking
 - **No Reservation**: Error passes through without token reconciliation
 
 ## API Examples
@@ -706,7 +716,7 @@ The AI service detects the injection and returns a generic error (internal loggi
 
 **4. Tasks Service Error Response to Client (HTTP 400):**
 
-The Tasks service sanitizes the error before forwarding to prevent information leakage:
+The Tasks service records a prompt injection metric, sanitizes the error before forwarding to prevent information leakage, and ensures no internal details are exposed:
 
 ```json
 {
@@ -714,6 +724,8 @@ The Tasks service sanitizes the error before forwarding to prevent information l
   "tasksServiceRequestId": "83351b92-a14e-4a0f-99eb-1fbe88a20bcc"
 }
 ```
+
+**Note**: The Tasks service records the `tasks_prompt_injection_total` metric for security monitoring, but the error response is sanitized to prevent attackers from learning about detection mechanisms.
 
 ## Shared Library
 
@@ -780,6 +792,7 @@ The Tasks service exposes the following Prometheus metrics:
 - **`tasks_api_requests_total`**: Total number of Tasks API requests (labeled by operation, status)
 - **`tasks_api_request_duration_ms`**: Request duration histogram with percentiles (P95, P99 available)
 - **`tasks_vague_input_total`**: Total number of vague input errors
+- **`tasks_prompt_injection_total`**: Total number of requests blocked due to prompt injection detection (labeled by operation)
 
 ### Grafana Dashboards
 
