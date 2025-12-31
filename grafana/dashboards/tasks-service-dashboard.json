@@ -315,7 +315,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(tasks_api_requests_total{operation=\"create_task\",status=\"success\"}[$__range])) / (sum(increase(tasks_api_requests_total{operation=\"create_task\"}[$__range])) - sum(increase(tasks_vague_input_total[$__range])) - sum(increase(tasks_prompt_injection_total{operation=\"create_task\"}[$__range]))) * 100",
+          "expr": "sum(rate(tasks_api_requests_total{operation=\"create_task\",status=\"success\"}[$__range])) / (sum(rate(tasks_api_requests_total{operation=\"create_task\"}[$__range])) - sum(rate(tasks_vague_input_total[$__range])) - sum(rate(tasks_prompt_injection_total{operation=\"create_task\"}[$__range]))) * 100",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
