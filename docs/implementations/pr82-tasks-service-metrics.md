@@ -204,3 +204,7 @@ Following project conventions, the middleware chain follows this order:
   - Filters by `status="success"` to calculate P95 based only on successful requests
 - **P95 Duration (Get Tasks)**: `histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket{operation="get_tasks",status="success"}[...])) by (le))`
   - Filters by `status="success"` to calculate P95 based only on successful requests
+
+## Related PRs
+
+- **PR #84**: Tasks Error Handling (uses `recordVagueInput` and introduces `recordPromptInjection`)

@@ -346,7 +346,11 @@ tasksRouter.use(tokenUsageErrorHandler);
 1. **Metrics middleware** - Track all requests (at router level)
 2. **Routes** - Route handlers with validation, rate limiting, etc.
 3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
+   - On errors: Runs before global error handler
+   - May call `next()` after sanitization to continue to post-response middleware
 4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
+   - Success path: Runs after successful response
+   - Error path: Only runs if domain error handler calls `next()` (not `next(error)`)
 5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
 
 **When to use domain-specific error handlers:**
@@ -864,7 +868,7 @@ describe("tasksController (integration)", () => {
 
 | Service | Service Metrics                                             | Integration Metrics                                           | Domain Metrics                                        |
 | ------- | ----------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
-| Tasks   | `tasks_api_requests_total`, `tasks_api_request_duration_ms` | (calls AI service)                                            | `tasks_vague_input_total`                             |
+| Tasks   | `tasks_api_requests_total`, `tasks_api_request_duration_ms` | (calls AI service)                                            | `tasks_vague_input_total`, `tasks_prompt_injection_total` |
 | AI      | `ai_api_requests_total`, `ai_api_request_duration_ms`       | `openai_api_requests_total`, `openai_api_request_duration_ms` | `prompt_injection_blocked_total`, `vague_input_total` |
 
 ### Service-Level Metrics (REQUIRED for every service)
@@ -955,19 +959,17 @@ export const recordTasksApiSuccess = (
 
 export const recordTasksApiFailure = (
   operation: TasksOperation,
-  durationMs: number,
   requestId: string
 ): void => {
   const status = "failure";
 
   tasksApiRequestsTotal.inc({ operation, status });
-  tasksApiRequestDurationMs.observe({ operation, status }, durationMs);
+  // Note: Duration is NOT recorded for failures
 
   logger.debug("Recorded tasks API failure metrics", {
     requestId,
     operation,
     status,
-    durationMs,
   });
 };
 ```
@@ -1009,8 +1011,8 @@ export const tasksMetricsMiddleware = createMetricsMiddleware({
   recorder: {
     recordSuccess: (operation, durationMs, requestId) =>
       recordTasksApiSuccess(operation as TasksOperation, durationMs, requestId),
-    recordFailure: (operation, durationMs, requestId) =>
-      recordTasksApiFailure(operation as TasksOperation, durationMs, requestId),
+    recordFailure: (operation, requestId) =>
+      recordTasksApiFailure(operation as TasksOperation, requestId),
   },
 });
 ```
@@ -1295,6 +1297,7 @@ Use prefixes to indicate type categories:
 ```typescript
 // constants/index.ts - Barrel file
 export { AI_ERROR_TYPE } from "./ai-error-types";
+export { TASKS_OPERATION } from "./tasks-operation";
 export {
   GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
   GET_TASKS_DEFAULT_SKIP,
@@ -1306,6 +1309,14 @@ export const AI_ERROR_TYPE = {
   PARSE_TASK_VAGUE_INPUT_ERROR: "PARSE_TASK_VAGUE_INPUT_ERROR",
   PROMPT_INJECTION_DETECTED: "PROMPT_INJECTION_DETECTED",
 } as const;
+
+// constants/tasks-operation.ts
+export const TASKS_OPERATION = {
+  CREATE_TASK: "create_task",
+  GET_TASKS: "get_tasks",
+} as const;
+
+// Usage: Used in metrics recording and error handlers for type-safe operation tracking
 
 // constants/get-tasks.ts
 export const GET_TASKS_DEFAULT_SKIP = 0;
@@ -1327,6 +1338,7 @@ export const GET_TASKS_ALLOWED_ORDER_DIRECTIONS = ["asc", "desc"] as const;
 ```typescript
 import {
   AI_ERROR_TYPE,
+  TASKS_OPERATION,
   GET_TASKS_DEFAULT_SKIP,
   GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
 } from "@constants";
@@ -1334,6 +1346,9 @@ import {
 if (error.context?.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR) {
   // Handle vague input
 }
+
+// Use TASKS_OPERATION for type-safe operation tracking
+recordTasksApiSuccess(TASKS_OPERATION.CREATE_TASK, durationMs, requestId);
 ```
 
 ## Comments and Documentation
