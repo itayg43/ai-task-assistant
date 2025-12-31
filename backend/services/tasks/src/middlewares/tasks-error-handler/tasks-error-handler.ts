@@ -36,6 +36,8 @@ export const tasksErrorHandler = (
     case AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED: {
       recordPromptInjection(TASKS_OPERATION.CREATE_TASK, res.locals.requestId);
 
+      // Sanitize error: remove all context to prevent information leakage
+      // about detection mechanisms
       next(new BadRequestError(errorData.message));
 
       break;
@@ -47,6 +49,19 @@ export const tasksErrorHandler = (
   }
 };
 
+/**
+ * Handles vague input errors by recording metrics, reconciling token usage,
+ * and sanitizing the error before passing to the next handler.
+ *
+ * Records the vague input metric, extracts actual token usage from OpenAI metadata
+ * if available, reconciles the token usage reservation, and creates a sanitized
+ * error response containing only user-facing suggestions.
+ *
+ * @param req - Express request object
+ * @param res - Express response object (must have requestId and optional tokenUsage in locals)
+ * @param next - Express next function to pass sanitized error to next handler
+ * @param errorData - Vague input error data containing message, suggestions, and optional openaiMetadata
+ */
 function parseTaskVagueInputErrorHandler(
   req: Request,
   res: Response,
@@ -68,6 +83,8 @@ function parseTaskVagueInputErrorHandler(
     void openaiUpdateTokenUsage(req, res, () => {});
   }
 
+  // Sanitize error: remove openaiMetadata and other internal details,
+  // keep only user-facing suggestions for vague input errors
   next(
     new BadRequestError(message, {
       suggestions,

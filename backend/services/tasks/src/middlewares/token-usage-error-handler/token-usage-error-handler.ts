@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 
 import { openaiUpdateTokenUsage } from "@middlewares/token-usage-rate-limiter";
+import { createLogger } from "@shared/config/create-logger";
+
+const logger = createLogger("tokenUsageErrorHandler");
 
 export const tokenUsageErrorHandler = (
   err: unknown,
@@ -12,6 +15,11 @@ export const tokenUsageErrorHandler = (
 
   // If no reservation or already reconciled, skip update
   if (!tokenUsage || tokenUsage.actualTokens !== undefined) {
+    logger.debug("Token usage reconciliation skipped", {
+      requestId: res.locals.requestId,
+      tokenUsage,
+    });
+
     next(err);
 
     return;
