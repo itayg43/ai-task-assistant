@@ -319,6 +319,80 @@ routers.use(
 - Use array syntax for multiple middleware: `[middleware1, middleware2]`
 - Order: `requestId` → `authentication` → `requestResponseMetadata` → rate limiters → route-specific middleware
 
+### Router-Level Error Handlers
+
+**For domain-specific error handling, place error handlers in the router after routes but before global error handler:**
+
+```typescript
+// routers/tasks-router.ts
+import { Router } from "express";
+import { tasksErrorHandler } from "@middlewares/tasks-error-handler";
+import { tokenUsageErrorHandler } from "@middlewares/token-usage-error-handler";
+
+export const tasksRouter = Router();
+
+tasksRouter.use(tasksMetricsMiddleware);
+
+tasksRouter.post("/", [validateSchema(createTaskSchema)], createTask);
+tasksRouter.get("/", [validateSchema(getTasksSchema)], getTasks);
+
+// Domain-specific error handlers (after routes, before global error handler)
+tasksRouter.use(tasksErrorHandler);
+tasksRouter.use(tokenUsageErrorHandler);
+```
+
+**Router Middleware Order:**
+
+1. **Metrics middleware** - Track all requests (at router level)
+2. **Routes** - Route handlers with validation, rate limiting, etc.
+3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
+   - On errors: Runs before global error handler
+   - May call `next()` after sanitization to continue to post-response middleware
+4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
+   - Success path: Runs after successful response
+   - Error path: Only runs if domain error handler calls `next()` (not `next(error)`)
+5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
+
+**When to use domain-specific error handlers:**
+
+- Record domain-specific metrics (e.g., `recordVagueInput`, `recordPromptInjection`)
+- Sanitize error context before passing to global handler
+- Reconcile state (e.g., token usage) on errors
+- Transform error types specific to your domain
+
+**Domain error handler pattern:**
+
+```typescript
+// middlewares/tasks-error-handler/tasks-error-handler.ts
+export const tasksErrorHandler = (
+  err: unknown,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const isBaseError = err instanceof BaseError;
+  const isBaseErrorWithoutTypeInContext = isBaseError && !err.context?.type;
+  if (!isBaseError || isBaseErrorWithoutTypeInContext) {
+    next(err); // Pass through to next error handler
+    return;
+  }
+
+  const errorData = err.context as TAiErrorData;
+  switch (errorData.type) {
+    case AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR: {
+      // Record metric, reconcile token usage, sanitize error
+      recordVagueInput(res.locals.requestId);
+      // ... handle error
+      next(new BadRequestError(errorData.message, { suggestions }));
+      break;
+    }
+    default: {
+      next(err); // Pass through unhandled types
+    }
+  }
+};
+```
+
 ### Controller Pattern
 
 ```typescript
@@ -362,17 +436,10 @@ export const createTask = async (
       task: taskToResponseDto(task),
     });
 
-    // Continue to post-response middleware
+    // Continue to post-response middleware (e.g., token usage update)
     next();
   } catch (error) {
-    // Handle specific error types if needed
-    if (
-      error instanceof BaseError &&
-      error.context?.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR
-    ) {
-      recordVagueInput(requestId);
-    }
-
+    // Pass errors to error handler middleware (do NOT handle here)
     next(error);
   }
 };
@@ -388,7 +455,18 @@ export const createTask = async (
 6. Log at end with "Operation - succeeded" and results
 7. Send response with appropriate status code
 8. Call `next()` for post-response middleware (if any)
-9. Catch errors, handle special cases, and pass to error handler via `next(error)`
+9. Catch errors and pass to error handler via `next(error)` - **do NOT handle errors in controllers**
+
+**Post-Response Middleware:**
+
+Call `next()` after sending the response to continue to post-response middleware (e.g., token usage reconciliation, metrics recording). These middlewares run after the response is sent but before the request completes.
+
+```typescript
+res.status(StatusCodes.CREATED).json(response);
+
+// Continue to post-response middleware
+next(); // This allows middleware like openaiUpdateTokenUsage to run
+```
 
 ### Response Format
 
@@ -453,7 +531,12 @@ throw new BadRequestError("Input is too vague", {
 
 ### Error Handler
 
-The global error handler:
+**Two levels of error handling:**
+
+1. **Domain-specific error handlers** (in routers) - Handle domain errors, record metrics, sanitize context
+2. **Global error handler** (in `app.ts`) - Final handler for all unhandled errors
+
+**Global error handler:**
 
 - Extracts status, message, and context from errors
 - Filters sensitive fields from context
@@ -461,7 +544,7 @@ The global error handler:
 - Logs errors with full context
 - Returns sanitized response to client
 
-**Do not manually handle common error types** - let the global error handler deal with them:
+**Do not manually handle common error types in controllers** - let error handler middleware deal with them:
 
 ```typescript
 // ✅ Good - let error handler deal with it
@@ -636,6 +719,119 @@ export const mockParsedTask: TParsedTask = {
 };
 ```
 
+### Base Mock Data Pattern
+
+**For tests with multiple scenarios, define base mock data per describe block and override in individual tests:**
+
+```typescript
+import { mockAiErrorData, mockAiCapabilityResponse } from "@mocks/tasks-mocks";
+import { TAiParseTaskVagueInputErrorData } from "@types";
+
+describe(`${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR}`, () => {
+  // Define base mock data using existing mocks from @mocks/ files
+  const baseVagueInputErrorData: TAiParseTaskVagueInputErrorData = {
+    ...(mockAiErrorData as TAiParseTaskVagueInputErrorData),
+  };
+
+  it("should handle specific scenario", () => {
+    // Override base data for this test
+    const vagueInputErrorData: TAiParseTaskVagueInputErrorData = {
+      ...baseVagueInputErrorData,
+      openaiMetadata: {
+        core: {
+          responseId: "id-1",
+          tokens: { input: 100, output: 50 },
+          durationMs: 500,
+        },
+      },
+    };
+    const vagueInputError = new BadRequestError(
+      vagueInputErrorData.message,
+      vagueInputErrorData
+    );
+
+    executeMiddleware(vagueInputError);
+    // ... assertions
+  });
+
+  it("should handle another scenario", () => {
+    // Override different properties
+    const vagueInputErrorData: TAiParseTaskVagueInputErrorData = {
+      ...baseVagueInputErrorData,
+      suggestions: ["Custom suggestion"],
+      openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
+    };
+    const vagueInputError = new BadRequestError(
+      vagueInputErrorData.message,
+      vagueInputErrorData
+    );
+
+    executeMiddleware(vagueInputError);
+    // ... assertions
+  });
+});
+```
+
+**Key principles:**
+
+1. **Reuse existing mocks**: Always import and use mocks from `@mocks/` files (e.g., `mockAiErrorData`, `mockAiCapabilityResponse`)
+2. **Base data per describe block**: Define `base{Entity}Data` constant at the start of each describe block
+3. **Type safety**: Use proper types (e.g., `TAiParseTaskVagueInputErrorData`) for base data
+4. **Override in tests**: Spread base data and override specific properties: `{ ...baseData, property: newValue }`
+5. **Explicit instantiation**: Create error objects explicitly: `new BadRequestError(data.message, data)`
+6. **No helper functions**: Avoid creating test-specific helper functions; use base data pattern instead
+
+**Benefits:**
+
+- Consistent with existing mock data in the codebase
+- Type-safe with proper TypeScript types
+- Explicit and easy to understand what each test is testing
+- Easy to maintain - changes to base mocks automatically reflect in tests
+- No hidden abstractions - all test data is visible
+
+### Parameterized Tests
+
+**Use `it.each` for testing multiple scenarios with the same structure:**
+
+```typescript
+it.each([
+  {
+    description: "when tokenUsage is missing",
+    setup: () => {
+      res.locals = { requestId: mockRequestId };
+    },
+    errorData: (): TAiParseTaskVagueInputErrorData => ({
+      ...baseVagueInputErrorData,
+      openaiMetadata: {
+        /* ... */
+      },
+    }),
+  },
+  {
+    description: "when openaiMetadata is missing",
+    setup: () => {},
+    errorData: (): TAiParseTaskVagueInputErrorData => {
+      const { openaiMetadata, ...dataWithoutMetadata } =
+        baseVagueInputErrorData;
+      return dataWithoutMetadata as TAiParseTaskVagueInputErrorData;
+    },
+  },
+])("should NOT reconcile token usage $description", ({ setup, errorData }) => {
+  setup();
+  const error = new BadRequestError(errorData().message as string, errorData());
+
+  executeMiddleware(error);
+
+  expect(mockedOpenaiUpdateTokenUsage).not.toHaveBeenCalled();
+});
+```
+
+**Benefits:**
+
+- Reduces duplication when testing similar scenarios
+- Makes it easy to add new test cases
+- Clear test descriptions with template variables
+
 ### Integration Test Pattern
 
 ```typescript
@@ -667,6 +863,48 @@ describe("tasksController (integration)", () => {
 ```
 
 ## Metrics with Prometheus
+
+### Metrics Quick Reference
+
+| Service | Service Metrics                                             | Integration Metrics                                           | Domain Metrics                                        |
+| ------- | ----------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
+| Tasks   | `tasks_api_requests_total`, `tasks_api_request_duration_ms` | (calls AI service)                                            | `tasks_vague_input_total`, `tasks_prompt_injection_total` |
+| AI      | `ai_api_requests_total`, `ai_api_request_duration_ms`       | `openai_api_requests_total`, `openai_api_request_duration_ms` | `prompt_injection_blocked_total`, `vague_input_total` |
+
+### Service-Level Metrics (REQUIRED for every service)
+
+Every service MUST define its own service-level metrics. These track ALL incoming requests to the service and the full request duration.
+
+| Metric Name                         | Type      | Purpose                                  |
+| ----------------------------------- | --------- | ---------------------------------------- |
+| `{service}_api_requests_total`      | Counter   | Total incoming requests to the service   |
+| `{service}_api_request_duration_ms` | Histogram | Full request duration (entire lifecycle) |
+
+**Labels:**
+
+- `operation` or `capability` - The specific operation being performed
+- `status` - Either `"success"` or `"failure"`
+
+**Examples:**
+
+- Tasks service: `tasks_api_requests_total`, `tasks_api_request_duration_ms`
+- AI service: `ai_api_requests_total`, `ai_api_request_duration_ms`
+
+### Integration Metrics (for external API calls)
+
+External API calls get SEPARATE metrics to track integration health. These are NOT service-level metrics.
+
+```typescript
+// Integration metrics - track external dependency health
+openai_api_requests_total; // OpenAI API call tracking
+openai_api_request_duration_ms; // OpenAI API latency
+openai_api_tokens_total; // Token usage for cost tracking
+```
+
+**Key distinction:**
+
+- **Service metrics** = Track the service's own health (all incoming requests)
+- **Integration metrics** = Track external dependency health (subset of requests that call external APIs)
 
 ### Metrics Definition Pattern
 
@@ -721,19 +959,17 @@ export const recordTasksApiSuccess = (
 
 export const recordTasksApiFailure = (
   operation: TasksOperation,
-  durationMs: number,
   requestId: string
 ): void => {
   const status = "failure";
 
   tasksApiRequestsTotal.inc({ operation, status });
-  tasksApiRequestDurationMs.observe({ operation, status }, durationMs);
+  // Note: Duration is NOT recorded for failures
 
   logger.debug("Recorded tasks API failure metrics", {
     requestId,
     operation,
     status,
-    durationMs,
   });
 };
 ```
@@ -744,33 +980,67 @@ export const recordTasksApiFailure = (
 - Debug logging when recording
 - `requestId` in log context for traceability
 
-### Metrics Middleware Pattern
+### Metrics Middleware Pattern (REQUIRED)
+
+Every service router MUST apply a metrics middleware to track all incoming requests:
 
 ```typescript
-import { metricsMiddleware } from "@shared/middlewares/metrics";
+// Tasks service
+tasksRouter.use(tasksMetricsMiddleware);
+
+// AI service
+capabilitiesRouter.use(aiMetricsMiddleware);
+```
+
+This ensures ALL requests are tracked, including those that fail early (validation, auth, rate limiting, etc.).
+
+**Implementation pattern:**
+
+```typescript
+import { createMetricsMiddleware } from "@shared/middlewares/metrics";
 import {
   recordTasksApiSuccess,
   recordTasksApiFailure,
 } from "@metrics/tasks-metrics";
 
-export const tasksMetricsMiddleware = metricsMiddleware({
-  onSuccess: (operation, durationMs, requestId) => {
-    recordTasksApiSuccess(operation as TasksOperation, durationMs, requestId);
+export const tasksMetricsMiddleware = createMetricsMiddleware({
+  operationsMap: {
+    POST: "create_task",
+    GET: "get_tasks",
   },
-  onFailure: (operation, durationMs, requestId) => {
-    recordTasksApiFailure(operation as TasksOperation, durationMs, requestId);
-  },
-  getOperationFromPath: (path: string): string | null => {
-    if (path === "/api/v1/tasks" || path === "/") return "get_tasks";
-    return null;
-  },
-  getOperationFromRequest: (req): string | null => {
-    if (req.method === "POST" && req.path === "/") return "create_task";
-    if (req.method === "GET" && req.path === "/") return "get_tasks";
-    return null;
+  recorder: {
+    recordSuccess: (operation, durationMs, requestId) =>
+      recordTasksApiSuccess(operation as TasksOperation, durationMs, requestId),
+    recordFailure: (operation, requestId) =>
+      recordTasksApiFailure(operation as TasksOperation, requestId),
   },
 });
 ```
+
+### Metrics Anti-Patterns
+
+**❌ Don't use integration metrics for service dashboards:**
+
+```typescript
+// Wrong: Using OpenAI metrics for AI service health
+floor(sum(increase(openai_api_requests_total[$__range])));
+
+// Wrong: Complex calculation that misses edge cases
+openai_api_requests_total + prompt_injection_blocked_total;
+```
+
+**✅ Use service-level metrics:**
+
+```typescript
+// Correct: Using AI service's own metrics (captures ALL requests)
+floor(sum(increase(ai_api_requests_total[$__range])));
+```
+
+**Why this matters:**
+
+- Integration metrics miss requests blocked before the external call (e.g., prompt injections)
+- Integration metrics only track the external call duration, not the full request
+- Complex calculations are error-prone and hard to maintain
 
 ## Database with Prisma (Tasks Service)
 
@@ -1027,6 +1297,7 @@ Use prefixes to indicate type categories:
 ```typescript
 // constants/index.ts - Barrel file
 export { AI_ERROR_TYPE } from "./ai-error-types";
+export { TASKS_OPERATION } from "./tasks-operation";
 export {
   GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
   GET_TASKS_DEFAULT_SKIP,
@@ -1038,6 +1309,14 @@ export const AI_ERROR_TYPE = {
   PARSE_TASK_VAGUE_INPUT_ERROR: "PARSE_TASK_VAGUE_INPUT_ERROR",
   PROMPT_INJECTION_DETECTED: "PROMPT_INJECTION_DETECTED",
 } as const;
+
+// constants/tasks-operation.ts
+export const TASKS_OPERATION = {
+  CREATE_TASK: "create_task",
+  GET_TASKS: "get_tasks",
+} as const;
+
+// Usage: Used in metrics recording and error handlers for type-safe operation tracking
 
 // constants/get-tasks.ts
 export const GET_TASKS_DEFAULT_SKIP = 0;
@@ -1059,6 +1338,7 @@ export const GET_TASKS_ALLOWED_ORDER_DIRECTIONS = ["asc", "desc"] as const;
 ```typescript
 import {
   AI_ERROR_TYPE,
+  TASKS_OPERATION,
   GET_TASKS_DEFAULT_SKIP,
   GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
 } from "@constants";
@@ -1066,6 +1346,9 @@ import {
 if (error.context?.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR) {
   // Handle vague input
 }
+
+// Use TASKS_OPERATION for type-safe operation tracking
+recordTasksApiSuccess(TASKS_OPERATION.CREATE_TASK, durationMs, requestId);
 ```
 
 ## Comments and Documentation
@@ -1167,6 +1450,44 @@ export const env = envSchema.parse(process.env);
 
 ## AI Service Specific Patterns
 
+### Required Metrics Structure
+
+The AI service MUST have three types of metrics:
+
+**1. Service metrics** (`ai_api_*`) - Track all capability executions:
+
+```typescript
+// metrics/ai-service-metrics/ai-service-metrics.ts
+ai_api_requests_total; // Counter: all incoming requests
+ai_api_request_duration_ms; // Histogram: full request duration
+```
+
+**2. Integration metrics** (`openai_api_*`) - Track OpenAI API calls:
+
+```typescript
+// metrics/openai-metrics.ts
+openai_api_requests_total; // Counter: OpenAI API calls
+openai_api_request_duration_ms; // Histogram: OpenAI call duration
+openai_api_tokens_total; // Counter: token usage
+```
+
+**3. Domain metrics** - Track security and validation events:
+
+```typescript
+// metrics/prompt-injection-metrics.ts
+prompt_injection_blocked_total; // Counter: blocked for security
+
+// metrics/parse-task-metrics.ts
+vague_input_total; // Counter: rejected as too vague
+```
+
+**Dashboard separation:**
+
+| Dashboard  | Metrics        | Purpose                           |
+| ---------- | -------------- | --------------------------------- |
+| AI Service | `ai_api_*`     | Service health, all requests      |
+| OpenAI API | `openai_api_*` | OpenAI integration, costs, tokens |
+
 ### Capability Definition Pattern
 
 ```typescript
@@ -1209,7 +1530,14 @@ Following these conventions ensures:
 - **Maintainability**: Clear patterns make updates easier
 - **Testability**: Dependency injection and separation of concerns enable testing
 - **Type Safety**: Strong typing catches errors at compile time
-- **Observability**: Structured logging and metrics provide visibility
+- **Observability**: Structured logging and service-level metrics provide visibility
 - **Scalability**: Clean architecture supports growth
+
+**Key principles to remember:**
+
+1. Every service MUST have its own service-level metrics (`{service}_api_*`)
+2. Integration metrics track external dependencies, NOT service health
+3. Use metrics middleware at the router level to capture ALL requests
+4. Keep dashboards focused: service dashboard uses service metrics, integration dashboard uses integration metrics
 
 When in doubt, look at existing code in the same service for reference patterns.

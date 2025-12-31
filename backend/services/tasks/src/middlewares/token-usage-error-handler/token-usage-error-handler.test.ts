@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tokenUsageErrorHandler } from "@middlewares/token-usage-error-handler";
@@ -17,9 +17,11 @@ vi.mock("@middlewares/token-usage-rate-limiter", () => ({
 describe("tokenUsageErrorHandler", () => {
   let mockedOpenaiUpdateTokenUsage: Mocked<typeof mockOpenaiUpdateTokenUsage>;
 
+  let mockError: Error;
+
   let req: Partial<Request>;
   let res: Partial<Response>;
-  let next: NextFunction;
+  let next: ReturnType<typeof vi.fn>;
 
   const executeMiddleware = (error: unknown) => {
     tokenUsageErrorHandler(error, req as Request, res as Response, next);
@@ -28,14 +30,15 @@ describe("tokenUsageErrorHandler", () => {
   beforeEach(() => {
     mockedOpenaiUpdateTokenUsage = vi.mocked(mockOpenaiUpdateTokenUsage);
 
-    req = {} as Request;
+    mockError = new Error("Error");
 
+    req = {};
     res = {
       locals: {
-        tokenUsage: { ...mockTokenUsage },
+        requestId: mockRequestId,
+        tokenUsage: mockTokenUsage,
       },
-    } as Partial<Response>;
-
+    };
     next = vi.fn();
   });
 
@@ -43,26 +46,41 @@ describe("tokenUsageErrorHandler", () => {
     vi.clearAllMocks();
   });
 
-  it("should release reservation and propagate non-vague errors", () => {
-    const unexpectedError = new Error("unexpected");
-
-    executeMiddleware(unexpectedError);
+  it("should release reservation and propagate errors", () => {
+    executeMiddleware(mockError);
 
     expect(res.locals?.tokenUsage?.actualTokens).toBe(0);
     expect(mockedOpenaiUpdateTokenUsage).toHaveBeenCalledTimes(1);
-    expect(next).toHaveBeenCalledWith(unexpectedError);
+    expect(next).toHaveBeenCalledWith(mockError);
   });
 
-  it("should skip update when no reservation exists", () => {
-    res.locals = {
-      requestId: mockRequestId,
-    }; // no tokenUsage
+  it.each([
+    {
+      description: "no reservation exists",
+      setResLocals: () => {
+        res.locals = {
+          requestId: mockRequestId,
+        };
+      },
+    },
+    {
+      description: "token usage is already reconciled",
+      setResLocals: () => {
+        res.locals = {
+          requestId: mockRequestId,
+          tokenUsage: {
+            ...mockTokenUsage,
+            actualTokens: 150, // Already reconciled
+          },
+        };
+      },
+    },
+  ])("should skip update when $description", ({ setResLocals }) => {
+    setResLocals();
 
-    const unexpectedError = new Error("unexpected");
-
-    executeMiddleware(unexpectedError);
+    executeMiddleware(mockError);
 
     expect(mockedOpenaiUpdateTokenUsage).not.toHaveBeenCalled();
-    expect(next).toHaveBeenCalledWith(unexpectedError);
+    expect(next).toHaveBeenCalledWith(mockError);
   });
 });

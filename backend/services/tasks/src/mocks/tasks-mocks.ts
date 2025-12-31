@@ -1,14 +1,15 @@
 import { AI_ERROR_TYPE } from "@constants";
-import { type Subtask } from "@repositories/subtasks-repository";
-import {
-  type FindTasksResult,
-  type Task,
-  type TaskWithSubtasks,
+import type { Subtask } from "@repositories/subtasks-repository";
+import type {
+  FindTasksResult,
+  Task,
+  TaskWithSubtasks,
 } from "@repositories/tasks-repository";
-import {
+import type {
   GetTasksInput,
   TAiCapabilityResponse,
-  TAiErrorData,
+  TAiParseTaskVagueInputErrorData,
+  TAiPromptInjectionDetectedErrorData,
   TParsedTask,
 } from "@types";
 
@@ -43,16 +44,23 @@ export const mockAiCapabilityResponse: TAiCapabilityResponse<TParsedTask> = {
   aiServiceRequestId: "ai-service-request-id-123",
 };
 
-export const mockAiErrorData: TAiErrorData = {
-  message:
-    "The input is too vague - it doesn't specify what needs to be planned.",
-  type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
-  suggestions: [
-    "What specifically needs to be planned? (e.g., 'Plan vacation', 'Plan team meeting')",
-    "What is the context or category? (work, personal, etc.)",
-  ],
-  openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
-};
+export const mockParseTaskVagueInputErrorData: TAiParseTaskVagueInputErrorData =
+  {
+    message:
+      "The input is too vague - it doesn't specify what needs to be planned.",
+    type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
+    suggestions: [
+      "What specifically needs to be planned? (e.g., 'Plan vacation', 'Plan team meeting')",
+      "What is the context or category? (work, personal, etc.)",
+    ],
+    openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
+  };
+
+export const mockPromptInjectionErrorData: TAiPromptInjectionDetectedErrorData =
+  {
+    message: "Invalid input provided.",
+    type: AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED,
+  };
 
 export const mockUserId = 1;
 

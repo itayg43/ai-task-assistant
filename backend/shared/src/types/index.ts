@@ -7,6 +7,7 @@ export type { LoggerLogLevel } from "./logger-log-level";
 export type {
   CreateMetricsMiddlewareOptions,
   MetricsRecorder,
+  OperationResolver,
   OperationsMap,
 } from "./metrics-middleware";
 export type { Mocked } from "./mocked";

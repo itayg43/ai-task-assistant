@@ -4,6 +4,13 @@
 
 This document summarizes the implementation of **Prompt Injection Detection & Blocking** for AI capabilities. This feature blocks requests containing malicious patterns to prevent prompt injection attacks and jailbreaking attempts.
 
+## Architecture Alignment
+
+This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
+- Router middleware order (validation → prompt injection check → capability execution)
+- Domain-specific error handlers (error sanitization in routers)
+- Two-level error handling (domain handlers + global handler)
+
 ## Implementation Approach
 
 **Detection & Blocking Strategy:**
@@ -43,10 +50,23 @@ This document summarizes the implementation of **Prompt Injection Detection & Bl
 - Created `validate-prompt-injection` middleware
 - Middleware reads required `promptInjectionFields` from capability config
 - Automatically validates specified fields using dot notation paths (e.g., "body.naturalLanguage")
-- Integrated into router middleware chain after input validation
+- **Router placement**: Integrated into router middleware chain after input validation (`validateCapabilityInput`) and before capability execution
+- **Error handler placement**: Error sanitization happens in domain error handlers (AI service) and router error handlers (Tasks service), following project conventions for two-level error handling
 - Future capabilities must declare `promptInjectionFields` (use `[]` if no user input)
 - Making field required ensures developers explicitly consider injection detection for every capability
 - If a capability has no user input to validate, developers must explicitly use empty array `[]`, which documents the intentional decision
+
+**Middleware Chain Order**:
+
+Following project conventions, the middleware chain follows this order:
+
+1. **Metrics middleware** - Track all requests (at router level)
+2. **Routes** - Route handlers with validation, rate limiting, etc.
+3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
+4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
+5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
+
+The prompt injection validation middleware runs after input validation and before capability execution.
 
 ### Part 4: Error Response Sanitization (PR #75)
 

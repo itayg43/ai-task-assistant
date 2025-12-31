@@ -13,7 +13,7 @@ export const tasksMetricsMiddleware = createMetricsMiddleware({
   recorder: {
     recordSuccess: (operation: string, durationMs: number, requestId: string) =>
       recordTasksApiSuccess(operation as TasksOperation, durationMs, requestId),
-    recordFailure: (operation: string, durationMs: number, requestId: string) =>
-      recordTasksApiFailure(operation as TasksOperation, durationMs, requestId),
+    recordFailure: (operation: string, requestId: string) =>
+      recordTasksApiFailure(operation as TasksOperation, requestId),
   },
 });

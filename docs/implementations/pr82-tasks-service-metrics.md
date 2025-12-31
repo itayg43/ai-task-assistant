@@ -4,6 +4,13 @@
 
 This document tracks the implementation of **Tasks Service Prometheus Metrics**. The implementation adds comprehensive metrics tracking for the Tasks service operations including request counts, success rates, duration percentiles, and vague input error tracking. Additionally, it refactors the Prometheus registry to be shared between both AI and Tasks services.
 
+## Architecture Alignment
+
+This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
+- Router-level error handlers (domain-specific error handling in routers)
+- Metrics middleware pattern (service-level metrics tracking)
+- Controller patterns (no error handling in controllers)
+
 ## Implementation Details
 
 ### 1. Refactor Prometheus Registry and Metrics Router to Shared Package
@@ -87,20 +94,32 @@ All helper functions include `logger.debug()` calls for observability.
 - Added middleware to both POST and GET routes in tasks-router
 - Middleware is placed first in the middleware chain to capture full request duration including validation and rate limiting
 
-### 5. Record Vague Input Metric in Controller
+**Middleware Chain Order**:
 
-**Rationale**: Recording vague input metrics in the controller keeps metrics with business logic and maintains separation of concerns (token handler focuses only on token reconciliation).
+Following project conventions, the middleware chain follows this order:
+
+1. **Metrics middleware** - Track all requests (at router level)
+2. **Routes** - Route handlers with validation, rate limiting, etc.
+3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
+4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
+5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
+
+### 5. Record Vague Input Metric in Domain Error Handler
+
+**Rationale**: Recording vague input metrics in domain-specific error handler middleware keeps metrics with error handling logic and maintains separation of concerns (controllers focus only on business logic, error handlers focus on error processing).
 
 **Implementation**:
 
-- Added vague input detection in `createTask` catch block
+- Added vague input detection in `tasksErrorHandler` middleware
 - Checks if error is `BaseError` with type `AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR`
-- Calls `recordVagueInput(requestId)` before passing error to next middleware
+- Calls `recordVagueInput(requestId)` before sanitizing and passing error to next middleware
+- Middleware is placed in router after routes, before global error handler (following project conventions for router-level error handlers)
 
 **Tests**: Added unit tests covering:
 
 - Vague input metric is recorded when AI returns PARSE_TASK_VAGUE_INPUT_ERROR
 - Vague input metric is NOT recorded for other error types
+- Error is properly sanitized before passing to global error handler
 
 ### 6. Add Metrics Endpoint to Tasks Service
 
@@ -185,3 +204,7 @@ All helper functions include `logger.debug()` calls for observability.
   - Filters by `status="success"` to calculate P95 based only on successful requests
 - **P95 Duration (Get Tasks)**: `histogram_quantile(0.95, sum(rate(tasks_api_request_duration_ms_bucket{operation="get_tasks",status="success"}[...])) by (le))`
   - Filters by `status="success"` to calculate P95 based only on successful requests
+
+## Related PRs
+
+- **PR #84**: Tasks Error Handling (uses `recordVagueInput` and introduces `recordPromptInjection`)

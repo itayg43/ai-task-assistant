@@ -68,6 +68,7 @@ export const createPromClientMock = () => {
  *
  * // In tests
  * expect(mockRecordSuccess).toHaveBeenCalledWith("operation", 2500, "request-id");
+ * expect(mockRecordFailure).toHaveBeenCalledWith("operation", "request-id");
  * ```
  */
 export const createMetricsRecorderMock = () => {

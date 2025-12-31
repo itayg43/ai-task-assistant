@@ -4,6 +4,13 @@
 
 This document tracks the implementation of **OpenAI API Monitoring with Prometheus and Grafana**. The implementation adds comprehensive metrics tracking for OpenAI API requests including request counts, success rates, duration percentiles, and token usage with cost tracking.
 
+## Architecture Alignment
+
+This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
+- Router middleware order (metrics → routes → error handlers)
+- Integration metrics pattern (tracking external API calls separately from service metrics)
+- Metrics middleware pattern
+
 ## Implementation Plan
 
 The implementation is broken down into the following parts:
@@ -145,6 +152,18 @@ Router handles root path `/` (which becomes `/metrics` when mounted):
 - Route: `metricsRouter.get("/", ...)`
 - Returns Prometheus metrics format
 - Error handling with logging
+
+#### 3.4 Middleware Chain Order
+
+Following project conventions, the middleware chain follows this order:
+
+1. **Metrics middleware** - Track all requests (at router level)
+2. **Routes** - Route handlers with validation, rate limiting, etc.
+3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
+4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
+5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
+
+The metrics router is placed in `app.ts` before authentication middleware to allow Prometheus scraping without authentication.
 
 ## Part 4: Instrument executeParse
 

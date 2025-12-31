@@ -4,6 +4,13 @@
 
 This document summarizes the implementation of the **Token Usage Rate Limiter** feature. This feature adds distributed rate limiting for OpenAI token usage, tracking actual token consumption during task creation and adjusting held tokens based on real usage. The system uses Redis for distributed state management and Redlock for distributed locking to ensure consistency across multiple service instances.
 
+## Architecture Alignment
+
+This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
+- Router-level error handlers (domain-specific error handling for token reconciliation)
+- Post-response middleware (token usage update after response is sent)
+- Router middleware order (pre-request → routes → post-response → error handlers)
+
 ## Architecture Changes
 
 ### Core Concept
@@ -201,6 +208,8 @@ type TokenUsageRateLimiterConfig = {
 
 **Function**: `tokenUsageErrorHandler(err, req, res, next)`
 
+**Placement**: This is a domain-specific error handler placed in the router after routes, before global error handler (following project conventions for router-level error handlers).
+
 **Error Handling Flow**:
 
 1. **Check Hold Data**: Skips if no hold data or already adjusted
@@ -300,11 +309,15 @@ tasksRouter.use(tokenUsageErrorHandler); // Error handler: adjust on errors
 
 **Middleware Order**:
 
-1. **Schema Validation**: Validates request body
-2. **Token Usage Rate Limiter**: Holds estimated tokens
-3. **Create Task Controller**: Processes request, sets actual tokens
-4. **Update Token Usage**: Adjusts tokens after successful response
-5. **Error Handler**: Adjusts tokens on errors (before global error handler)
+Following project conventions, the middleware chain follows this order:
+
+1. **Metrics middleware** - Track all requests (at router level)
+2. **Schema Validation** - Validates request body
+3. **Token Usage Rate Limiter** - Holds estimated tokens (pre-request)
+4. **Create Task Controller** - Processes request, sets actual tokens
+5. **Update Token Usage** - Adjusts tokens after successful response (post-response middleware)
+6. **Domain error handlers** - Handle domain-specific errors (adjust tokens on errors, before global error handler)
+7. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
 
 ### 10. Configuration
 

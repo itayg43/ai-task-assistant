@@ -2,7 +2,7 @@ import { Counter, Histogram, register } from "@shared/clients/prom";
 import { createLogger } from "@shared/config/create-logger";
 import { TasksOperation } from "@types";
 
-const logger = createLogger("tasks-metrics");
+const logger = createLogger("tasksMetrics");
 
 // Counter for total requests - labeled by operation and status
 const tasksApiRequestsTotal = new Counter({
@@ -31,6 +31,14 @@ const tasksApiRequestDurationMs = new Histogram({
 const tasksVagueInputTotal = new Counter({
   name: "tasks_vague_input_total",
   help: "Total number of create task requests that failed due to vague input",
+  registers: [register],
+});
+
+// Counter for prompt injection errors
+const tasksPromptInjectionTotal = new Counter({
+  name: "tasks_prompt_injection_total",
+  help: "Total number of requests that failed due to prompt injection detection",
+  labelNames: ["operation"], // Allows filtering by operation in queries
   registers: [register],
 });
 
@@ -65,7 +73,6 @@ export const recordTasksApiSuccess = (
 
 export const recordTasksApiFailure = (
   operation: TasksOperation,
-  durationMs: number,
   requestId: string
 ): void => {
   const status = "failure";
@@ -74,19 +81,11 @@ export const recordTasksApiFailure = (
     operation,
     status,
   });
-  tasksApiRequestDurationMs.observe(
-    {
-      operation,
-      status,
-    },
-    durationMs
-  );
 
   logger.debug("Recorded tasks API failure metrics", {
     requestId,
     operation,
     status,
-    durationMs,
   });
 };
 
@@ -95,5 +94,19 @@ export const recordVagueInput = (requestId: string): void => {
 
   logger.debug("Recorded vague input metric", {
     requestId,
+  });
+};
+
+export const recordPromptInjection = (
+  operation: TasksOperation,
+  requestId: string
+): void => {
+  tasksPromptInjectionTotal.inc({
+    operation,
+  });
+
+  logger.debug("Recorded prompt injection metric", {
+    requestId,
+    operation,
   });
 };

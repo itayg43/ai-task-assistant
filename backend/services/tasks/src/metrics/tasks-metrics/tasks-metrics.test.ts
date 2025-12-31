@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  recordPromptInjection,
   recordTasksApiFailure,
   recordTasksApiSuccess,
   recordVagueInput,
@@ -106,7 +107,7 @@ describe("tasksMetrics", () => {
 
   describe("recordTasksApiFailure", () => {
     it("should increment counter with failure status", () => {
-      recordTasksApiFailure("create_task", 2500, "test-request-id");
+      recordTasksApiFailure("create_task", "test-request-id");
 
       expect(mockCounterInc).toHaveBeenCalledWith({
         operation: "create_task",
@@ -114,20 +115,14 @@ describe("tasksMetrics", () => {
       });
     });
 
-    it("should observe histogram with duration and failure status", () => {
-      recordTasksApiFailure("create_task", 2500, "test-request-id");
+    it("should not observe histogram (no duration tracking for failures)", () => {
+      recordTasksApiFailure("create_task", "test-request-id");
 
-      expect(mockHistogramObserve).toHaveBeenCalledWith(
-        {
-          operation: "create_task",
-          status: "failure",
-        },
-        2500
-      );
+      expect(mockHistogramObserve).not.toHaveBeenCalled();
     });
 
     it("should log debug message with all parameters", () => {
-      recordTasksApiFailure("create_task", 2500, "test-request-id");
+      recordTasksApiFailure("create_task", "test-request-id");
 
       expect(mockLoggerDebug).toHaveBeenCalledWith(
         "Recorded tasks API failure metrics",
@@ -135,25 +130,17 @@ describe("tasksMetrics", () => {
           requestId: "test-request-id",
           operation: "create_task",
           status: "failure",
-          durationMs: 2500,
         }
       );
     });
 
     it("should handle get_tasks operation", () => {
-      recordTasksApiFailure("get_tasks", 1200, "another-request-id");
+      recordTasksApiFailure("get_tasks", "another-request-id");
 
       expect(mockCounterInc).toHaveBeenCalledWith({
         operation: "get_tasks",
         status: "failure",
       });
-      expect(mockHistogramObserve).toHaveBeenCalledWith(
-        {
-          operation: "get_tasks",
-          status: "failure",
-        },
-        1200
-      );
     });
   });
 
@@ -173,6 +160,36 @@ describe("tasksMetrics", () => {
           requestId: "test-request-id",
         }
       );
+    });
+  });
+
+  describe("recordPromptInjection", () => {
+    it("should increment prompt injection counter with operation", () => {
+      recordPromptInjection("create_task", "test-request-id");
+
+      expect(mockCounterInc).toHaveBeenCalledWith({
+        operation: "create_task",
+      });
+    });
+
+    it("should log debug message with requestId and operation", () => {
+      recordPromptInjection("create_task", "test-request-id");
+
+      expect(mockLoggerDebug).toHaveBeenCalledWith(
+        "Recorded prompt injection metric",
+        {
+          requestId: "test-request-id",
+          operation: "create_task",
+        }
+      );
+    });
+
+    it("should handle get_tasks operation", () => {
+      recordPromptInjection("get_tasks", "another-request-id");
+
+      expect(mockCounterInc).toHaveBeenCalledWith({
+        operation: "get_tasks",
+      });
     });
   });
 });

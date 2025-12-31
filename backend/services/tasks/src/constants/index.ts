@@ -8,3 +8,4 @@ export {
   GET_TASKS_MIN_TAKE,
 } from "./get-tasks";
 export { DEFAULT_PARSE_TASK_CONFIG } from "./parse-task-config";
+export { TASKS_OPERATION } from "./tasks-operation";
