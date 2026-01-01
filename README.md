@@ -872,8 +872,10 @@ A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualizati
    - **Implementation Details**:
      - Reuse existing `requestId` from AI service for unified tracking
      - Async pattern fields (`callbackUrl`, `userId`, `tokenReservation`) defined globally in schema using discriminated union
-     - Job payload includes full validated input structure for worker processing
-     - Token reservation passed through async flow and reconciled in webhook
+     - Job payload includes full validated input structure (async fields in `input.query`, no duplication)
+     - Executor trusts schema validation (no redundant runtime checks)
+     - No duration tracking wrapper (simplified implementation)
+     - Token reservation passed through async flow in `input.query` and reconciled in webhook
 
 ### Phase 2: Enterprise Features
 

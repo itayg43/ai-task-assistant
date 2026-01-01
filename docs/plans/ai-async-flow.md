@@ -646,6 +646,7 @@ between versions. Key is ensuring setup runs after reconnection."
 
 - Import `Capability` from `@types`
 - Define `TCapabilityJobPayload` as a generic type (use `T` prefix for domain types):
+
   ```typescript
   type TCapabilityJobPayloadInputMap = {
     [CAPABILITY.PARSE_TASK]: ParseTaskInput;
@@ -664,29 +665,24 @@ between versions. Key is ensuring setup runs after reconnection."
      * This is the complete validated input, not just the body, so it can be passed directly to the capability handler as in executeSyncPattern.
      * The structure includes:
      * - params: { capability: Capability }
-     * - query: { pattern: CapabilityPattern }
+     * - query: { pattern: "async", callbackUrl, userId, tokenReservation } (for async pattern)
      * - body: { ... } (capability-specific input)
+     *
+     * For async pattern, the worker can extract callbackUrl, userId, and tokenReservation from input.query.
+     * No duplication needed - these fields are already in the validated input.
      */
     input: TCapabilityJobPayloadInputMap[TCapability];
-    callbackUrl: string;
     /**
      * Request ID for distributed tracing.
      * This is propagated from the original request through the async flow.
      */
     requestId: string;
-    userId: number;
-    /**
-     * Token reservation info (required - validated by schema when pattern is async).
-     * Used for token usage reconciliation in the webhook callback.
-     */
-    tokenReservation: {
-      tokensReserved: number;
-      windowStartTimestamp: number;
-    };
   };
   ```
+
 - **Note**: The type is generic to provide type safety - the `input` type is inferred from the `capability` type using the mapping
-- **Note**: `tokenReservation` is required (not optional) - the schema validation ensures it's present when pattern is async
+- **Note**: `callbackUrl`, `userId`, and `tokenReservation` are NOT separate fields - they're in `input.query` for async pattern to avoid duplication
+- **Note**: The schema validation ensures async fields are present in `input.query` when pattern is async (discriminated union)
 
 2. Update `backend/services/ai/src/types/index.ts`:
 
@@ -743,7 +739,9 @@ between versions. Key is ensuring setup runs after reconnection."
 
 - Add type assertion to `inputSchema` in capability definition:
   ```typescript
-  inputSchema: parseTaskInputSchema as z.ZodSchema<z.infer<typeof parseTaskInputSchema>>
+  inputSchema: parseTaskInputSchema as z.ZodSchema<
+    z.infer<typeof parseTaskInputSchema>
+  >;
   ```
 - Add comment explaining why type assertion is needed:
   - `z.string().transform()` in `executeCapabilityInputSchema` creates a type mismatch when extending schemas
@@ -757,37 +755,35 @@ between versions. Key is ensuring setup runs after reconnection."
 4. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/` directory
 5. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.ts`:
 
-- Import `withDurationAsync` from `@shared/utils/with-duration`
 - Import `publishJob` from `@clients/rabbitmq`
 - Import `RABBITMQ_QUEUE` from `@constants` (use `RABBITMQ_QUEUE.AI_CAPABILITY_JOBS`)
 - Import `TCapabilityJobPayload` from `@types`
 - Import `createLogger` from `@shared/config/create-logger`
-- Import `BadRequestError, InternalError` from `@shared/errors`
-- Follow pattern executor signature: `(config, input, requestId) => Promise<{ result, durationMs }>`
-- **Extract from query, not body**: Extract `callbackUrl`, `userId`, and `tokenReservation` from `input.query` (discriminated union ensures these exist when pattern is async)
-- Add type guard: Check `input.query.pattern === "async"` to narrow TypeScript type
-- Validate required fields are present (defensive check - should not happen if schema validation passed, but throw BadRequestError if missing)
+- Import `InternalError` from `@shared/errors`
+- Follow pattern executor signature: `(config, input, requestId) => Promise<TOutput>`
+- **Trust schema validation**: No redundant runtime checks - schema validation middleware ensures correctness
 - Create job payload: `TCapabilityJobPayload`
 - Store `capability` name from `input.params.capability` (not the full config - see comment in job-payload.ts)
 - Store full `input` (validated input with params, query, body) - this matches what executeSyncPattern expects
-- Store `callbackUrl`, `userId`, `tokenReservation`, `requestId`
+- Store `requestId` for distributed tracing
+- Note: `callbackUrl`, `userId`, and `tokenReservation` are already in `input.query` (no duplication needed)
 - Add comment explaining why we store capability name instead of config (functions can't be serialized)
 - Publish job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
 - Wait for successful queue publication
-- Return `{ result: {} as TOutput, durationMs }` (minimal result cast to TOutput, duration is queue time only)
+- Return `{} as TOutput` (empty result - controller returns 202 with aiServiceRequestId)
 - Handle errors: throw `InternalError` on queue failures
 - Use structured logging with requestId
+- **No `withDurationAsync` wrapper**: Removed for simplicity (duration tracking not needed for async pattern)
 
 6. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.test.ts`:
 
 - Create unit tests for `executeAsyncPattern`:
   - Test success case (job published successfully)
-  - Test missing fields (callbackUrl, userId, tokenReservation)
-  - Test null values
   - Test RabbitMQ publish failures
-- Use `it.each()` for parameterized validation error tests
-- Mock `withDurationAsync`, `publishJob`, and `@config/env`
-- Follow existing test patterns
+- **No validation error tests**: Validation happens before this function via schema middleware
+- Mock `publishJob` only (no `withDurationAsync` or `@config/env` needed)
+- Organize with nested `describe` blocks: "success cases", "error handling"
+- Follow existing test patterns and project conventions
 
 7. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/index.ts`:
 
@@ -850,10 +846,13 @@ between versions. Key is ensuring setup runs after reconnection."
 - Document async pattern executor implementation
 - Document schema design (discriminated union, global fields)
 - Document query parameter handling (type coercion, JSON encoding)
-- Document job publishing flow
+- Document job publishing flow (no redundant fields - callbackUrl, userId, tokenReservation in input.query only)
+- Document removal of `withDurationAsync` wrapper (simplified implementation)
+- Document removal of redundant validation checks (trust schema validation)
 - Document 202 response handling
 - Document type assertion in capabilities/index.ts
 - Document test organization and shared mocks
+- Document simplified test structure (no validation error tests)
 
 **Files to Create**:
 

@@ -146,10 +146,10 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
     - When new capabilities are added, they must be added to this mapping
   - Includes `capability` field (typed as `TCapability` - capability name, not full config - cannot serialize functions/schemas)
   - Includes `input` field (typed as `TCapabilityJobPayloadInputMap[TCapability]` - full validated input structure matching executeSyncPattern expectations, type-safe based on capability)
-  - Includes `callbackUrl` field (Tasks service webhook endpoint)
+    - For async pattern, `input.query` contains `callbackUrl`, `userId`, and `tokenReservation` (no duplication)
+    - Worker extracts these fields from `input.query` when needed
   - Includes `requestId` field (for distributed tracing)
-  - Includes `userId` field (for task creation in webhook)
-  - Includes `tokenReservation` field (required, for token usage reconciliation)
+  - Note: `callbackUrl`, `userId`, and `tokenReservation` are NOT separate fields - they're in `input.query` to avoid duplication
   - Added JSDoc comments explaining each field and design decisions
 - Updated `backend/services/ai/src/types/index.ts` to export `TCapabilityJobPayload` using barrel export pattern
   - Type is now accessible via `@types` path alias (e.g., `import { TCapabilityJobPayload } from "@types"`)
@@ -188,13 +188,14 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
   - The worker will look up the config from the capabilities registry using the capability name
   - This differs from sync flow which uses `res.locals.capabilityConfig` (already validated by middleware)
 - The `input` field stores the complete validated input structure (params, query, body) so it can be passed directly to `executeSyncPattern`
+- **No Redundant Fields**: Job payload does not duplicate `callbackUrl`, `userId`, or `tokenReservation` as separate fields. These are already in `input.query` for async pattern, ensuring single source of truth and eliminating data duplication.
 - Type-check passed successfully, confirming type definitions are correct and properly exported
 - **Usage Example**: When creating payloads, specify the capability type:
   ```typescript
   const payload: TCapabilityJobPayload<typeof CAPABILITY.PARSE_TASK> = {
     capability: CAPABILITY.PARSE_TASK,
-    input: parseTaskValidatedInput, // TypeScript ensures this matches ParseTaskInput
-    // ... other fields
+    input: parseTaskValidatedInput, // TypeScript ensures this matches ParseTaskInput (includes query with async fields)
+    requestId: requestId,
   };
   ```
 
@@ -213,21 +214,23 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
   - Added "Invalid" error messages to all query parameter fields (consistent with params)
 - Created `execute-async-pattern/execute-async-pattern.ts`:
   - Implements async pattern executor that publishes jobs to RabbitMQ
-  - Extracts `callbackUrl`, `userId`, and `tokenReservation` from `input.query` (not body)
-  - Validates required fields are present (throws `BadRequestError` if missing)
+  - Trusts schema validation middleware (no redundant runtime checks)
   - Creates job payload with:
     - `capability` name (from `input.params.capability`) - not full config (functions can't be serialized)
     - Full `input` (validated input with params, query, body) - matches what `executeSyncPattern` expects
-    - `callbackUrl`, `userId`, `tokenReservation`, `requestId`
+    - `requestId` for distributed tracing
+  - Note: `callbackUrl`, `userId`, and `tokenReservation` are already in `input.query` (no duplication)
   - Publishes job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
-  - Returns minimal result `{} as TOutput` (job queued, duration is queue time only)
+  - Returns empty result `{} as TOutput` (controller returns 202 with aiServiceRequestId)
   - Handles errors: throws `InternalError` on queue failures
   - Uses structured logging with requestId
+  - No `withDurationAsync` wrapper (removed for simplicity, duration tracking not needed for async pattern)
 - Created `execute-async-pattern/index.ts` barrel export
 - Created `execute-async-pattern/execute-async-pattern.test.ts`:
-  - 8 unit tests covering success case, missing fields, null values, and RabbitMQ publish failures
-  - Uses `it.each()` for parameterized validation error tests
-  - Mocks `withDurationAsync`, `publishJob`, and `@config/env`
+  - 2 unit tests covering success case and RabbitMQ publish failures
+  - Removed validation error tests (validation happens before this function via schema middleware)
+  - Mocks `publishJob` only (no `withDurationAsync` or `@config/env` needed)
+  - Organized with nested `describe` blocks following project conventions
 - Updated `get-pattern-executor.ts`:
   - Returns `executeAsyncPattern` for async pattern (instead of throwing error)
 - Updated `get-pattern-executor.test.ts`:
@@ -304,16 +307,20 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
   - Works with existing schema structure
   - Requires URL encoding on client side
   - Handles both JSON parse errors and validation errors gracefully
-- **Job Payload Structure**: The job payload stores the capability name (string) instead of the full `CapabilityConfig` because:
-  - `CapabilityConfig` contains functions (handler) and Zod schemas that cannot be serialized to JSON
-  - The worker will look up the config from the capabilities registry using the capability name
-  - This differs from sync flow which uses `res.locals.capabilityConfig` (already validated by middleware)
-- **Input Structure**: The `input` field stores the complete validated input structure (params, query, body) so it can be passed directly to `executeSyncPattern` in the worker
+- **Job Payload Structure**: The job payload stores:
+  - `capability` name (string) instead of full `CapabilityConfig` (functions can't be serialized)
+  - Full `input` (validated input with params, query, body) - matches what `executeSyncPattern` expects
+  - `requestId` for distributed tracing
+  - Note: `callbackUrl`, `userId`, and `tokenReservation` are NOT duplicated - they're already in `input.query`
+- **No Redundant Fields**: Job payload does not include `callbackUrl`, `userId`, or `tokenReservation` as separate fields. These are extracted from `input.query` by the worker when needed. This eliminates data duplication and ensures single source of truth.
+- **No Runtime Validation**: The executor trusts schema validation middleware. No redundant checks for fields that are already validated by the discriminated union schema. This simplifies code and follows the principle of trusting validated input.
+- **No Duration Tracking**: Removed `withDurationAsync` wrapper from both sync and async executors for simplicity. Duration tracking not needed for async pattern (job queued, not processed).
+- **Input Structure**: The `input` field stores the complete validated input structure (params, query, body) so it can be passed directly to `executeSyncPattern` in the worker. The worker extracts async fields from `input.query` when needed.
 - **Return Type**: For async pattern, the executor returns `{} as TOutput` to satisfy the type signature, but the actual result is not used by the controller (it returns 202 with aiServiceRequestId)
 - **202 Response**: Async pattern returns 202 Accepted to indicate the request was accepted for processing but not yet completed. Response includes only `aiServiceRequestId`, no result data.
 - **Error Handling**: Queue failures throw `InternalError` to indicate server-side issues (not user input errors)
-- **Validation**: Required fields (`callbackUrl`, `userId`, `tokenReservation`) are validated by the schema when pattern is async (discriminated union ensures they're present)
-- **Test Organization**: Tests are organized into separate `describe` blocks for sync and async patterns, using shared mocks from `@mocks/capabilities-controller-mocks` for consistency
+- **Validation**: Required fields (`callbackUrl`, `userId`, `tokenReservation`) are validated by the schema when pattern is async (discriminated union ensures they're present). No redundant runtime checks needed.
+- **Test Organization**: Tests are organized into separate `describe` blocks for sync and async patterns, using shared mocks from `@mocks/capabilities-controller-mocks` for consistency. Validation error tests removed (validation happens before executors via schema middleware).
 - **Type Assertion**: A type assertion is needed in `capabilities/index.ts` because `z.string().transform()` creates a type mismatch when extending schemas. The assertion preserves correct output type for type inference while working around the transform's input type limitation.
 
 ### Section 5: AI Service - Worker Implementation
