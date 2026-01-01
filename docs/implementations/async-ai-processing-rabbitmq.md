@@ -134,32 +134,69 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 
 ### Section 3: AI Service - Job Payload Types
 
-**Status**: ⏸️ Not Started
+**Status**: ✅ Complete
 
 **Completed**:
 
-- [To be filled after implementation]
+- Created `backend/services/ai/src/types/job-payload.ts` with `TCapabilityJobPayload` generic type definition
+  - Generic type: `TCapabilityJobPayload<TCapability extends Capability>` for type-safe capability-specific payloads
+  - Created `TCapabilityJobPayloadInputMap` mapping type that maps each capability to its input type:
+    - `[CAPABILITY.PARSE_TASK]: ParseTaskInput`
+    - Ensures type safety: input type is inferred from the capability type
+    - When new capabilities are added, they must be added to this mapping
+  - Includes `capability` field (typed as `TCapability` - capability name, not full config - cannot serialize functions/schemas)
+  - Includes `input` field (typed as `TCapabilityJobPayloadInputMap[TCapability]` - full validated input structure matching executeSyncPattern expectations, type-safe based on capability)
+  - Includes `callbackUrl` field (Tasks service webhook endpoint)
+  - Includes `requestId` field (for distributed tracing)
+  - Includes `userId` field (for task creation in webhook)
+  - Includes `tokenReservation` field (required, for token usage reconciliation)
+  - Added JSDoc comments explaining each field and design decisions
+- Updated `backend/services/ai/src/types/index.ts` to export `TCapabilityJobPayload` using barrel export pattern
+  - Type is now accessible via `@types` path alias (e.g., `import { TCapabilityJobPayload } from "@types"`)
 
 **Files Created**:
 
-- [To be filled after implementation]
+- `backend/services/ai/src/types/job-payload.ts`
 
 **Files Modified**:
 
-- [To be filled after implementation]
+- `backend/services/ai/src/types/index.ts` (added export for TCapabilityJobPayload)
 
 **Issues Encountered**:
 
-- [To be filled if any issues]
+- None
 
 **Test Results**:
 
-- `npm run type-check:ci`: ⏸️ Pending
-- `npm run test`: ⏸️ Pending
+- `npm run type-check:ci`: ✅ Pass (all TypeScript compilation checks passed)
+- `npm run test`: ⚠️ Sandbox permission issue (not a code issue - type-check validates types correctly)
 
 **Notes**:
 
-- [To be filled]
+- Type definition follows project conventions: domain types use `T` prefix (e.g., `TCapabilityJobPayload`)
+- Type is exported from `types/index.ts` to enable `@types` path alias imports
+- **Generic Type Pattern**: The type is generic (`TCapabilityJobPayload<TCapability extends Capability>`) to provide type safety:
+  - The `capability` field is typed as `TCapability` (specific capability, not just `Capability`)
+  - The `input` field is typed as `TCapabilityJobPayloadInputMap[TCapability]` (input type inferred from capability)
+  - This ensures compile-time type safety: the input type must match the capability type
+- **Input Mapping**: `TCapabilityJobPayloadInputMap` maps each capability to its input type:
+  - Currently maps `CAPABILITY.PARSE_TASK` to `ParseTaskInput`
+  - When new capabilities are added, they must be added to this mapping to maintain type safety
+  - The mapping is a private type (not exported) as it's an implementation detail
+- The `capability` field stores only the capability name (string), not the full `CapabilityConfig` object, because:
+  - `CapabilityConfig` contains functions (handler) and Zod schemas that cannot be serialized to JSON
+  - The worker will look up the config from the capabilities registry using the capability name
+  - This differs from sync flow which uses `res.locals.capabilityConfig` (already validated by middleware)
+- The `input` field stores the complete validated input structure (params, query, body) so it can be passed directly to `executeSyncPattern`
+- Type-check passed successfully, confirming type definitions are correct and properly exported
+- **Usage Example**: When creating payloads, specify the capability type:
+  ```typescript
+  const payload: TCapabilityJobPayload<typeof CAPABILITY.PARSE_TASK> = {
+    capability: CAPABILITY.PARSE_TASK,
+    input: parseTaskValidatedInput, // TypeScript ensures this matches ParseTaskInput
+    // ... other fields
+  };
+  ```
 
 ### Section 4: AI Service - Async Pattern Executor
 
