@@ -31,17 +31,12 @@ export const executeCapability = async (
     });
 
     const patternExecutor = getPatternExecutor(pattern);
-    const { result, durationMs } = await patternExecutor(
-      config,
-      validatedInput,
-      requestId
-    );
+    const result = await patternExecutor(config, validatedInput, requestId);
 
     logger.info("executeCapability - succeeded", {
       requestId,
       capability,
       result,
-      totalDurationMs: durationMs,
     });
 
     const isSyncPattern = pattern === CAPABILITY_PATTERN.SYNC;

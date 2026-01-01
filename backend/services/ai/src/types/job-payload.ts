@@ -19,19 +19,16 @@ export type TCapabilityJobPayload<TCapability extends Capability> = {
    * This is the complete validated input, not just the body, so it can be passed directly to the capability handler as in executeSyncPattern.
    * The structure includes:
    * - params: { capability: Capability }
-   * - query: { pattern: CapabilityPattern }
+   * - query: { pattern: "async", callbackUrl, userId, tokenReservation } (for async pattern)
    * - body: { ... } (capability-specific input)
+   *
+   * For async pattern, the worker can extract callbackUrl, userId, and tokenReservation from input.query.
    */
   input: TCapabilityJobPayloadInputMap[TCapability];
-  callbackUrl: string;
+
   /**
    * Request ID for distributed tracing.
    * This is propagated from the original request through the async flow.
    */
   requestId: string;
-  userId: number;
-  tokenReservation: {
-    tokensReserved: number;
-    windowStartTimestamp: number;
-  };
 };
