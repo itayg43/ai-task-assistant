@@ -1,11 +1,12 @@
 import dotenv from "dotenv";
-import { cleanEnv, num, port, str } from "envalid";
+import { cleanEnv, num, port, str, url } from "envalid";
 
 dotenv.config();
 
 export const env = cleanEnv(process.env, {
   SERVICE_NAME: str(),
   SERVICE_PORT: port(),
+  SERVICE_URL: url(),
 
   AI_SERVICE_URL: str(),
 
