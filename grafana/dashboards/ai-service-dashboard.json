@@ -356,7 +356,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(ai_api_requests_total{status=\"success\"}[$__range]))",
+          "expr": "sum(increase(ai_api_requests_total{status=\"success\"}[$__range]))",
           "hide": true,
           "legendFormat": "__auto",
           "range": true,
@@ -368,7 +368,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(ai_api_requests_total[$__range]))",
+          "expr": "sum(increase(ai_api_requests_total[$__range]))",
           "hide": true,
           "instant": false,
           "legendFormat": "__auto",
@@ -377,11 +377,37 @@
         },
         {
           "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(vague_input_total[$__range]))",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(prompt_injection_blocked_total[$__range]))",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "E"
+        },
+        {
+          "datasource": {
             "name": "Expression",
             "type": "__expr__",
             "uid": "__expr__"
           },
-          "expression": "$A / $B * 100",
+          "expression": "$A / ($B - $D - $E) * 100",
           "hide": false,
           "refId": "C",
           "type": "math"
@@ -1203,6 +1229,6 @@
   "timezone": "browser",
   "title": "AI Service",
   "uid": "ai-service",
-  "version": 4,
+  "version": 5,
   "weekStart": "sunday"
 }
