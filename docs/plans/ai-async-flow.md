@@ -1,57 +1,3 @@
----
-name: Async AI Processing with RabbitMQ MVP
-overview: Implement async AI processing using RabbitMQ. Tasks service validates input, calls AI service which validates and queues job, returns 202. Worker processes job, calls OpenAI, then calls Tasks service webhook endpoint with results. Tasks service webhook creates task and reconciles token usage. Metrics exclude 202 responses. Agent must get approval before each major section and update implementation doc after each section.
-todos:
-  - id: section-1-infra
-    content: "Section 1: Infrastructure Setup - Add RabbitMQ to docker-compose, add environment variables (use envalid for AI, Zod for Tasks), create constants with barrel exports including DLQ name. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-  - id: section-2-rabbitmq-client
-    content: "Section 2: AI Service - RabbitMQ Client - Add dependencies, create RabbitMQ client in clients/ directory with publishJob, createConsumer, and publishToDLQ functions. Create mocks. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-    dependencies:
-      - section-1-infra
-  - id: section-3-job-types
-    content: "Section 3: AI Service - Job Payload Types - Create job payload type definitions with T prefix. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-    dependencies:
-      - section-2-rabbitmq-client
-  - id: section-4-async-executor
-    content: "Section 4: AI Service - Async Pattern Executor - Update schemas, create async executor with proper error handling, update pattern router and controller. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-    dependencies:
-      - section-3-job-types
-  - id: section-5-worker
-    content: "Section 5: AI Service - Worker Implementation - Create HTTP client in clients/tasks.ts, create worker service with retry logic (exponential backoff, max 3 retries), graceful shutdown (10s timeout), DLQ handling, integrate with server startup using initializeServer callbacks, create tests. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-    dependencies:
-      - section-4-async-executor
-  - id: section-6-webhook-types
-    content: "Section 6: Tasks Service - Webhook Types and Schemas - Create webhook types (no T prefix for DTOs) and validation schemas with Zod refinements. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-    dependencies:
-      - section-5-worker
-  - id: section-7-webhook-impl
-    content: "Section 7: Tasks Service - Webhook Endpoint Implementation - Create webhook controller (extract userId, override auth context), router with error handlers (NO metrics middleware), register in routers. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-    dependencies:
-      - section-6-webhook-types
-  - id: section-8-async-flow
-    content: "Section 8: Tasks Service - Async Flow Implementation - Update types to support async pattern with discriminated union, update tasks service to always use async, update controller and AI capabilities service with type narrowing. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-    dependencies:
-      - section-7-webhook-impl
-  - id: section-9-metrics
-    content: "Section 9: Metrics Updates - Update shared metrics middleware to exclude 202 responses with comment explaining rationale. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-    dependencies:
-      - section-8-async-flow
-  - id: section-10-testing-docs
-    content: "Section 10: Testing and Documentation - Create integration tests, update existing tests, update README. Then run 'npm run type-check:ci' and 'npm run test' until both pass, update implementation doc, and WAIT FOR USER APPROVAL before proceeding."
-    status: pending
-    dependencies:
-      - section-9-metrics
----
-
 # Async AI Processing with RabbitMQ MVP
 
 ## Overview
@@ -74,29 +20,23 @@ This plan implements async AI processing using RabbitMQ. The flow: (1) Client �
 
 - **MANDATORY VALIDATION STEPS** (must pass before requesting approval):
 
-1. Run `npm run type-check:ci` to verify TypeScript compilation
+1.  Run `npm run type-check:ci` to verify TypeScript compilation
 
-    - If it fails: Fix all TypeScript errors and run again
-    - **DO NOT proceed until type-check passes**
+                - If it fails: Fix all TypeScript errors and run again
+                - **DO NOT proceed until type-check passes**
 
-2. Run `npm run test` to verify all tests pass
+2.  Run `npm run test` to verify all tests pass
 
-    - If tests fail: Fix all failing tests and run again
-    - **DO NOT proceed until all tests pass**
+                - If tests fail: Fix all failing tests and run again
+                - **DO NOT proceed until all tests pass**
 
-3. Repeat steps 1-2 until BOTH `npm run type-check:ci` AND `npm run test` pass successfully
+3.  Repeat steps 1-2 until BOTH `npm run type-check:ci` AND `npm run test` pass successfully
 
-- **MANDATORY: Update the implementation doc** at `docs/implementations/async-ai-processing-rabbitmq.md`:
-    - **MUST be updated after EACH section completion** (not optional)
-    - Document what was implemented in this section
-    - List all files created/modified
-    - Document any issues encountered
-    - Record test results (must show ✅ Pass for both type-check and tests)
-    - Update the section status (✅ Complete / ⏸️ In Progress / ❌ Blocked)
+- **MANDATORY: Update the implementation doc** at `docs/implementations/async-ai-processing-rabbitmq.md`: - **MUST be updated after EACH section completion** (not optional) - Document what was implemented in this section - List all files created/modified - Document any issues encountered - Record test results (must show ✅ Pass for both type-check and tests) - Update the section status (✅ Complete / ⏸️ In Progress / ❌ Blocked)
 - **WAIT FOR USER APPROVAL**: After validation passes and doc is updated, request approval from user
 - **DO NOT proceed to next section until user explicitly approves the current section**
 
-3. **If errors occur during validation**: 
+3. **If errors occur during validation**:
 
 - Fix the errors and re-run validation
 - Document any issues in the implementation doc
@@ -136,7 +76,7 @@ sequenceDiagram
     RabbitMQ-->>AIService: Job queued
     AIService-->>TasksService: 202 Accepted
     TasksService-->>Client: 202 Accepted
-    
+
     RabbitMQ->>Worker: Consume job
     Worker->>OpenAI: Process capability
     OpenAI-->>Worker: Response + actual tokens
@@ -187,7 +127,7 @@ sequenceDiagram
 
 **What to Retry**:
 
-- **OpenAI API Errors**: 
+- **OpenAI API Errors**:
 - Retry: Rate limits (429), server errors (500, 502, 503), timeouts
 - Don't retry: Client errors (400, 401, 403), invalid requests
 - Pros: Handles transient OpenAI issues
@@ -201,15 +141,15 @@ sequenceDiagram
 **Dead Letter Queue (DLQ)**:
 
 - **When to DLQ**: After max retries exhausted, or permanent failures (4xx errors)
-- **DLQ Configuration**: 
+- **DLQ Configuration**:
 - Queue name: `ai-capability-jobs-dlq`
 - Message TTL: 7 days (for manual inspection)
 - Store full job payload and error details
-- **Pros**: 
+- **Pros**:
 - Prevents infinite retry loops
 - Allows manual inspection of failed jobs
 - Can replay jobs after fixing issues
-- **Cons**: 
+- **Cons**:
 - Requires manual intervention
 - Adds complexity
 - May accumulate if not monitored
@@ -230,7 +170,7 @@ sequenceDiagram
 
 **Graceful Shutdown Flow**:
 
-1. **Stop Accepting New Jobs**: 
+1. **Stop Accepting New Jobs**:
 
 - Cancel consumer subscription
 - Close RabbitMQ channel
@@ -283,14 +223,15 @@ sequenceDiagram
 - Close connections (RabbitMQ will requeue unacknowledged messages)
 - Exit process
 - Note: For POC, we don't track active jobs. The 5-10 second wait gives in-flight jobs time to complete.
-  Unacknowledged messages will be requeued by RabbitMQ automatically.
+
+Unacknowledged messages will be requeued by RabbitMQ automatically.
 
 ### 5. Type Safety for Async Pattern
 
 **Issue**: `TExecuteCapabilityConfig` is a union type (`sync | async`), and TypeScript needs to narrow the type correctly when using it.**Solution**: Use type guards or discriminated unions. The union type already discriminates by `pattern` field:
 
 ```typescript
-type TExecuteCapabilityConfig = 
+type TExecuteCapabilityConfig =
   | { pattern: "sync"; ... }
   | { pattern: "async"; ... }
 ```
@@ -384,66 +325,73 @@ if (config.pattern === "async") {
 
 ### Section 2: AI Service - RabbitMQ Client ⏸️ REQUIRES APPROVAL
 
-**Scope**: RabbitMQ client implementation and mocks
-
-**RabbitMQ Fundamentals (for first-time users)**:
-
-Before implementing, understand these key concepts:
+**Scope**: RabbitMQ client implementation and mocks**RabbitMQ Fundamentals (for first-time users)**:Before implementing, understand these key concepts:
 
 1. **Connection vs Channel**:
-   - **Connection**: A TCP connection to RabbitMQ server. Expensive to create, shared across operations.
-   - **Channel**: A lightweight virtual connection within a connection. All operations (publish, consume) happen on channels.
-   - One connection can have multiple channels. Channels are cheap to create.
+
+- **Connection**: A TCP connection to RabbitMQ server. Expensive to create, shared across operations.
+- **Channel**: A lightweight virtual connection within a connection. All operations (publish, consume) happen on channels.
+- One connection can have multiple channels. Channels are cheap to create.
 
 2. **Queues**:
-   - A queue is a buffer that stores messages. Think of it like a mailbox.
-   - Messages are published (sent) to queues and consumed (received) from queues.
-   - **Durable queue**: Survives broker restarts. Non-durable queues are deleted on restart.
-   - **Queue assertion**: Creates queue if it doesn't exist, or verifies it exists if it does.
+
+- A queue is a buffer that stores messages. Think of it like a mailbox.
+- Messages are published (sent) to queues and consumed (received) from queues.
+- **Durable queue**: Survives broker restarts. Non-durable queues are deleted on restart.
+- **Queue assertion**: Creates queue if it doesn't exist, or verifies it exists if it does.
 
 3. **Messages**:
-   - Messages are binary data (we use JSON strings converted to Buffer).
-   - **Persistent message**: Written to disk, survives broker restart. Non-persistent messages are lost on restart.
-   - Messages stay in queue until consumed and acknowledged.
+
+- Messages are binary data (we use JSON strings converted to Buffer).
+- **Persistent message**: Written to disk, survives broker restart. Non-persistent messages are lost on restart.
+- Messages stay in queue until consumed and acknowledged.
 
 4. **Publishing (Sending Messages)**:
-   - Publisher sends message to a queue.
-   - Message is stored in queue until a consumer picks it up.
-   - `sendToQueue()` directly sends to a queue (simpler than exchanges for our use case).
+
+- Publisher sends message to a queue.
+- Message is stored in queue until a consumer picks it up.
+- `sendToQueue()` directly sends to a queue (simpler than exchanges for our use case).
 
 5. **Consuming (Receiving Messages)**:
-   - Consumer subscribes to a queue and receives messages.
-   - RabbitMQ delivers messages to consumers.
-   - Multiple consumers can consume from same queue (load balancing).
+
+- Consumer subscribes to a queue and receives messages.
+- RabbitMQ delivers messages to consumers.
+- Multiple consumers can consume from same queue (load balancing).
 
 6. **Acknowledgment (Ack/Nack)**:
-   - **Ack (acknowledge)**: Consumer tells RabbitMQ "I processed this successfully, delete it."
-   - **Nack (negative acknowledge)**: Consumer tells RabbitMQ "I failed, handle it."
-   - **noAck=false**: Consumer must manually ack/nack. If not acked, message stays in queue.
-   - **noAck=true**: RabbitMQ auto-acks on delivery (not recommended - can lose messages if consumer crashes).
+
+- **Ack (acknowledge)**: Consumer tells RabbitMQ "I processed this successfully, delete it."
+- **Nack (negative acknowledge)**: Consumer tells RabbitMQ "I failed, handle it."
+- **noAck=false**: Consumer must manually ack/nack. If not acked, message stays in queue.
+- **noAck=true**: RabbitMQ auto-acks on delivery (not recommended - can lose messages if consumer crashes).
 
 7. **Prefetch**:
-   - Limits how many unacknowledged messages a consumer can have.
-   - Prefetch=1: "Give me one message, wait for ack, then give next."
-   - Ensures fair distribution among multiple workers.
-   - Without prefetch, one worker might grab all messages.
+
+- Limits how many unacknowledged messages a consumer can have.
+- Prefetch=1: "Give me one message, wait for ack, then give next."
+- Ensures fair distribution among multiple workers.
+- Without prefetch, one worker might grab all messages.
 
 8. **Requeue**:
-   - When nacking with requeue=true, RabbitMQ puts message back in queue for retry.
-   - When nacking with requeue=false, RabbitMQ discards message (permanent failure).
+
+- When nacking with requeue=true, RabbitMQ puts message back in queue for retry.
+- When nacking with requeue=false, RabbitMQ discards message (permanent failure).
 
 9. **Dead Letter Queue (DLQ)**:
-   - A special queue for messages that couldn't be processed after retries.
-   - Allows manual inspection and potential replay of failed jobs.
+
+- A special queue for messages that couldn't be processed after retries.
+- Allows manual inspection and potential replay of failed jobs.
 
 10. **Connection Management**:
-    - Connections can fail (network issues, broker restart).
-    - amqp-connection-manager automatically reconnects.
-    - Channels don't survive connection failures - must be recreated.
-    - This is why we use `addSetup()` - ensures setup runs after reconnection.
+
+                - Connections can fail (network issues, broker restart).
+                - amqp-connection-manager automatically reconnects.
+                - Channels don't survive connection failures - must be recreated.
+                - This is why we use `addSetup()` - ensures setup runs after reconnection.
 
 **Message Flow Example**:
-```
+
+```javascript
 1. Publisher: publishJob() → sends message to queue
 2. Queue: Message stored (waiting for consumer)
 3. Consumer: createConsumer() → receives message from queue
@@ -468,171 +416,191 @@ Before implementing, understand these key concepts:
 - Import `env` from `@config/env`
 - Import `RABBITMQ_QUEUE_NAME, RABBITMQ_DLQ_NAME` from `@constants`
 - Import `createLogger` from `@shared/config/create-logger`
-- 
+-
 - **RabbitMQ Concepts (for comments)**:
-  - **Connection**: A TCP connection to RabbitMQ server. One connection can have multiple channels.
-  - **Channel**: A virtual connection within a connection. All operations (publish, consume) happen on channels.
-  - **Queue**: A buffer that stores messages. Messages are published to queues and consumed from queues.
-  - **Durable**: A durable queue survives broker restarts. Non-durable queues are deleted on restart.
-  - **Persistent**: A persistent message is written to disk. Non-persistent messages are lost on broker restart.
-  - **Acknowledgment (ack)**: Consumer tells RabbitMQ "I processed this message successfully, you can delete it."
-  - **Negative Acknowledgment (nack)**: Consumer tells RabbitMQ "I failed to process this, handle it" (requeue or discard).
-  - **Prefetch**: Limits how many unacknowledged messages a consumer can have. Prefetch=1 means "give me one message, wait for ack, then give next."
-  - **Dead Letter Queue (DLQ)**: A queue for messages that couldn't be processed after retries.
-  - **Requeue**: When a message is nacked with requeue=true, RabbitMQ puts it back in the queue for retry.
-  - **noAck**: If false, consumer must manually acknowledge messages. If true, RabbitMQ auto-acks on delivery.
-  
+- **Connection**: A TCP connection to RabbitMQ server. One connection can have multiple channels.
+- **Channel**: A virtual connection within a connection. All operations (publish, consume) happen on channels.
+- **Queue**: A buffer that stores messages. Messages are published to queues and consumed from queues.
+- **Durable**: A durable queue survives broker restarts. Non-durable queues are deleted on restart.
+- **Persistent**: A persistent message is written to disk. Non-persistent messages are lost on broker restart.
+- **Acknowledgment (ack)**: Consumer tells RabbitMQ "I processed this message successfully, you can delete it."
+- **Negative Acknowledgment (nack)**: Consumer tells RabbitMQ "I failed to process this, handle it" (requeue or discard).
+- **Prefetch**: Limits how many unacknowledged messages a consumer can have. Prefetch=1 means "give me one message, wait for ack, then give next."
+- **Dead Letter Queue (DLQ)**: A queue for messages that couldn't be processed after retries.
+- **Requeue**: When a message is nacked with requeue=true, RabbitMQ puts it back in the queue for retry.
+- **noAck**: If false, consumer must manually acknowledge messages. If true, RabbitMQ auto-acks on delivery.
+
 - Create connection using `connect([env.RABBITMQ_URL])`:
-  - amqp-connection-manager expects an array of URLs (for failover support)
-  - This creates a connection manager that automatically reconnects on connection loss
-  - Add comment: "Connection manager handles automatic reconnection - if RabbitMQ goes down and comes back, 
-    the connection will be restored automatically without manual intervention"
-  
+- amqp-connection-manager expects an array of URLs (for failover support)
+- This creates a connection manager that automatically reconnects on connection loss
+- Add comment: "Connection manager handles automatic reconnection - if RabbitMQ goes down and comes back,
+
+the connection will be restored automatically without manual intervention"
+
 - Use `connection.createChannel()` wrapper which returns a channel wrapper with automatic reconnection:
-  - Add comment: "Channel wrapper automatically recreates channels if connection is lost and restored.
-    This is important because channels don't survive connection failures."
-  
+- Add comment: "Channel wrapper automatically recreates channels if connection is lost and restored.
+
+This is important because channels don't survive connection failures."
+
 - Export `publishJob(queueName: string, jobData: unknown): Promise<void>`:
-  - Add detailed comments explaining each step:
-    ```typescript
-    /**
-     * Publishes a job to a RabbitMQ queue.
-     * 
-     * @param queueName - The name of the queue to publish to
-     * @param jobData - The job payload to serialize and send
-     * 
-     * Flow:
-     * 1. Get or create a channel (channel wrapper handles reconnection)
-     * 2. Assert the queue exists (creates it if it doesn't, with durable=true so it survives restarts)
-     * 3. Serialize jobData to JSON and convert to Buffer (RabbitMQ messages are binary)
-     * 4. Send message to queue with persistent=true (message written to disk, survives broker restart)
-     * 5. Wait for confirmation (optional - can add publisher confirms later for better reliability)
-     */
-    ```
-  - Use `connection.createChannel()` to get channel wrapper
-  - Use `channel.addSetup()` or direct channel access (channel wrapper provides channel as first arg to callbacks)
-  - Assert queue: `channel.assertQueue(queueName, { durable: true })`
-    - Add comment: "Assert queue creates it if it doesn't exist. durable=true means queue survives broker restarts."
-  - Publish message: `channel.sendToQueue(queueName, Buffer.from(JSON.stringify(jobData)), { persistent: true })`
-    - Add comment: "persistent=true writes message to disk. If broker restarts, message is not lost.
-      Buffer.from() converts JSON string to binary format that RabbitMQ expects."
-  - Note: For better reliability, consider implementing publisher confirms (wait for confirmation)
-    - Add comment: "Publisher confirms ensure message was received by broker. For POC, we skip this for simplicity,
-      but it's recommended for production to guarantee message delivery."
-  - Handle errors and log appropriately
-  - Use structured logging with requestId if available
-  
+- Add detailed comments explaining each step:
+
+  ```typescript
+  /**
+   * Publishes a job to a RabbitMQ queue.
+   *
+   * @param queueName - The name of the queue to publish to
+   * @param jobData - The job payload to serialize and send
+   *
+   * Flow:
+   * 1. Get or create a channel (channel wrapper handles reconnection)
+   * 2. Assert the queue exists (creates it if it doesn't, with durable=true so it survives restarts)
+   * 3. Serialize jobData to JSON and convert to Buffer (RabbitMQ messages are binary)
+   * 4. Send message to queue with persistent=true (message written to disk, survives broker restart)
+   * 5. Wait for confirmation (optional - can add publisher confirms later for better reliability)
+   */
+  ```
+
+- Use `connection.createChannel()` to get channel wrapper
+- Use `channel.addSetup()` or direct channel access (channel wrapper provides channel as first arg to callbacks)
+- Assert queue: `channel.assertQueue(queueName, { durable: true })` - Add comment: "Assert queue creates it if it doesn't exist. durable=true means queue survives broker restarts."
+- Publish message: `channel.sendToQueue(queueName, Buffer.from(JSON.stringify(jobData)), { persistent: true })` - Add comment: "persistent=true writes message to disk. If broker restarts, message is not lost.
+
+Buffer.from() converts JSON string to binary format that RabbitMQ expects."
+
+- Note: For better reliability, consider implementing publisher confirms (wait for confirmation) - Add comment: "Publisher confirms ensure message was received by broker. For POC, we skip this for simplicity,
+
+but it's recommended for production to guarantee message delivery."
+
+- Handle errors and log appropriately
+- Use structured logging with requestId if available
+
 - Export `createConsumer(queueName: string, handler: (msg: unknown) => Promise<void>): Promise<void>`:
-  - Add detailed comments explaining consumer pattern:
-    ```typescript
-    /**
-     * Creates a consumer that processes messages from a RabbitMQ queue.
-     * 
-     * @param queueName - The name of the queue to consume from
-     * @param handler - Async function that processes each message
-     * 
-     * Consumer Flow:
-     * 1. Set up channel and queue (runs on initial connection and after reconnection)
-     * 2. Set prefetch to 1 (fair distribution - process one message at a time)
-     * 3. Start consuming messages (RabbitMQ delivers messages one by one)
-     * 4. For each message:
-     *    a. Parse JSON payload
-     *    b. Call handler function
-     *    c. If handler succeeds: ack message (tell RabbitMQ to delete it)
-     *    d. If handler fails: nack message (tell RabbitMQ to requeue or discard)
-     * 
-     * Message Acknowledgment:
-     * - noAck=false means we must manually acknowledge messages
-     * - If we ack: RabbitMQ deletes message from queue (job completed)
-     * - If we nack with requeue=true: RabbitMQ puts message back in queue (retry)
-     * - If we nack with requeue=false: RabbitMQ discards message (permanent failure)
-     * - If we crash without acking: RabbitMQ requeues message (ensures no message loss)
-     */
-    ```
-  - Use `connection.createChannel()` to get channel wrapper
-  - Use `channel.addSetup()` to set up consumer (ensures setup runs after reconnection)
-    - Add comment: "addSetup ensures consumer is recreated if connection is lost and restored.
-      This is critical - without this, consumer stops working after reconnection."
-  - Assert queue: `channel.assertQueue(queueName, { durable: true })`
-    - Add comment: "Ensure queue exists before consuming. If queue doesn't exist, create it as durable."
-  - Set prefetch: `channel.prefetch(1)`
-    - Add comment: "Prefetch=1 means 'give me one message, wait for ack, then give next message'.
-      This ensures fair distribution among multiple workers. Without prefetch, one worker might
-      grab all messages while others sit idle."
-  - Consume messages: `channel.consume(queueName, async (msg) => { ... }, { noAck: false })`
-    - Add comment: "noAck=false means we must manually acknowledge each message.
-      If we don't ack, message stays in queue and will be redelivered."
-  - For each message:
-    - Check if message is null (channel closed)
-      - Add comment: "If msg is null, channel was closed. This can happen during shutdown or reconnection."
-    - Parse JSON: `JSON.parse(msg.content.toString())`
-      - Add comment: "RabbitMQ messages are Buffers. Convert to string, then parse JSON."
-    - Call handler with parsed message data
-    - Handler should return Promise that resolves on success, rejects on failure
-    - After handler resolves: Acknowledge message `channel.ack(msg)`
-      - Add comment: "Ack tells RabbitMQ 'I processed this successfully, you can delete it from the queue'.
-        Message is removed from queue and won't be redelivered."
-    - After handler rejects: Reject message based on error type:
-      - Permanent failures (4xx, validation errors): `channel.nack(msg, false, false)`
-        - Add comment: "nack(msg, false, false) = 'discard this message, don't requeue'.
-          false, false means: don't requeue to all consumers, don't requeue at all.
-          Use for permanent failures that won't succeed on retry (e.g., validation errors)."
-      - Transient failures (5xx, network errors): `channel.nack(msg, false, true)`
-        - Add comment: "nack(msg, false, true) = 'put this message back in queue for retry'.
-          false, true means: don't requeue to all consumers, but do requeue to this queue.
-          Use for transient failures that might succeed on retry (e.g., temporary network issues)."
-    - Handle errors and log appropriately
-      - Add comment: "Wrap in try-catch. If handler throws unexpected error, nack with requeue=true
-        so message can be retried (might be transient issue)."
-  - Note: For POC, we acknowledge after handler completes successfully. 
-    If handler fails, message is rejected and may be requeued by RabbitMQ.
-    - Add comment: "This pattern ensures no message loss. If worker crashes mid-processing,
-      unacknowledged message is automatically requeued by RabbitMQ."
-  
+- Add detailed comments explaining consumer pattern:
+
+  ```typescript
+  /**
+   * Creates a consumer that processes messages from a RabbitMQ queue.
+   *
+   * @param queueName - The name of the queue to consume from
+   * @param handler - Async function that processes each message
+   *
+   * Consumer Flow:
+   * 1. Set up channel and queue (runs on initial connection and after reconnection)
+   * 2. Set prefetch to 1 (fair distribution - process one message at a time)
+   * 3. Start consuming messages (RabbitMQ delivers messages one by one)
+   * 4. For each message:
+   *    a. Parse JSON payload
+   *    b. Call handler function
+   *    c. If handler succeeds: ack message (tell RabbitMQ to delete it)
+   *    d. If handler fails: nack message (tell RabbitMQ to requeue or discard)
+   *
+   * Message Acknowledgment:
+   * - noAck=false means we must manually acknowledge messages
+   * - If we ack: RabbitMQ deletes message from queue (job completed)
+   * - If we nack with requeue=true: RabbitMQ puts message back in queue (retry)
+   * - If we nack with requeue=false: RabbitMQ discards message (permanent failure)
+   * - If we crash without acking: RabbitMQ requeues message (ensures no message loss)
+   */
+  ```
+
+- Use `connection.createChannel()` to get channel wrapper
+- Use `channel.addSetup()` to set up consumer (ensures setup runs after reconnection) - Add comment: "addSetup ensures consumer is recreated if connection is lost and restored.
+
+This is critical - without this, consumer stops working after reconnection."
+
+- Assert queue: `channel.assertQueue(queueName, { durable: true })` - Add comment: "Ensure queue exists before consuming. If queue doesn't exist, create it as durable."
+- Set prefetch: `channel.prefetch(1)` - Add comment: "Prefetch=1 means 'give me one message, wait for ack, then give next message'.
+
+This ensures fair distribution among multiple workers. Without prefetch, one worker might
+
+grab all messages while others sit idle."
+
+- Consume messages: `channel.consume(queueName, async (msg) => { ... }, { noAck: false })` - Add comment: "noAck=false means we must manually acknowledge each message.
+
+If we don't ack, message stays in queue and will be redelivered."
+
+- For each message: - Check if message is null (channel closed) - Add comment: "If msg is null, channel was closed. This can happen during shutdown or reconnection." - Parse JSON: `JSON.parse(msg.content.toString())` - Add comment: "RabbitMQ messages are Buffers. Convert to string, then parse JSON." - Call handler with parsed message data - Handler should return Promise that resolves on success, rejects on failure - After handler resolves: Acknowledge message `channel.ack(msg)` - Add comment: "Ack tells RabbitMQ 'I processed this successfully, you can delete it from the queue'.
+
+Message is removed from queue and won't be redelivered."
+
+                - After handler rejects: Reject message based on error type:
+                - Permanent failures (4xx, validation errors): `channel.nack(msg, false, false)`
+                                - Add comment: "nack(msg, false, false) = 'discard this message, don't requeue'.
+
+false, false means: don't requeue to all consumers, don't requeue at all.
+
+Use for permanent failures that won't succeed on retry (e.g., validation errors)."
+
+                - Transient failures (5xx, network errors): `channel.nack(msg, false, true)`
+                                - Add comment: "nack(msg, false, true) = 'put this message back in queue for retry'.
+
+false, true means: don't requeue to all consumers, but do requeue to this queue.
+
+Use for transient failures that might succeed on retry (e.g., temporary network issues)."
+
+                - Handle errors and log appropriately
+                - Add comment: "Wrap in try-catch. If handler throws unexpected error, nack with requeue=true
+
+so message can be retried (might be transient issue)."
+
+- Note: For POC, we acknowledge after handler completes successfully.
+
+If handler fails, message is rejected and may be requeued by RabbitMQ.
+
+                - Add comment: "This pattern ensures no message loss. If worker crashes mid-processing,
+
+unacknowledged message is automatically requeued by RabbitMQ."
+
 - Export `publishToDLQ(queueName: string, jobData: unknown, error: Error): Promise<void>`:
-  - Add detailed comments:
-    ```typescript
-    /**
-     * Publishes a failed job to the Dead Letter Queue (DLQ).
-     * 
-     * DLQ is used for messages that couldn't be processed after all retries.
-     * This allows manual inspection and potential replay of failed jobs.
-     * 
-     * @param queueName - The DLQ queue name
-     * @param jobData - The original job payload
-     * @param error - The error that caused the failure
-     */
-    ```
-  - Use same channel wrapper pattern
-  - Assert DLQ queue: `channel.assertQueue(queueName, { durable: true })`
-    - Add comment: "DLQ should be durable so failed jobs aren't lost on broker restart."
-  - Publish failed job with error details: Include jobData and error information in message
-    - Add comment: "Include both original job data and error details so we can:
-      1. Understand why it failed (error message, stack trace)
-      2. Replay the job if needed (original jobData)"
-  - Use for permanent failures after retries
-    - Add comment: "Only send to DLQ after all retries exhausted. Transient failures should be requeued,
-      not sent to DLQ immediately."
-  
+- Add detailed comments:
+
+  ```typescript
+  /**
+   * Publishes a failed job to the Dead Letter Queue (DLQ).
+   *
+   * DLQ is used for messages that couldn't be processed after all retries.
+   * This allows manual inspection and potential replay of failed jobs.
+   *
+   * @param queueName - The DLQ queue name
+   * @param jobData - The original job payload
+   * @param error - The error that caused the failure
+   */
+  ```
+
+- Use same channel wrapper pattern
+- Assert DLQ queue: `channel.assertQueue(queueName, { durable: true })` - Add comment: "DLQ should be durable so failed jobs aren't lost on broker restart."
+- Publish failed job with error details: Include jobData and error information in message - Add comment: "Include both original job data and error details so we can:
+
+                1. Understand why it failed (error message, stack trace)
+                2. Replay the job if needed (original jobData)"
+
+- Use for permanent failures after retries - Add comment: "Only send to DLQ after all retries exhausted. Transient failures should be requeued,
+
+not sent to DLQ immediately."
+
 - Handle connection errors and reconnections (amqp-connection-manager handles this automatically)
-  - Add comment: "amqp-connection-manager automatically:
-    1. Detects connection loss
-    2. Attempts reconnection with exponential backoff
-    3. Recreates channels after reconnection
-    4. Emits events we can listen to (connect, disconnect, error)"
-  
+- Add comment: "amqp-connection-manager automatically:
+
+                1. Detects connection loss
+                2. Attempts reconnection with exponential backoff
+                3. Recreates channels after reconnection
+                4. Emits events we can listen to (connect, disconnect, error)"
+
 - Use structured logging following project patterns
 - Note: Channel wrapper from amqp-connection-manager automatically recreates channels on reconnection
-  - Add comment: "This is why we use channel.addSetup() - setup code runs every time channel is created,
-    including after reconnection. Without this, consumer would stop working after reconnection."
-  
+- Add comment: "This is why we use channel.addSetup() - setup code runs every time channel is created,
+
+including after reconnection. Without this, consumer would stop working after reconnection."
+
 - Implementation note: Verify exact API for amqp-connection-manager during implementation:
-  - `connection.createChannel()` returns a channel wrapper
-  - Use `channel.addSetup((channel) => { ... })` for setup that runs after reconnection
-  - Or use `channel.waitForConnect()` and then access channel directly
-  - Refer to amqp-connection-manager documentation for exact patterns
-  - Add comment: "Check amqp-connection-manager README for exact API. The wrapper pattern might vary
-    between versions. Key is ensuring setup runs after reconnection."
+- `connection.createChannel()` returns a channel wrapper
+- Use `channel.addSetup((channel) => { ... })` for setup that runs after reconnection
+- Or use `channel.waitForConnect()` and then access channel directly
+- Refer to amqp-connection-manager documentation for exact patterns
+- Add comment: "Check amqp-connection-manager README for exact API. The wrapper pattern might vary
+
+between versions. Key is ensuring setup runs after reconnection."
 
 4. Create `backend/services/ai/src/mocks/rabbitmq-mock.ts`:
 
@@ -678,27 +646,24 @@ Before implementing, understand these key concepts:
 
 - Import `Capability` from `@types`
 - Define `TCapabilityJobPayload` type (use `T` prefix for domain types):
-     ```typescript
-                                        export type TCapabilityJobPayload = {
-                                          capability: Capability; // Capability name (e.g., "parse-task"), not the full config
-                                          // Note: We store the capability name instead of CapabilityConfig because:
-                                          // - CapabilityConfig contains functions (handler) and Zod schemas that cannot be serialized to JSON
-                                          // - The worker will look up the config from the capabilities registry using this name
-                                          // - This differs from sync flow which uses res.locals.capabilityConfig (already validated by middleware)
-                                          input: unknown; // Full validated input structure (params, query, body) matching what executeSyncPattern expects
-                                          // Note: This is the complete validated input, not just the body, so it can be passed directly to executeSyncPattern
-                                          callbackUrl: string;
-                                          requestId: string;
-                                          userId: number;
-                                          tokenReservation?: {
-                                            tokensReserved: number;
-                                            windowStartTimestamp: number;
-                                          };
-                                        };
-     ```
-
-
-
+  ```typescript
+  export type TCapabilityJobPayload = {
+    capability: Capability; // Capability name (e.g., "parse-task"), not the full config
+    // Note: We store the capability name instead of CapabilityConfig because:
+    // - CapabilityConfig contains functions (handler) and Zod schemas that cannot be serialized to JSON
+    // - The worker will look up the config from the capabilities registry using this name
+    // - This differs from sync flow which uses res.locals.capabilityConfig (already validated by middleware)
+    input: unknown; // Full validated input structure (params, query, body) matching what executeSyncPattern expects
+    // Note: This is the complete validated input, not just the body, so it can be passed directly to executeSyncPattern
+    callbackUrl: string;
+    requestId: string;
+    userId: number;
+    tokenReservation?: {
+      tokensReserved: number;
+      windowStartTimestamp: number;
+    };
+  };
+  ```
 
 2. Update `backend/services/ai/src/types/index.ts`:
 
@@ -735,10 +700,7 @@ Before implementing, understand these key concepts:
 
 1. Update `backend/services/ai/src/capabilities/parse-task/parse-task-schemas.ts`:
 
-- Add optional fields for async pattern:
-    - `callbackUrl?: z.string().url()`
-    - `userId?: z.number().int().positive()`
-    - `tokenReservation?: z.object({ tokensReserved: z.number(), windowStartTimestamp: z.number() })`
+- Add optional fields for async pattern: - `callbackUrl?: z.string().url()` - `userId?: z.number().int().positive()` - `tokenReservation?: z.object({ tokensReserved: z.number(), windowStartTimestamp: z.number() })`
 - Keep existing `naturalLanguage` and `config` fields
 - Note: These fields are conditionally required based on pattern (validation happens in executor)
 
@@ -755,10 +717,10 @@ Before implementing, understand these key concepts:
 - Extract `callbackUrl`, `userId`, and `tokenReservation` from input body
 - Validate required fields are present (throw BadRequestError if missing)
 - Create job payload: `TCapabilityJobPayload`
-  - Store `capability` name from `input.params.capability` (not the full config - see comment in job-payload.ts)
-  - Store full `input` (validated input with params, query, body) - this matches what executeSyncPattern expects
-  - Store `callbackUrl`, `userId`, `tokenReservation`, `requestId`
-  - Add comment explaining why we store capability name instead of config (functions can't be serialized)
+- Store `capability` name from `input.params.capability` (not the full config - see comment in job-payload.ts)
+- Store full `input` (validated input with params, query, body) - this matches what executeSyncPattern expects
+- Store `callbackUrl`, `userId`, `tokenReservation`, `requestId`
+- Add comment explaining why we store capability name instead of config (functions can't be serialized)
 - Publish job to RabbitMQ using `publishJob(RABBITMQ_QUEUE_NAME, jobPayload)`
 - Wait for successful queue publication
 - Return `{ result: {}, durationMs }` (minimal result, duration is queue time only)
@@ -840,81 +802,58 @@ Before implementing, understand these key concepts:
 - Import `InternalError, BadRequestError` from `@shared/errors`
 - Import `AI_ERROR_TYPE` from `@constants`
 - Note: For POC, we do NOT track active jobs. RabbitMQ will automatically requeue unacknowledged messages.
-- Implement retry logic helper:
-    - `retryWithBackoff<T>(fn: () => Promise<T>, maxRetries: number): Promise<T>`
-    - Exponential backoff: `min(1000 * Math.pow(2, attempt), 30000) + Math.random() * 1000`
-    - Retry on transient errors, throw on permanent errors
-- Implement `processJob(jobPayload: TCapabilityJobPayload): Promise<void>`:
-    - Extract capability name, input, callbackUrl, requestId, userId, tokenReservation from payload
-    - Get capability config from capabilities registry:
-      - Look up `capabilities[capability]` (same pattern as validateExecutableCapability middleware)
-      - Add comment explaining: "Unlike sync flow which uses res.locals.capabilityConfig (already validated by middleware), 
-        we look up from registry here because CapabilityConfig contains functions that cannot be serialized to RabbitMQ.
-        The capability name was stored in the job payload, and we reconstruct the config here."
-      - Throw error if capability not found (should not happen if validation was correct, but handle gracefully)
-    - Try-catch for capability execution:
-    - Execute capability handler using `executeSyncPattern` (reuse sync logic)
-    - Create discriminated union for job processing result (for better type inference):
+- Implement retry logic helper: - `retryWithBackoff<T>(fn: () => Promise<T>, maxRetries: number): Promise<T>` - Exponential backoff: `min(1000 * Math.pow(2, attempt), 30000) + Math.random() * 1000` - Retry on transient errors, throw on permanent errors
+- Implement `processJob(jobPayload: TCapabilityJobPayload): Promise<void>`: - Extract capability name, input, callbackUrl, requestId, userId, tokenReservation from payload - Get capability config from capabilities registry: - Look up `capabilities[capability]` (same pattern as validateExecutableCapability middleware) - Add comment explaining: "Unlike sync flow which uses res.locals.capabilityConfig (already validated by middleware),
+
+we look up from registry here because CapabilityConfig contains functions that cannot be serialized to RabbitMQ.
+
+The capability name was stored in the job payload, and we reconstruct the config here."
+
+                - Throw error if capability not found (should not happen if validation was correct, but handle gracefully)
+                - Try-catch for capability execution:
+                - Execute capability handler using `executeSyncPattern` (reuse sync logic)
+                - Create discriminated union for job processing result (for better type inference):
      ```typescript
-     type TJobProcessingResult = 
-       | { status: "success"; result: CapabilityResponse<...>; openaiMetadata: ... }
-       | { status: "failure"; error: { message: string; type?: string } };
+          type TJobProcessingResult =
+            | { status: "success"; result: CapabilityResponse<...>; openaiMetadata: ... }
+            | { status: "failure"; error: { message: string; type?: string } };
      ```
-    - On success: Create success payload matching webhook discriminated union:
-        - `status: "success"`
-        - `result: TParsedTask` (from execution result)
-        - `openaiMetadata`, `aiServiceRequestId`, `userId`, `naturalLanguage`, `tokenReservation`
-    - On failure: Create failure payload matching webhook discriminated union:
-        - `status: "failure"`
-        - `error: { message: string, type?: string }` (extract from error object)
-        - `aiServiceRequestId`, `userId`, `naturalLanguage`, `openaiMetadata` (if available), `tokenReservation`
-    - POST to callbackUrl using `tasksClient.post()` with retry:
-        - URL: `/api/v1/webhooks`
-        - Headers: `{ "x-request-id": requestId }`
-        - Body: success or failure payload (discriminated union)
-        - Retry on transient failures (5xx, network errors)
-        - Don't retry on 4xx (permanent failures)
-    - Handle errors: Log and publish to DLQ after max retries
-    - Note: Message acknowledgment is handled by createConsumer wrapper:
-      - If processJob resolves successfully: message is acknowledged
-      - If processJob rejects: message is rejected (requeue based on error type)
-      - This ensures job is not lost if webhook fails - message will be requeued
-    - Use structured logging with requestId
-- Implement `startWorker(): Promise<void>`:
-    - Set up graceful shutdown handlers:
-    - `process.on('SIGTERM', handleShutdown)`
-    - `process.on('SIGINT', handleShutdown)`
-    - `handleShutdown` function:
-    - Log "Shutting down worker gracefully"
-    - Stop consumer (cancel subscription - prevents new jobs from being consumed)
-    - Wait 5-10 seconds for any in-flight jobs to complete (simple timeout, no active tracking)
-    - Close RabbitMQ connection
-    - Note: Unacknowledged messages will be automatically requeued by RabbitMQ
-    - Log "Worker shutdown complete"
-    - Exit process
-    - Start consuming from queue using `createConsumer(RABBITMQ_QUEUE_NAME, processJob)`
-    - Log worker startup
-    - Note: For POC, we don't track active jobs. If shutdown occurs during job processing, 
-      the message will be requeued when connection closes (if not yet acknowledged)
+
+                - On success: Create success payload matching webhook discriminated union:
+                                - `status: "success"`
+                                - `result: TParsedTask` (from execution result)
+                                - `openaiMetadata`, `aiServiceRequestId`, `userId`, `naturalLanguage`, `tokenReservation`
+                - On failure: Create failure payload matching webhook discriminated union:
+                                - `status: "failure"`
+                                - `error: { message: string, type?: string }` (extract from error object)
+                                - `aiServiceRequestId`, `userId`, `naturalLanguage`, `openaiMetadata` (if available), `tokenReservation`
+                - POST to callbackUrl using `tasksClient.post()` with retry:
+                                - URL: `/api/v1/webhooks`
+                                - Headers: `{ "x-request-id": requestId }`
+                                - Body: success or failure payload (discriminated union)
+                                - Retry on transient failures (5xx, network errors)
+                                - Don't retry on 4xx (permanent failures)
+                - Handle errors: Log and publish to DLQ after max retries
+                - Note: Message acknowledgment is handled by createConsumer wrapper:
+                - If processJob resolves successfully: message is acknowledged
+                - If processJob rejects: message is rejected (requeue based on error type)
+                - This ensures job is not lost if webhook fails - message will be requeued
+                - Use structured logging with requestId
+
+- Implement `startWorker(): Promise<void>`: - Set up graceful shutdown handlers: - `process.on('SIGTERM', handleShutdown)` - `process.on('SIGINT', handleShutdown)` - `handleShutdown` function: - Log "Shutting down worker gracefully" - Stop consumer (cancel subscription - prevents new jobs from being consumed) - Wait 5-10 seconds for any in-flight jobs to complete (simple timeout, no active tracking) - Close RabbitMQ connection - Note: Unacknowledged messages will be automatically requeued by RabbitMQ - Log "Worker shutdown complete" - Exit process - Start consuming from queue using `createConsumer(RABBITMQ_QUEUE_NAME, processJob)` - Log worker startup - Note: For POC, we don't track active jobs. If shutdown occurs during job processing,
+
+the message will be requeued when connection closes (if not yet acknowledged)
 
 5. Create `backend/services/ai/src/workers/start-worker.ts`:
 
 - Import `startWorker` from `./capability-worker`
 - Import `createLogger` from `@shared/config/create-logger`
-- Export `initializeWorker(): Promise<void>`:
-    - Log "Starting capability worker"
-    - Call `startWorker()`
-    - Handle errors: If worker startup fails (e.g., RabbitMQ connection fails), throw error
-      - This will cause AI service startup to fail (fail fast approach)
-      - Log error: "Worker failed to start, AI service startup aborted"
-      - Let the error propagate to initializeServer, which will call afterFailure cleanup
+- Export `initializeWorker(): Promise<void>`: - Log "Starting capability worker" - Call `startWorker()` - Handle errors: If worker startup fails (e.g., RabbitMQ connection fails), throw error - This will cause AI service startup to fail (fail fast approach) - Log error: "Worker failed to start, AI service startup aborted" - Let the error propagate to initializeServer, which will call afterFailure cleanup
 
 6. Update `backend/services/ai/src/server.ts`:
 
 - Import `initializeWorker` from `@workers/start-worker`
-- Update `initializeServer` call to include `startCallback`:
-    - Call `initializeWorker()` in startCallback
-    - Follow existing pattern from tasks service server.ts
+- Update `initializeServer` call to include `startCallback`: - Call `initializeWorker()` in startCallback - Follow existing pattern from tasks service server.ts
 
 7. Create `backend/services/ai/src/workers/capability-worker.test.ts`:
 
@@ -978,47 +917,45 @@ Before implementing, understand these key concepts:
 
 - Import `TaskResponse` from `@types/task-response`
 - Export `WebhookCallbackResponse` type:
-     ```typescript
-                                        export type WebhookCallbackResponse = {
-                                          tasksServiceRequestId: string;
-                                          task: TaskResponse;
-                                        };
-     ```
-
-
-
+  ```typescript
+  export type WebhookCallbackResponse = {
+    tasksServiceRequestId: string;
+    task: TaskResponse;
+  };
+  ```
 
 3. Create `backend/services/tasks/src/schemas/webhook-schemas.ts`:
 
 - Import `z` from `zod`
 - Import `TParsedTask` and `TOpenaiMetadata` from `@types`
-- Define webhook callback schema using discriminated union for better type inference:
-    - Use `z.discriminatedUnion` with `status` as discriminator:
-     ```typescript
-     const webhookCallbackBodySchema = z.discriminatedUnion("status", [
-       z.object({
-         status: z.literal("success"),
-         aiServiceRequestId: z.string(),
-         userId: z.number().int().positive(),
-         naturalLanguage: z.string(),
-         result: TParsedTask, // Required when status is "success"
-         openaiMetadata: z.record(z.string(), z.object({ ... })), // TOpenaiMetadata structure
-         tokenReservation: z.object({ tokensReserved: z.number(), windowStartTimestamp: z.number() }).optional(),
-       }),
-       z.object({
-         status: z.literal("failure"),
-         aiServiceRequestId: z.string(),
-         userId: z.number().int().positive(),
-         naturalLanguage: z.string(),
-         error: z.object({ message: z.string(), type: z.string().optional() }), // Required when status is "failure"
-         openaiMetadata: z.record(z.string(), z.object({ ... })).optional(), // Optional for failures
-         tokenReservation: z.object({ tokensReserved: z.number(), windowStartTimestamp: z.number() }).optional(),
-       }),
-     ]);
-     ```
-    - Wrap in body schema: `webhookCallbackSchema = z.object({ body: webhookCallbackBodySchema })`
-    - This provides better type inference: TypeScript will narrow the type based on `status` field
-    - Follow schema definition pattern from project conventions
+- Define webhook callback schema using discriminated union for better type inference: - Use `z.discriminatedUnion` with `status` as discriminator:
+
+  ```typescript
+       const webhookCallbackBodySchema = z.discriminatedUnion("status", [
+         z.object({
+           status: z.literal("success"),
+           aiServiceRequestId: z.string(),
+           userId: z.number().int().positive(),
+           naturalLanguage: z.string(),
+           result: TParsedTask, // Required when status is "success"
+           openaiMetadata: z.record(z.string(), z.object({ ... })), // TOpenaiMetadata structure
+           tokenReservation: z.object({ tokensReserved: z.number(), windowStartTimestamp: z.number() }).optional(),
+         }),
+         z.object({
+           status: z.literal("failure"),
+           aiServiceRequestId: z.string(),
+           userId: z.number().int().positive(),
+           naturalLanguage: z.string(),
+           error: z.object({ message: z.string(), type: z.string().optional() }), // Required when status is "failure"
+           openaiMetadata: z.record(z.string(), z.object({ ... })).optional(), // Optional for failures
+           tokenReservation: z.object({ tokensReserved: z.number(), windowStartTimestamp: z.number() }).optional(),
+         }),
+       ]);
+  ```
+
+                - Wrap in body schema: `webhookCallbackSchema = z.object({ body: webhookCallbackBodySchema })`
+                - This provides better type inference: TypeScript will narrow the type based on `status` field
+                - Follow schema definition pattern from project conventions
 
 4. Update `backend/services/tasks/src/types/index.ts`:
 
@@ -1068,32 +1005,7 @@ Before implementing, understand these key concepts:
 - Import `createTask, createManySubtasks, findTaskById` from `@repositories/tasks-repository`
 - Import `taskToResponseDto` from `@utils/task-to-response-dto`
 - Import `extractOpenaiTokenUsage` from `@utils/extract-openai-token-usage`
-- Implement `handleWebhookCallback`:
-    - Extract `requestId` from `res.locals`
-    - Extract validated body from request (will be set by validateSchema middleware)
-    - Extract `userId`, `naturalLanguage`, `result`, `openaiMetadata`, `status`, `error`, `tokenReservation`
-    - **Set authentication context**: `res.locals.authenticationContext = { userId }` (override hardcoded value from authentication middleware)
-    - Set `res.locals.tokenUsage` with:
-    - `tokensReserved`: from tokenReservation (if provided)
-    - `windowStartTimestamp`: from tokenReservation (if provided)
-    - `actualTokens`: extracted from openaiMetadata using `extractOpenaiTokenUsage`
-    - Log "Handle webhook callback - starting" with baseLogContext
-    - If status is "success":
-    - TypeScript will narrow type based on discriminated union - `result` field is guaranteed to exist
-    - Create task in database using transaction:
-        - Call `createTask` with userId, naturalLanguage, result (from narrowed type)
-        - If result.subtasks exists, call `createManySubtasks`
-        - Call `findTaskById` to get task with subtasks
-    - Log "Handle webhook callback - succeeded"
-    - Return 201 Created with task data: `{ tasksServiceRequestId: requestId, task: taskToResponseDto(task) }`
-    - If status is "failure":
-    - TypeScript will narrow type based on discriminated union - `error` field is guaranteed to exist
-    - Log error details (from narrowed `error` field)
-    - Set `actualTokens: 0` in `res.locals.tokenUsage` (release reserved tokens - no actual usage)
-    - Return 201 Created with error acknowledgment (webhook was received and processed)
-    - Call `next()` to continue to post-response middleware (token usage reconciliation)
-    - Note: Token reconciliation will release reserved tokens since actualTokens is 0
-    - Handle errors: pass to error handler via `next(error)`
+- Implement `handleWebhookCallback`: - Extract `requestId` from `res.locals` - Extract validated body from request (will be set by validateSchema middleware) - Extract `userId`, `naturalLanguage`, `result`, `openaiMetadata`, `status`, `error`, `tokenReservation` - **Set authentication context**: `res.locals.authenticationContext = { userId }` (override hardcoded value from authentication middleware) - Set `res.locals.tokenUsage` with: - `tokensReserved`: from tokenReservation (if provided) - `windowStartTimestamp`: from tokenReservation (if provided) - `actualTokens`: extracted from openaiMetadata using `extractOpenaiTokenUsage` - Log "Handle webhook callback - starting" with baseLogContext - If status is "success": - TypeScript will narrow type based on discriminated union - `result` field is guaranteed to exist - Create task in database using transaction: - Call `createTask` with userId, naturalLanguage, result (from narrowed type) - If result.subtasks exists, call `createManySubtasks` - Call `findTaskById` to get task with subtasks - Log "Handle webhook callback - succeeded" - Return 201 Created with task data: `{ tasksServiceRequestId: requestId, task: taskToResponseDto(task) }` - If status is "failure": - TypeScript will narrow type based on discriminated union - `error` field is guaranteed to exist - Log error details (from narrowed `error` field) - Set `actualTokens: 0` in `res.locals.tokenUsage` (release reserved tokens - no actual usage) - Return 201 Created with error acknowledgment (webhook was received and processed) - Call `next()` to continue to post-response middleware (token usage reconciliation) - Note: Token reconciliation will release reserved tokens since actualTokens is 0 - Handle errors: pass to error handler via `next(error)`
 - Follow controller pattern from project conventions
 
 3. Create `backend/services/tasks/src/controllers/webhook-controller/index.ts`:
@@ -1171,63 +1083,66 @@ Before implementing, understand these key concepts:
 1. Update `backend/services/tasks/src/types/ai-capability.ts`:
 
 - Update `TExecuteCapabilityConfig` to support async pattern using discriminated union:
-     ```typescript
-                                        export type TExecuteCapabilityConfig<TCapability extends TAiCapability> = 
-                                          | { capability: TCapability; pattern: "sync"; params: TAiCapabilityMap[TCapability]["params"] }
-                                          | { capability: TCapability; pattern: "async"; params: TAiCapabilityMap[TCapability]["params"] & { callbackUrl: string; userId: number; tokenReservation?: { tokensReserved: number; windowStartTimestamp: number } } };
-     ```
 
-
-
+  ```typescript
+  export type TExecuteCapabilityConfig<TCapability extends TAiCapability> =
+    | {
+        capability: TCapability;
+        pattern: "sync";
+        params: TAiCapabilityMap[TCapability]["params"];
+      }
+    | {
+        capability: TCapability;
+        pattern: "async";
+        params: TAiCapabilityMap[TCapability]["params"] & {
+          callbackUrl: string;
+          userId: number;
+          tokenReservation?: {
+            tokensReserved: number;
+            windowStartTimestamp: number;
+          };
+        };
+      };
+  ```
 
 - Use union type pattern with `pattern` as discriminator
 
 2. Update `backend/services/tasks/src/services/tasks-service/tasks-service.ts`:
 
 - Import `env` from `@config/env`
-- Update `createTaskHandler` signature to accept `tokenUsage` parameter:
-    - `createTaskHandler(requestId: string, userId: number, naturalLanguage: string, tokenUsage?: { tokensReserved: number; windowStartTimestamp: number })`
-- Update `createTaskHandler` to:
-    - Always use async pattern (remove sync logic or keep as fallback)
-    - Extract `userId` from parameters
-    - Construct `callbackUrl` from `env.TASKS_SERVICE_BASE_URL + "/api/v1/webhooks"`
-    - Call `executeCapability` with:
-    - `pattern: "async"`
-    - `params: { naturalLanguage, config: DEFAULT_PARSE_TASK_CONFIG, callbackUrl, userId, tokenReservation: tokenUsage ? { tokensReserved: tokenUsage.tokensReserved, windowStartTimestamp: tokenUsage.windowStartTimestamp } : undefined }`
-    - Handle response (discriminated union):
-      - Check `response.status === "queued" && response.pattern === "async"`
-      - TypeScript will narrow type - `response.data` will be `{ aiServiceRequestId: string }`
-      - Return response (discriminated union type)
-    - Remove database operations (moved to webhook)
-    - Remove token usage extraction (moved to webhook)
+- Update `createTaskHandler` signature to accept `tokenUsage` parameter: - `createTaskHandler(requestId: string, userId: number, naturalLanguage: string, tokenUsage?: { tokensReserved: number; windowStartTimestamp: number })`
+- Update `createTaskHandler` to: - Always use async pattern (remove sync logic or keep as fallback) - Extract `userId` from parameters - Construct `callbackUrl` from `env.TASKS_SERVICE_BASE_URL + "/api/v1/webhooks"` - Call `executeCapability` with: - `pattern: "async"` - `params: { naturalLanguage, config: DEFAULT_PARSE_TASK_CONFIG, callbackUrl, userId, tokenReservation: tokenUsage ? { tokensReserved: tokenUsage.tokensReserved, windowStartTimestamp: tokenUsage.windowStartTimestamp } : undefined }` - Handle response (discriminated union): - Check `response.status === "queued" && response.pattern === "async"` - TypeScript will narrow type - `response.data` will be `{ aiServiceRequestId: string }` - Return response (discriminated union type) - Remove database operations (moved to webhook) - Remove token usage extraction (moved to webhook)
 
 3. Update `backend/services/tasks/src/controllers/tasks-controller/tasks-controller.ts`:
 
-- Update `createTask` to:
-    - Extract `tokenUsage` from `res.locals` (set by token usage rate limiter middleware)
-    - Pass `tokenUsage` to `createTaskHandler` (if available)
-    - Handle response from handler (discriminated union):
-      - If `status === "queued"` and `pattern === "async"`: Return 202 with `{ tasksServiceRequestId: requestId }`
-      - TypeScript will narrow the type based on discriminated union
-    - Do NOT call `next()` for post-response middleware (token usage reconciliation happens in webhook)
-    - Log: "Create task (async) - starting", "Create task (async) - succeeded"
+- Update `createTask` to: - Extract `tokenUsage` from `res.locals` (set by token usage rate limiter middleware) - Pass `tokenUsage` to `createTaskHandler` (if available) - Handle response from handler (discriminated union): - If `status === "queued"` and `pattern === "async"`: Return 202 with `{ tasksServiceRequestId: requestId }` - TypeScript will narrow the type based on discriminated union - Do NOT call `next()` for post-response middleware (token usage reconciliation happens in webhook) - Log: "Create task (async) - starting", "Create task (async) - succeeded"
 
 4. Update `backend/services/tasks/src/services/ai-capabilities-service/ai-capabilities-service.ts`:
 
-- Update `executeCapability` to handle async pattern using discriminated union return type:
-    - Create discriminated union return type:
-     ```typescript
-     type TExecuteCapabilityResult<TResult> = 
-       | { status: "success"; pattern: "sync"; data: TAiCapabilityResponse<TResult> }
-       | { status: "queued"; pattern: "async"; data: { aiServiceRequestId: string } };
-     ```
-    - Update function signature: `Promise<TExecuteCapabilityResult<TCapabilityResult>>`
-    - Use type guard: `if (config.pattern === "async")` to narrow config type
-    - Include `callbackUrl`, `userId`, and `tokenReservation` in request body when async
-    - Include `requestId` in headers (`x-request-id`)
-    - Handle 202 Accepted response: return `{ status: "queued", pattern: "async", data: { aiServiceRequestId: string } }`
-    - Handle 200 OK response: return `{ status: "success", pattern: "sync", data: response }`
-    - This provides better type inference: TypeScript will narrow based on `status` and `pattern` fields
+- Update `executeCapability` to handle async pattern using discriminated union return type: - Create discriminated union return type:
+
+  ```typescript
+  type TExecuteCapabilityResult<TResult> =
+    | {
+        status: "success";
+        pattern: "sync";
+        data: TAiCapabilityResponse<TResult>;
+      }
+    | {
+        status: "queued";
+        pattern: "async";
+        data: { aiServiceRequestId: string };
+      };
+  ```
+
+                - Update function signature: `Promise<TExecuteCapabilityResult<TCapabilityResult>>`
+                - Use type guard: `if (config.pattern === "async")` to narrow config type
+                - Include `callbackUrl`, `userId`, and `tokenReservation` in request body when async
+                - Include `requestId` in headers (`x-request-id`)
+                - Handle 202 Accepted response: return `{ status: "queued", pattern: "async", data: { aiServiceRequestId: string } }`
+                - Handle 200 OK response: return `{ status: "success", pattern: "sync", data: response }`
+                - This provides better type inference: TypeScript will narrow based on `status` and `pattern` fields
+
 - Update error handling to distinguish between 202 (expected) and other status codes
 
 **Validation** (MANDATORY - must pass before requesting approval):
@@ -1268,14 +1183,12 @@ Before implementing, understand these key concepts:
 
 - Import `StatusCodes` from `http-status-codes`
 - In the `res.on("finish")` handler, add check before recording:
-     ```typescript
-                                        if (res.statusCode === StatusCodes.ACCEPTED) {
-                                          return; // Skip metrics for 202 Accepted responses
-                                        }
-     ```
 
-
-
+  ```typescript
+  if (res.statusCode === StatusCodes.ACCEPTED) {
+    return; // Skip metrics for 202 Accepted responses
+  }
+  ```
 
 - This prevents async requests from skewing success rate and duration metrics
 - Add comment explaining why 202 is excluded
@@ -1359,40 +1272,48 @@ Create `docs/implementations/async-ai-processing-rabbitmq.md` with the following
 # Async AI Processing with RabbitMQ - Implementation Log
 
 ## Overview
+
 [Brief description of the feature]
 
 ## Implementation Progress
 
 ### Section 1: Infrastructure Setup
+
 **Status**: ✅ Complete / ⏸️ In Progress / ❌ Blocked
 
 **Completed**:
+
 - [List what was implemented]
 
 **Files Created**:
+
 - [List files]
 
 **Files Modified**:
+
 - [List files]
 
 **Issues Encountered**:
+
 - [List any issues]
 
 **Test Results**:
+
 - `npm run type-check:ci`: ✅ Pass / ❌ Fail
 - `npm run test`: ✅ Pass / ❌ Fail
 
 **Notes**:
+
 - [Any additional notes]
 
 ### Section 2: AI Service - RabbitMQ Client
+
 [Same structure for each section]
 
 ## Summary
+
 [Final summary when all sections are complete]
 ```
-
-
 
 ## Key Design Decisions
 
@@ -1457,4 +1378,3 @@ Create `docs/implementations/async-ai-processing-rabbitmq.md` with the following
 - `backend/services/tasks/.env.example`
 - `backend/services/tasks/src/config/env.ts`
 - `backend/services/tasks/src/types/ai-capability.ts`
-- `backend/services/tasks/src/types/index.ts` (export execute-capability-result type)
