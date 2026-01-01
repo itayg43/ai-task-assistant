@@ -61,32 +61,76 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 
 ### Section 2: AI Service - RabbitMQ Client
 
-**Status**: ⏸️ Not Started
+**Status**: ✅ Complete
 
 **Completed**:
 
-- [To be filled after implementation]
+- Added RabbitMQ dependencies to `package.json`:
+  - `amqp-connection-manager: ^4.1.14`
+  - `amqplib: ^0.10.4`
+  - `@types/amqplib: ^0.10.4` (devDependencies)
+- Created `backend/services/ai/src/clients/rabbitmq.ts` with:
+  - Connection manager using `connect([env.RABBITMQ_URL])` for automatic reconnection
+  - `publishJob(queueName, jobData)`: Publishes jobs to RabbitMQ queue with:
+    - Queue assertion (creates if doesn't exist, durable=true)
+    - Message serialization (JSON to Buffer)
+    - Persistent messages (survive broker restart)
+    - One-time send pattern (prevents duplicate sends on reconnection)
+  - `createConsumer(queueName, handler)`: Creates consumer with:
+    - Queue assertion (durable=true)
+    - Prefetch=1 (fair distribution among workers)
+    - Manual acknowledgment (noAck=false)
+    - Error handling with permanent vs transient failure detection
+    - Automatic requeue on transient failures
+    - Discard on permanent failures (4xx errors)
+    - Detailed logging with requestId context
+  - `publishToDLQ(queueName, jobData, error)`: Publishes failed jobs to DLQ with:
+    - Original job data and error details
+    - Timestamp for manual inspection
+    - Persistent messages
+    - One-time send pattern
+- Created `backend/services/ai/src/mocks/rabbitmq-mock.ts` with:
+  - Mock functions for `publishJob`, `createConsumer`, and `publishToDLQ`
+  - `resetRabbitMQMocks()` helper for test cleanup
+  - Uses `vi.fn()` from vitest
 
 **Files Created**:
 
-- [To be filled after implementation]
+- `backend/services/ai/src/clients/rabbitmq.ts`
+- `backend/services/ai/src/mocks/rabbitmq-mock.ts`
 
 **Files Modified**:
 
-- [To be filled after implementation]
+- `backend/services/ai/package.json` (added RabbitMQ dependencies)
 
 **Issues Encountered**:
 
-- [To be filled if any issues]
+- Type error: `Connection` type not exported from `amqp-connection-manager` - Fixed by removing type annotation
+- Channel access: `ChannelWrapper` doesn't expose `channel` property directly - Fixed by using channel from `addSetup` callback
+- Message sending pattern: `addSetup` runs on every reconnection, so sending inside it would send multiple times - Fixed by using one-time send pattern with flag
+- Mock type arguments: `vi.fn()` doesn't accept multiple type parameters like `vi.fn<[args], return>()` - Fixed by using `vi.fn()` without type arguments (TypeScript infers types)
+- Unused imports: Removed `RABBITMQ_QUEUE` and `RABBITMQ_DLQ` imports from rabbitmq.ts client - These constants are meant to be used by callers (async executor, worker), not inside the client itself. The client functions accept `queueName` as a parameter for flexibility.
 
 **Test Results**:
 
-- `npm run type-check:ci`: ⏸️ Pending
-- `npm run test`: ⏸️ Pending
+- `npm run type-check:ci`: ✅ Pass (fixed mock type arguments - `vi.fn()` doesn't accept multiple type parameters)
+- `npm run test`: ✅ Pass (user confirmed)
 
 **Notes**:
 
-- [To be filled]
+- **IMPORTANT**: Run `npm install` in `backend/services/ai` before running validation
+- **Environment Configuration**: Add `RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672` to `.env.dev` (for Docker) or `amqp://guest:guest@localhost:5672` (for local development)
+- Connection manager automatically handles reconnection - no manual intervention needed
+- Channel wrapper pattern ensures channels are recreated after connection loss
+- `addSetup` is used for setup that needs to run on every reconnection (queue assertion)
+- One-time operations (message sending) use a flag pattern to prevent duplicate sends
+- Consumer uses `addSetup` to ensure consumer is recreated after reconnection
+- Prefetch=1 ensures fair distribution among multiple workers
+- Message acknowledgment: ack on success, nack with requeue on transient failures, nack without requeue on permanent failures
+- DLQ includes both original job data and error details for manual inspection and potential replay
+- All functions include detailed comments explaining RabbitMQ concepts and flow
+- Structured logging follows project patterns with requestId context and jobData in log context
+- Constants (`RABBITMQ_QUEUE.AI_CAPABILITY_JOBS`, `RABBITMQ_DLQ.AI_CAPABILITY_JOBS_DLQ`) are used by callers of these functions, not inside the client itself
 
 ### Section 3: AI Service - Job Payload Types
 
@@ -323,4 +367,3 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 ## Summary
 
 [Final summary when all sections are complete]
-

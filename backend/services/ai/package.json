@@ -15,6 +15,7 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@types/amqplib": "^0.10.4",
     "@types/supertest": "^6.0.3",
     "dotenv-cli": "^10.0.0",
     "supertest": "^7.1.4",
@@ -22,6 +23,8 @@
   },
   "dependencies": {
     "@ai-task-assistant/shared": "*",
+    "amqp-connection-manager": "^4.1.14",
+    "amqplib": "^0.10.4",
     "envalid": "^8.0.0",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
