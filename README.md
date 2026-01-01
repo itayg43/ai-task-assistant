@@ -857,28 +857,23 @@ A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualizati
 
 ### Phase 1: Async Architecture & Job Tracking
 
-1. **Async AI Processing with RabbitMQ**
+1. **Async AI Processing with RabbitMQ** ⏸️ **IN PROGRESS** (Section 4/10)
 
+   - **Status**: Currently implementing Section 4 (AI Service - Async Pattern Executor)
+   - **Plan Document**: See `docs/plans/ai-async-flow.md` for detailed implementation plan
+   - **Implementation Log**: See `docs/implementations/async-ai-processing-rabbitmq.md` for progress tracking
    - **Architecture**: Convert synchronous AI requests to async job queue processing
    - **Flow**:
-     - Client submits task → Tasks service returns `202 Accepted` with `jobId` immediately
+     - Client submits task → Tasks service returns `202 Accepted` with `aiServiceRequestId` immediately
      - Job published to RabbitMQ queue
      - Worker pool processes jobs independently (scale workers separately from API)
-     - Results stored in Redis with 24-hour TTL
-     - Client notified via webhook or polls `/api/v1/jobs/:jobId` for status
+     - Worker calls Tasks service webhook endpoint with results
+     - Token usage reconciled in webhook callback
    - **Implementation Details**:
-     - Reuse existing `requestId` from AI service as `jobId` for unified tracking
-     - Store job state in Redis (not database) with TTL for automatic cleanup
-     - Job states: `pending` → `processing` → `completed` | `failed`
-   - **Benefits**:
-     - API response time drops from O(3-5s) to O(100ms)
-     - Workers scale independently from API tier
-     - Rate limiting prevents queue overflow
-     - Better handles traffic spikes
-   - **Configuration**:
-     - RabbitMQ service in docker-compose
-     - Queue configuration: max retries, DLQ for failed jobs
-     - Worker pool size configurable via environment variables
+     - Reuse existing `requestId` from AI service for unified tracking
+     - Async pattern fields (`callbackUrl`, `userId`, `tokenReservation`) defined globally in schema using discriminated union
+     - Job payload includes full validated input structure for worker processing
+     - Token reservation passed through async flow and reconciled in webhook
 
 ### Phase 2: Enterprise Features
 

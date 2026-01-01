@@ -645,25 +645,48 @@ between versions. Key is ensuring setup runs after reconnection."
 1. Create `backend/services/ai/src/types/job-payload.ts`:
 
 - Import `Capability` from `@types`
-- Define `TCapabilityJobPayload` type (use `T` prefix for domain types):
+- Define `TCapabilityJobPayload` as a generic type (use `T` prefix for domain types):
   ```typescript
-  export type TCapabilityJobPayload = {
-    capability: Capability; // Capability name (e.g., "parse-task"), not the full config
-    // Note: We store the capability name instead of CapabilityConfig because:
-    // - CapabilityConfig contains functions (handler) and Zod schemas that cannot be serialized to JSON
-    // - The worker will look up the config from the capabilities registry using this name
-    // - This differs from sync flow which uses res.locals.capabilityConfig (already validated by middleware)
-    input: unknown; // Full validated input structure (params, query, body) matching what executeSyncPattern expects
-    // Note: This is the complete validated input, not just the body, so it can be passed directly to executeSyncPattern
+  type TCapabilityJobPayloadInputMap = {
+    [CAPABILITY.PARSE_TASK]: ParseTaskInput;
+    // Add more capabilities here as they are implemented
+  };
+
+  export type TCapabilityJobPayload<TCapability extends Capability> = {
+    /**
+     * We pass the capability name instead of CapabilityConfig because:
+     * - CapabilityConfig contains functions (handler) and Zod schemas that cannot be serialized to JSON
+     * - The worker will look up the config from the capabilities registry using this name
+     * - This differs from sync flow which uses res.locals.capabilityConfig (already validated by middleware)
+     */
+    capability: TCapability;
+    /**
+     * This is the complete validated input, not just the body, so it can be passed directly to the capability handler as in executeSyncPattern.
+     * The structure includes:
+     * - params: { capability: Capability }
+     * - query: { pattern: CapabilityPattern }
+     * - body: { ... } (capability-specific input)
+     */
+    input: TCapabilityJobPayloadInputMap[TCapability];
     callbackUrl: string;
+    /**
+     * Request ID for distributed tracing.
+     * This is propagated from the original request through the async flow.
+     */
     requestId: string;
     userId: number;
-    tokenReservation?: {
+    /**
+     * Token reservation info (required - validated by schema when pattern is async).
+     * Used for token usage reconciliation in the webhook callback.
+     */
+    tokenReservation: {
       tokensReserved: number;
       windowStartTimestamp: number;
     };
   };
   ```
+- **Note**: The type is generic to provide type safety - the `input` type is inferred from the `capability` type using the mapping
+- **Note**: `tokenReservation` is required (not optional) - the schema validation ensures it's present when pattern is async
 
 2. Update `backend/services/ai/src/types/index.ts`:
 
@@ -698,52 +721,121 @@ between versions. Key is ensuring setup runs after reconnection."
 
 **Scope**: Async pattern executor that publishes jobs to RabbitMQ**Tasks**:
 
-1. Update `backend/services/ai/src/capabilities/parse-task/parse-task-schemas.ts`:
+1. Update `backend/services/ai/src/schemas/execute-capability.ts`:
 
-- Add optional fields for async pattern: - `callbackUrl?: z.string().url()` - `userId?: z.number().int().positive()` - `tokenReservation?: z.object({ tokensReserved: z.number(), windowStartTimestamp: z.number() })`
-- Keep existing `naturalLanguage` and `config` fields
-- Note: These fields are conditionally required based on pattern (validation happens in executor)
+- **IMPORTANT**: Async pattern fields are defined globally in the base schema, not capability-specific. This ensures DRY principles and better type safety.
+- Add discriminated union to `query` field based on `pattern`:
+  - When `pattern === "sync"`: Only `pattern` field required
+  - When `pattern === "async"`: Require `callbackUrl`, `userId`, and `tokenReservation` fields
+- Use `z.discriminatedUnion("pattern", [...])` for type-safe conditional validation
+- Field definitions:
+  - `callbackUrl: z.string().url()` - Tasks service webhook endpoint (required when async)
+  - `userId: z.coerce.number().int().positive()` - User ID for task creation (required when async, coerced from string query param)
+  - `tokenReservation: z.string().transform((str, ctx) => { ... })` - Token reservation info (required when async, JSON-encoded string)
+    - **JSON Encoding Approach**: Client sends `tokenReservation` as a JSON-encoded string in query parameters (e.g., `?tokenReservation={"tokensReserved":1000,"windowStartTimestamp":1234567890}`)
+    - Use `z.string().transform()` to parse JSON string and validate object structure
+    - Handle both JSON parsing errors and object validation errors gracefully with `ctx.addIssue()` and `z.NEVER`
+    - Validate parsed object: `{ tokensReserved: z.coerce.number(), windowStartTimestamp: z.coerce.number() }`
+- Add "Invalid" error messages to all query parameter fields (consistent with params section)
+- **Note**: Query parameters arrive as strings, so use `z.coerce.number()` for numeric fields (`userId`, `tokensReserved`, `windowStartTimestamp`)
 
-2. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/` directory
-3. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.ts`:
+2. Update `backend/services/ai/src/capabilities/index.ts`:
+
+- Add type assertion to `inputSchema` in capability definition:
+  ```typescript
+  inputSchema: parseTaskInputSchema as z.ZodSchema<z.infer<typeof parseTaskInputSchema>>
+  ```
+- Add comment explaining why type assertion is needed:
+  - `z.string().transform()` in `executeCapabilityInputSchema` creates a type mismatch when extending schemas
+  - TypeScript sees the transform's input type (string) but expects the output type (object)
+  - The assertion preserves the correct output type for type inference while working around the transform's input type limitation
+
+3. Update `backend/services/ai/src/app.ts`:
+
+- Remove `express.urlencoded()` middleware (not needed - service only handles JSON bodies and query parameters, not URL-encoded form data)
+
+4. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/` directory
+5. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.ts`:
 
 - Import `withDurationAsync` from `@shared/utils/with-duration`
 - Import `publishJob` from `@clients/rabbitmq`
-- Import `RABBITMQ_QUEUE_NAME` from `@constants`
+- Import `RABBITMQ_QUEUE` from `@constants` (use `RABBITMQ_QUEUE.AI_CAPABILITY_JOBS`)
 - Import `TCapabilityJobPayload` from `@types`
 - Import `createLogger` from `@shared/config/create-logger`
 - Import `BadRequestError, InternalError` from `@shared/errors`
 - Follow pattern executor signature: `(config, input, requestId) => Promise<{ result, durationMs }>`
-- Extract `callbackUrl`, `userId`, and `tokenReservation` from input body
-- Validate required fields are present (throw BadRequestError if missing)
+- **Extract from query, not body**: Extract `callbackUrl`, `userId`, and `tokenReservation` from `input.query` (discriminated union ensures these exist when pattern is async)
+- Add type guard: Check `input.query.pattern === "async"` to narrow TypeScript type
+- Validate required fields are present (defensive check - should not happen if schema validation passed, but throw BadRequestError if missing)
 - Create job payload: `TCapabilityJobPayload`
 - Store `capability` name from `input.params.capability` (not the full config - see comment in job-payload.ts)
 - Store full `input` (validated input with params, query, body) - this matches what executeSyncPattern expects
 - Store `callbackUrl`, `userId`, `tokenReservation`, `requestId`
 - Add comment explaining why we store capability name instead of config (functions can't be serialized)
-- Publish job to RabbitMQ using `publishJob(RABBITMQ_QUEUE_NAME, jobPayload)`
+- Publish job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
 - Wait for successful queue publication
-- Return `{ result: {}, durationMs }` (minimal result, duration is queue time only)
+- Return `{ result: {} as TOutput, durationMs }` (minimal result cast to TOutput, duration is queue time only)
 - Handle errors: throw `InternalError` on queue failures
 - Use structured logging with requestId
 
-4. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/index.ts`:
+6. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.test.ts`:
+
+- Create unit tests for `executeAsyncPattern`:
+  - Test success case (job published successfully)
+  - Test missing fields (callbackUrl, userId, tokenReservation)
+  - Test null values
+  - Test RabbitMQ publish failures
+- Use `it.each()` for parameterized validation error tests
+- Mock `withDurationAsync`, `publishJob`, and `@config/env`
+- Follow existing test patterns
+
+7. Create `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/index.ts`:
 
 - Export `executeAsyncPattern` from `./execute-async-pattern`
 - Follow barrel export pattern
 
-5. Update `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.ts`:
+8. Update `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.test.ts`:
+
+- Refactor to use `it.each()` for parameterized tests
+- Test both sync and async patterns return executor functions
+- Mock `@config/env` to prevent startup errors
+
+9. Update `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.ts`:
 
 - Import `executeAsyncPattern` from `@controllers/capabilities-controller/executors/execute-async-pattern`
 - Replace `async` case to return `executeAsyncPattern` instead of throwing error
 - Use path alias `@controllers/*`
 
-6. Update `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.ts`:
+10. Create `backend/services/ai/src/mocks/capabilities-controller-mocks.ts`:
 
+- Create shared mock data for both unit and integration tests:
+  - Constants: `mockAsyncPatternCallbackUrl`, `mockAsyncPatternUserId`, `mockAsyncPatternTokenReservation`
+  - Mock objects: `mockSyncExecutorResult`, `mockAsyncExecutorResult`
+  - Input mocks: `mockSyncPatternInput`, `mockAsyncPatternInput`
+  - Query params: `mockAsyncPatternQueryParams` (for HTTP requests, with string values)
+- Follow project conventions for mock organization
+
+11. Update `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.ts`:
+
+- Refactor to use `isSyncPattern` boolean for clarity
 - Check if pattern is async (from validatedInput.query.pattern)
 - If async, return 202 Accepted instead of 200 OK
-- Include minimal response: `{ aiServiceRequestId: requestId }`
-- Keep existing 200 OK response for sync pattern
+- Include minimal response: `{ aiServiceRequestId: requestId }` (no result data)
+- If sync, return 200 OK with full result and `aiServiceRequestId`
+- Use conditional spread: `...(isSyncPattern && result)` to include result only for sync
+
+12. Update `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.unit.test.ts`:
+
+- Refactor to use shared mocks from `@mocks/capabilities-controller-mocks`
+- Separate tests into `describe` blocks: "sync pattern", "async pattern", "error handling"
+- Use constants for pattern values
+
+13. Update `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.integration.test.ts`:
+
+- Refactor to use shared mocks from `@mocks/capabilities-controller-mocks`
+- Separate tests into `describe` blocks: "sync pattern", "async pattern", "validation errors"
+- Add RabbitMQ mock for async pattern tests
+- Test async pattern validation (missing callbackUrl, userId, tokenReservation)
 
 **Validation** (MANDATORY - must pass before requesting approval):
 
@@ -756,19 +848,30 @@ between versions. Key is ensuring setup runs after reconnection."
 
 - **MUST update** `docs/implementations/async-ai-processing-rabbitmq.md` after completing this section
 - Document async pattern executor implementation
+- Document schema design (discriminated union, global fields)
+- Document query parameter handling (type coercion, JSON encoding)
 - Document job publishing flow
 - Document 202 response handling
+- Document type assertion in capabilities/index.ts
+- Document test organization and shared mocks
 
 **Files to Create**:
 
 - `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.ts`
+- `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.test.ts`
 - `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/index.ts`
+- `backend/services/ai/src/mocks/capabilities-controller-mocks.ts`
 
 **Files to Modify**:
 
-- `backend/services/ai/src/capabilities/parse-task/parse-task-schemas.ts`
-- `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.ts`
-- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.ts`
+- `backend/services/ai/src/schemas/execute-capability.ts` (add discriminated union with async fields in query)
+- `backend/services/ai/src/capabilities/index.ts` (add type assertion with comment)
+- `backend/services/ai/src/app.ts` (remove express.urlencoded)
+- `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.ts` (return async executor)
+- `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.test.ts` (refactor to parameterized tests)
+- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.ts` (202 response for async, refactored)
+- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.unit.test.ts` (separated describe blocks, shared mocks)
+- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.integration.test.ts` (separated describe blocks, shared mocks, async validation tests)
 
 ---
 
@@ -1348,7 +1451,9 @@ Create `docs/implementations/async-ai-processing-rabbitmq.md` with the following
 - `backend/services/ai/src/mocks/rabbitmq-mock.ts`
 - `backend/services/ai/src/types/job-payload.ts`
 - `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.ts`
+- `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.test.ts`
 - `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/index.ts`
+- `backend/services/ai/src/mocks/capabilities-controller-mocks.ts`
 - `backend/services/ai/src/workers/capability-worker.ts`
 - `backend/services/ai/src/workers/capability-worker.test.ts`
 - `backend/services/ai/src/workers/start-worker.ts`
@@ -1370,9 +1475,14 @@ Create `docs/implementations/async-ai-processing-rabbitmq.md` with the following
 - `backend/services/ai/.env.example`
 - `backend/services/ai/src/config/env.ts` (add RABBITMQ_URL and TASKS_SERVICE_BASE_URL)
 - `backend/services/ai/src/constants/index.ts`
-- `backend/services/ai/src/capabilities/parse-task/parse-task-schemas.ts`
+- `backend/services/ai/src/schemas/execute-capability.ts` (add discriminated union with async fields in query)
+- `backend/services/ai/src/capabilities/index.ts` (add type assertion with comment)
+- `backend/services/ai/src/app.ts` (remove express.urlencoded middleware)
 - `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.ts`
-- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.ts`
+- `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.test.ts` (refactor to parameterized tests)
+- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.ts` (202 response for async, refactored)
+- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.unit.test.ts` (separated describe blocks, shared mocks)
+- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.integration.test.ts` (separated describe blocks, shared mocks, async validation tests)
 - `backend/services/ai/src/server.ts`
 - `backend/services/ai/tsconfig.json` (add `@workers/*` path alias in Section 1)
 - `backend/services/tasks/.env.example`

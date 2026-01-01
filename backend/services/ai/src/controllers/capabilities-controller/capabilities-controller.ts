@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
+import { CAPABILITY_PATTERN } from "@constants";
 import { getPatternExecutor } from "@controllers/capabilities-controller/executors/get-pattern-executor";
 import { createLogger } from "@shared/config/create-logger";
 import { getCapabilityConfig } from "@utils/get-capability-config";
@@ -14,7 +15,7 @@ export const executeCapability = async (
   next: NextFunction
 ) => {
   try {
-    const requestId = res.locals.requestId;
+    const { requestId } = res.locals;
 
     const config = getCapabilityConfig(res);
     const validatedInput = getCapabilityValidatedInput(res);
@@ -43,8 +44,9 @@ export const executeCapability = async (
       totalDurationMs: durationMs,
     });
 
-    res.status(StatusCodes.OK).json({
-      ...result,
+    const isSyncPattern = pattern === CAPABILITY_PATTERN.SYNC;
+    res.status(isSyncPattern ? StatusCodes.OK : StatusCodes.ACCEPTED).json({
+      ...(isSyncPattern && result),
       aiServiceRequestId: requestId,
     });
   } catch (error) {

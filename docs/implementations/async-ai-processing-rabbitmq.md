@@ -200,32 +200,121 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 
 ### Section 4: AI Service - Async Pattern Executor
 
-**Status**: ⏸️ Not Started
+**Status**: ✅ Complete
 
 **Completed**:
 
-- [To be filled after implementation]
+- Updated `execute-capability.ts` schema to add async pattern fields globally (not capability-specific):
+  - Used discriminated union on `query.pattern` to conditionally require async fields
+  - `callbackUrl: z.string().url()` - Tasks service webhook endpoint (required when pattern is async)
+  - `userId: z.coerce.number().int().positive()` - User ID for task creation (required when pattern is async, coerced from string)
+  - `tokenReservation: z.string().transform(...)` - Token reservation info (required when pattern is async, JSON-encoded string)
+  - Schema handles JSON-encoded string for `tokenReservation` using `z.string().transform()` to parse JSON and validate object structure
+  - Added "Invalid" error messages to all query parameter fields (consistent with params)
+- Created `execute-async-pattern/execute-async-pattern.ts`:
+  - Implements async pattern executor that publishes jobs to RabbitMQ
+  - Extracts `callbackUrl`, `userId`, and `tokenReservation` from `input.query` (not body)
+  - Validates required fields are present (throws `BadRequestError` if missing)
+  - Creates job payload with:
+    - `capability` name (from `input.params.capability`) - not full config (functions can't be serialized)
+    - Full `input` (validated input with params, query, body) - matches what `executeSyncPattern` expects
+    - `callbackUrl`, `userId`, `tokenReservation`, `requestId`
+  - Publishes job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
+  - Returns minimal result `{} as TOutput` (job queued, duration is queue time only)
+  - Handles errors: throws `InternalError` on queue failures
+  - Uses structured logging with requestId
+- Created `execute-async-pattern/index.ts` barrel export
+- Created `execute-async-pattern/execute-async-pattern.test.ts`:
+  - 8 unit tests covering success case, missing fields, null values, and RabbitMQ publish failures
+  - Uses `it.each()` for parameterized validation error tests
+  - Mocks `withDurationAsync`, `publishJob`, and `@config/env`
+- Updated `get-pattern-executor.ts`:
+  - Returns `executeAsyncPattern` for async pattern (instead of throwing error)
+- Updated `get-pattern-executor.test.ts`:
+  - Refactored to use `it.each()` for parameterized tests
+  - Tests both sync and async patterns return executor functions
+  - Mocks `@config/env` to prevent startup errors
+- Updated `capabilities-controller.ts`:
+  - Refactored to use `isSyncPattern` boolean for clarity
+  - Returns 202 Accepted for async pattern with `{ aiServiceRequestId: requestId }` (no result)
+  - Returns 200 OK for sync pattern with full result and `aiServiceRequestId`
+  - Uses conditional spread `...(isSyncPattern && result)` to include result only for sync
+- Updated `capabilities-controller.unit.test.ts`:
+  - Separated into `describe` blocks: "sync pattern", "async pattern", "error handling"
+  - Uses shared mocks from `@mocks/capabilities-controller-mocks`
+- Updated `capabilities-controller.integration.test.ts`:
+  - Separated into `describe` blocks: "sync pattern", "async pattern", "validation errors"
+  - Uses shared mocks from `@mocks/capabilities-controller-mocks`
+  - Added RabbitMQ mock for async pattern tests
+  - Tests async pattern validation (missing callbackUrl, userId, tokenReservation)
+- Created `mocks/capabilities-controller-mocks.ts`:
+  - Shared mock data for both unit and integration tests
+  - Constants: `mockAsyncPatternCallbackUrl`, `mockAsyncPatternUserId`, `mockAsyncPatternTokenReservation`
+  - Mock objects: `mockSyncExecutorResult`, `mockAsyncExecutorResult`
+  - Input mocks: `mockSyncPatternInput`, `mockAsyncPatternInput`
+  - Query params: `mockAsyncPatternQueryParams` (for HTTP requests)
+- Updated `capabilities/index.ts`:
+  - Added type assertion with comment explaining why it's needed
+  - Type assertion preserves correct output type for type inference while working around transform's input type limitation
 
 **Files Created**:
 
-- [To be filled after implementation]
+- `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.ts`
+- `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.test.ts`
+- `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/index.ts`
+- `backend/services/ai/src/mocks/capabilities-controller-mocks.ts`
 
 **Files Modified**:
 
-- [To be filled after implementation]
+- `backend/services/ai/src/schemas/execute-capability.ts` (added discriminated union with async fields in query, JSON string transform for tokenReservation)
+- `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.ts` (return async executor)
+- `backend/services/ai/src/controllers/capabilities-controller/executors/get-pattern-executor/get-pattern-executor.test.ts` (refactored to use parameterized tests)
+- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.ts` (202 response for async, refactored with isSyncPattern)
+- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.unit.test.ts` (separated describe blocks, uses shared mocks)
+- `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.integration.test.ts` (separated describe blocks, uses shared mocks, added async validation tests)
+- `backend/services/ai/src/capabilities/index.ts` (added type assertion with explanatory comment)
+- `backend/services/ai/src/app.ts` (removed unnecessary `express.urlencoded` middleware)
 
 **Issues Encountered**:
 
-- [To be filled if any issues]
+- Type error: `executeAsyncPattern` return type `WithDurationResult<{}>` didn't match expected `WithDurationResult<TOutput>`
+  - Fixed by casting return value to `TOutput` with comment explaining that result is not used for async pattern
+  - The controller doesn't use the result for async pattern (returns 202 with aiServiceRequestId)
+- Type error: Schema extension with transform caused input/output type mismatch
+  - Fixed by adding type assertion in `capabilities/index.ts` with detailed comment explaining the limitation
+  - The assertion preserves correct output type for type inference while working around transform's input type limitation
+- `tokenReservation` nested object in query parameters:
+  - Implemented Option 1: JSON-encoded string approach
+  - Client sends: `?tokenReservation={"tokensReserved":1000,"windowStartTimestamp":1234567890}`
+  - Schema uses `z.string().transform()` to parse JSON string and validate object structure
+  - Handles both JSON parsing errors and object validation errors gracefully
 
 **Test Results**:
 
-- `npm run type-check:ci`: ⏸️ Pending
-- `npm run test`: ⏸️ Pending
+- `npm run type-check:ci`: ✅ Pass (all TypeScript compilation checks passed)
+- `npm run test`: ✅ Pass (all tests pass, including new async pattern tests)
 
 **Notes**:
 
-- [To be filled]
+- **Schema Design**: Async pattern fields are defined globally in `execute-capability.ts` using discriminated union, not capability-specific. This ensures DRY principles and better type safety.
+- **Query Parameters**: Async fields (`callbackUrl`, `userId`, `tokenReservation`) are in query parameters, not body. This follows RESTful conventions where metadata goes in query parameters.
+- **Type Coercion**: Query parameters arrive as strings, so `z.coerce.number()` is used for `userId`, `tokensReserved`, and `windowStartTimestamp`.
+- **tokenReservation JSON Encoding**: The `tokenReservation` field is sent as a JSON-encoded string in query parameters (Option 1). The schema transforms the string to an object and validates the structure. This approach:
+  - Preserves nested object structure
+  - Works with existing schema structure
+  - Requires URL encoding on client side
+  - Handles both JSON parse errors and validation errors gracefully
+- **Job Payload Structure**: The job payload stores the capability name (string) instead of the full `CapabilityConfig` because:
+  - `CapabilityConfig` contains functions (handler) and Zod schemas that cannot be serialized to JSON
+  - The worker will look up the config from the capabilities registry using the capability name
+  - This differs from sync flow which uses `res.locals.capabilityConfig` (already validated by middleware)
+- **Input Structure**: The `input` field stores the complete validated input structure (params, query, body) so it can be passed directly to `executeSyncPattern` in the worker
+- **Return Type**: For async pattern, the executor returns `{} as TOutput` to satisfy the type signature, but the actual result is not used by the controller (it returns 202 with aiServiceRequestId)
+- **202 Response**: Async pattern returns 202 Accepted to indicate the request was accepted for processing but not yet completed. Response includes only `aiServiceRequestId`, no result data.
+- **Error Handling**: Queue failures throw `InternalError` to indicate server-side issues (not user input errors)
+- **Validation**: Required fields (`callbackUrl`, `userId`, `tokenReservation`) are validated by the schema when pattern is async (discriminated union ensures they're present)
+- **Test Organization**: Tests are organized into separate `describe` blocks for sync and async patterns, using shared mocks from `@mocks/capabilities-controller-mocks` for consistency
+- **Type Assertion**: A type assertion is needed in `capabilities/index.ts` because `z.string().transform()` creates a type mismatch when extending schemas. The assertion preserves correct output type for type inference while working around the transform's input type limitation.
 
 ### Section 5: AI Service - Worker Implementation
 
