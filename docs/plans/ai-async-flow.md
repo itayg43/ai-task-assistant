@@ -45,11 +45,16 @@ This plan implements async AI processing using RabbitMQ. The flow: (1) Client �
 
 **TYPE DEFINITION PATTERN** (CRITICAL):
 
-- **ALL new types MUST be defined in the `types/` folder** as separate files (e.g., `types/job-payload.ts`, `types/webhook-controller-input.ts`)
+- **ALL new types MUST be defined in the `types/` folder** as separate files (e.g., `types/webhook-controller-input.ts`)
 - **ALL new types MUST be exported from `types/index.ts`** using barrel export pattern
-- This ensures types are accessible via `@types` path alias (e.g., `import { TCapabilityJobPayload } from "@types"`)
+- This ensures types are accessible via `@types` path alias (e.g., `import { WebhookCallbackInput } from "@types"`)
 - When creating new type files, always update the corresponding `types/index.ts` to export them
-- Follow existing patterns: domain types use `T` prefix (e.g., `TCapabilityJobPayload`), DTOs have no prefix (e.g., `WebhookCallbackInput`)
+- Follow existing patterns: domain types use `T` prefix, DTOs have no prefix (e.g., `WebhookCallbackInput`)
+- **Note**: Job payloads use inline objects instead of separate types because:
+  - All validation happens before publishing (middleware chain)
+  - `publishJob` accepts `unknown` (generic function, not queue-specific)
+  - Type assertions (`as`) were needed, which don't provide real type safety
+  - Runtime validation is already handled by middleware
 
 ## Architecture Flow
 
@@ -641,81 +646,31 @@ between versions. Key is ensuring setup runs after reconnection."
 
 ---
 
-### Section 3: AI Service - Job Payload Types ⏸️ REQUIRES APPROVAL
+### Section 3: AI Service - Job Payload Types ⏸️ SKIPPED
 
-**Scope**: Type definitions for job payloads**Tasks**:
+**Scope**: Type definitions for job payloads
 
-1. Create `backend/services/ai/src/types/job-payload.ts`:
+**Decision**: Job payload types were removed in favor of inline objects. This section is no longer needed.
 
-- Import `Capability` from `@types`
-- Define `TCapabilityJobPayload` as a generic type (use `T` prefix for domain types):
+**Rationale**:
 
-  ```typescript
-  type TCapabilityJobPayloadInputMap = {
-    [CAPABILITY.PARSE_TASK]: ParseTaskInput;
-    // Add more capabilities here as they are implemented
-  };
+- All validation happens before publishing (middleware chain: `validateExecutableCapability`, `validateCapabilityInput`, `validatePromptInjection`)
+- `publishJob` accepts `unknown` (generic function, not queue-specific)
+- Type assertions (`as`) were needed with the type, which don't provide real type safety
+- Runtime validation is already handled by middleware
+- The inline object structure is simple and self-documenting: `{ capability: string, input: TInput, requestId: string }`
 
-  export type TCapabilityJobPayload<TCapability extends Capability> = {
-    /**
-     * We pass the capability name instead of CapabilityConfig because:
-     * - CapabilityConfig contains functions (handler) and Zod schemas that cannot be serialized to JSON
-     * - The worker will look up the config from the capabilities registry using this name
-     * - This differs from sync flow which uses res.locals.capabilityConfig (already validated by middleware)
-     */
-    capability: TCapability;
-    /**
-     * This is the complete validated input, not just the body, so it can be passed directly to the capability handler as in executeSyncPattern.
-     * The structure includes:
-     * - params: { capability: Capability }
-     * - query: { pattern: "async", callbackUrl } (for async pattern)
-     * - body: { ... } (capability-specific input)
-     *
-     * For async pattern, the worker can extract callbackUrl from input.query.
-     * The callbackUrl may include windowStartTimestamp as a query parameter.
-     * userId will be extracted from authentication context in Tasks service webhook.
-     * Token reservation will be read from env/config in Tasks service webhook.
-     */
-    input: z.infer<(typeof capabilities)[TCapability]["inputSchema"]>;
-    /**
-     * Request ID for distributed tracing.
-     * This is propagated from the original request through the async flow.
-     */
-    requestId: string;
-  };
-  ```
+**Implementation**: Job payloads are created as inline objects in `execute-async-pattern.ts`:
 
-- **Note**: The type is generic to provide type safety - the `input` type is automatically inferred from the capability's inputSchema
-- **Note**: Only `callbackUrl` is in `input.query` for async pattern - no `userId` or `tokenReservation` needed
-- **Note**: The schema validation ensures `callbackUrl` is present in `input.query` when pattern is async (discriminated union)
-- **Note**: The input type uses `z.infer<(typeof capabilities)[TCapability]["inputSchema"]>` to automatically stay in sync with the capability definition
+```typescript
+await publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, {
+  capability: config.name,
+  input,
+  requestId,
+});
+```
 
-2. Update `backend/services/ai/src/types/index.ts`:
-
-- Export `TCapabilityJobPayload` from `./job-payload`
-- Follow barrel export pattern
-- **IMPORTANT**: Always export new types from `types/index.ts` to make them accessible via `@types` path alias
-
-**Validation** (MANDATORY - must pass before requesting approval):
-
-- Run `npm run type-check:ci` - **MUST pass** (fix all errors and re-run if needed)
-- Run `npm run test` - **MUST pass** (fix all failing tests and re-run if needed)
-- **Repeat both commands until BOTH pass successfully**
-- **DO NOT proceed to next section until validation passes and user approves**
-
-**Implementation Doc Update** (MANDATORY):
-
-- **MUST update** `docs/implementations/async-ai-processing-rabbitmq.md` after completing this section
-- Document job payload structure
-- Document type definitions
-
-**Files to Create**:
-
-- `backend/services/ai/src/types/job-payload.ts`
-
-**Files to Modify**:
-
-- `backend/services/ai/src/types/index.ts`
+**Note**: The worker will receive `unknown` and will need runtime validation (Zod schema) when consuming messages, which is appropriate for deserialized data.
 
 ---
 
@@ -751,16 +706,15 @@ between versions. Key is ensuring setup runs after reconnection."
 
 - Import `publishJob` from `@clients/rabbitmq`
 - Import `RABBITMQ_QUEUE` from `@constants` (use `RABBITMQ_QUEUE.AI_CAPABILITY_JOBS`)
-- Import `TCapabilityJobPayload` from `@types`
 - Import `createLogger` from `@shared/config/create-logger`
 - Import `InternalError` from `@shared/errors`
 - Follow pattern executor signature: `(config, input, requestId) => Promise<TOutput>`
 - **Trust schema validation**: No redundant runtime checks - schema validation middleware ensures correctness
-- Create job payload: `TCapabilityJobPayload`
-- Store `capability` name from `input.params.capability` (not the full config - see comment in job-payload.ts)
-- Store full `input` (validated input with params, query, body) - this matches what executeSyncPattern expects
-  - The input type is automatically inferred from the capability's inputSchema using `z.infer<(typeof capabilities)[TCapability]["inputSchema"]>`
-- Store `requestId` for distributed tracing
+- Create job payload as inline object: `{ capability: config.name, input, requestId }`
+  - Store `capability` name from `config.name` (not the full config - functions can't be serialized)
+  - Store full `input` (validated input with params, query, body) - this matches what executeSyncPattern expects
+    - The input is already validated by middleware (`validateCapabilityInput`)
+  - Store `requestId` for distributed tracing
 - Note: Only `callbackUrl` is in `input.query` for async pattern (no `userId` or `tokenReservation` needed)
 - Add comment explaining why we store capability name instead of config (functions can't be serialized)
 - Publish job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
@@ -890,7 +844,6 @@ between versions. Key is ensuring setup runs after reconnection."
 - Import `createConsumer, publishToDLQ` from `@clients/rabbitmq`
 - Import `RABBITMQ_QUEUE_NAME, RABBITMQ_DLQ_NAME` from `@constants`
 - Import `capabilities` from `@capabilities`
-- Import `TCapabilityJobPayload` from `@types`
 - Import `tasksClient` from `@clients/tasks`
 - Import `createLogger` from `@shared/config/create-logger`
 - Import `executeSyncPattern` from `@controllers/capabilities-controller/executors/execute-sync-pattern`
@@ -899,7 +852,7 @@ between versions. Key is ensuring setup runs after reconnection."
 - Import `AI_ERROR_TYPE` from `@constants`
 - Note: For POC, we do NOT track active jobs. RabbitMQ will automatically requeue unacknowledged messages.
 - Implement retry logic helper: - `retryWithBackoff<T>(fn: () => Promise<T>, maxRetries: number): Promise<T>` - Exponential backoff: `min(1000 * Math.pow(2, attempt), 30000) + Math.random() * 1000` - Retry on transient errors, throw on permanent errors
-- Implement `processJob(jobPayload: TCapabilityJobPayload): Promise<void>`: - Extract capability name, input, callbackUrl, requestId from payload - Get capability config from capabilities registry: - Look up `capabilities[capability]` (same pattern as validateExecutableCapability middleware) - Add comment explaining: "Unlike sync flow which uses res.locals.capabilityConfig (already validated by middleware),
+- Implement `processJob(jobPayload: unknown): Promise<void>`: - Validate job payload structure (Zod schema) - Extract capability name, input, callbackUrl, requestId from validated payload - Get capability config from capabilities registry: - Look up `capabilities[capability]` (same pattern as validateExecutableCapability middleware) - Add comment explaining: "Unlike sync flow which uses res.locals.capabilityConfig (already validated by middleware),
 
 we look up from registry here because CapabilityConfig contains functions that cannot be serialized to RabbitMQ.
 
@@ -1447,7 +1400,6 @@ Create `docs/implementations/async-ai-processing-rabbitmq.md` with the following
 - `backend/services/ai/src/clients/tasks.ts`
 - `backend/services/ai/src/constants/rabbitmq.ts`
 - `backend/services/ai/src/mocks/rabbitmq-mock.ts`
-- `backend/services/ai/src/types/job-payload.ts`
 - `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.ts`
 - `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.test.ts`
 - `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/index.ts`

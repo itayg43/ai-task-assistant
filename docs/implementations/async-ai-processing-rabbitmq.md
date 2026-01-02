@@ -134,32 +134,39 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 
 ### Section 3: AI Service - Job Payload Types
 
-**Status**: ✅ Complete
+**Status**: ✅ Complete (Refactored - Type Removed)
 
 **Completed**:
 
-- Created `backend/services/ai/src/types/job-payload.ts` with `TCapabilityJobPayload` generic type definition
-  - Generic type: `TCapabilityJobPayload<TCapability extends Capability>` for type-safe capability-specific payloads
-  - Includes `capability` field (typed as `TCapability` - capability name, not full config - cannot serialize functions/schemas)
-  - Includes `input` field (typed as `z.infer<(typeof capabilities)[TCapability]["inputSchema"]>` - automatically inferred from capability's inputSchema)
-    - The input type is automatically inferred from the capability's inputSchema, ensuring it stays in sync with the capability definition
-    - For async pattern, `input.query` contains `callbackUrl` (which may include `windowStartTimestamp` as a query parameter)
-    - Worker extracts `callbackUrl` from `input.query` when needed
-    - `userId` will be extracted from authentication context in Tasks service webhook
-    - Token reservation will be read from env/config in Tasks service webhook
-  - Includes `requestId` field (for distributed tracing)
-  - Note: `callbackUrl` is the only field in `input.query` for async pattern - no `userId` or `tokenReservation` needed
-  - Added JSDoc comments explaining each field and design decisions
-- Updated `backend/services/ai/src/types/index.ts` to export `TCapabilityJobPayload` using barrel export pattern
-  - Type is now accessible via `@types` path alias (e.g., `import { TCapabilityJobPayload } from "@types"`)
+- **Decision**: Removed `TCapabilityJobPayload` type in favor of inline objects
+- **Rationale**:
+  - All validation happens before publishing (middleware chain: `validateExecutableCapability`, `validateCapabilityInput`, `validatePromptInjection`)
+  - `publishJob` accepts `unknown` (generic function, not queue-specific)
+  - Type assertions (`as`) were needed with the type, which don't provide real type safety
+  - Runtime validation is already handled by middleware
+  - The inline object structure is simple and self-documenting
+- Job payloads are created as inline objects in `execute-async-pattern.ts`:
+  ```typescript
+  await publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, {
+    capability: config.name,
+    input,
+    requestId,
+  });
+  ```
+- Job payload structure:
+  - `capability`: Capability name (string) - not full config (functions can't be serialized)
+  - `input`: Full validated input (params, query, body) - already validated by middleware
+  - `requestId`: Request ID for distributed tracing
+- Note: Only `callbackUrl` is in `input.query` for async pattern (no `userId` or `tokenReservation` needed)
+- Worker will receive `unknown` and will need runtime validation (Zod schema) when consuming messages
 
 **Files Created**:
 
-- `backend/services/ai/src/types/job-payload.ts`
+- None (type file removed)
 
 **Files Modified**:
 
-- `backend/services/ai/src/types/index.ts` (added export for TCapabilityJobPayload)
+- `backend/services/ai/src/controllers/capabilities-controller/executors/execute-async-pattern/execute-async-pattern.ts` (uses inline object)
 
 **Issues Encountered**:
 
@@ -167,36 +174,17 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 
 **Test Results**:
 
-- `npm run type-check:ci`: ✅ Pass (all TypeScript compilation checks passed)
-- `npm run test`: ⚠️ Sandbox permission issue (not a code issue - type-check validates types correctly)
+- `npm run type-check:ci`: ✅ Pass
+- `npm run test`: ✅ Pass
 
 **Notes**:
 
-- Type definition follows project conventions: domain types use `T` prefix (e.g., `TCapabilityJobPayload`)
-- Type is exported from `types/index.ts` to enable `@types` path alias imports
-- **Generic Type Pattern**: The type is generic (`TCapabilityJobPayload<TCapability extends Capability>`) to provide type safety:
-  - The `capability` field is typed as `TCapability` (specific capability, not just `Capability`)
-  - The `input` field is typed as `TCapabilityJobPayloadInputMap[TCapability]` (input type inferred from capability)
-  - This ensures compile-time type safety: the input type must match the capability type
-- **Input Mapping**: `TCapabilityJobPayloadInputMap` maps each capability to its input type:
-  - Currently maps `CAPABILITY.PARSE_TASK` to `ParseTaskInput`
-  - When new capabilities are added, they must be added to this mapping to maintain type safety
-  - The mapping is a private type (not exported) as it's an implementation detail
-- The `capability` field stores only the capability name (string), not the full `CapabilityConfig` object, because:
-  - `CapabilityConfig` contains functions (handler) and Zod schemas that cannot be serialized to JSON
-  - The worker will look up the config from the capabilities registry using the capability name
-  - This differs from sync flow which uses `res.locals.capabilityConfig` (already validated by middleware)
-- The `input` field stores the complete validated input structure (params, query, body) so it can be passed directly to `executeSyncPattern`
-- **No Redundant Fields**: Job payload does not duplicate `callbackUrl`, `userId`, or `tokenReservation` as separate fields. These are already in `input.query` for async pattern, ensuring single source of truth and eliminating data duplication.
-- Type-check passed successfully, confirming type definitions are correct and properly exported
-- **Usage Example**: When creating payloads, specify the capability type:
-  ```typescript
-  const payload: TCapabilityJobPayload<typeof CAPABILITY.PARSE_TASK> = {
-    capability: CAPABILITY.PARSE_TASK,
-    input: parseTaskValidatedInput, // TypeScript ensures this matches ParseTaskInput (includes query with async fields)
-    requestId: requestId,
-  };
-  ```
+- **Simplification**: Removing the type reduces unnecessary abstraction
+- **Validation**: All validation happens in middleware before `executeAsyncPattern` runs
+- **Type Safety Trade-off**: Lost compile-time type checking, but gained simplicity and alignment with `publishJob` signature
+- **Worker Validation**: Worker will need runtime validation (Zod schema) when consuming messages, which is appropriate for deserialized data
+- The inline object structure is clear: `{ capability: string, input: TInput, requestId: string }`
+- No redundant fields: `callbackUrl` is in `input.query`, not duplicated as separate field
 
 ### Section 4: AI Service - Async Pattern Executor
 
@@ -220,7 +208,7 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
       - The input type is automatically inferred from the capability's inputSchema
     - `requestId` for distributed tracing
   - Note: Only `callbackUrl` is in `input.query` for async pattern (no `userId` or `tokenReservation`)
-  - Publishes job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
+  - Publishes job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, { capability: config.name, input, requestId })`
   - Returns message result `{ message: "The ${config.name} capability has been added to the queue and will start processing shortly." } as TOutput` (controller returns 202 with aiServiceRequestId and message)
   - Handles errors: throws `InternalError` on queue failures
   - Uses structured logging with requestId

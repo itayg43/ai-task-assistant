@@ -2,7 +2,7 @@ import { publishJob } from "@clients/rabbitmq";
 import { RABBITMQ_QUEUE } from "@constants";
 import { createLogger } from "@shared/config/create-logger";
 import { InternalError } from "@shared/errors";
-import { CapabilityConfig, TCapabilityJobPayload } from "@types";
+import { CapabilityConfig } from "@types";
 
 const logger = createLogger("executeAsyncPattern");
 
@@ -31,14 +31,11 @@ export const executeAsyncPattern = async <TInput, TOutput>(
   try {
     logger.info("executeAsyncPattern - publishing job", baseLogContext);
 
-    // Type assertion: TInput is validated and matches the expected input type for this capability
-    const jobPayload: TCapabilityJobPayload<typeof config.name> = {
+    await publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, {
       capability: config.name,
-      input: input as TCapabilityJobPayload<typeof config.name>["input"],
+      input,
       requestId,
-    };
-
-    await publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload);
+    });
 
     logger.info(
       "executeAsyncPattern - job published successfully",
