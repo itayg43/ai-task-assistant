@@ -1,10 +1,7 @@
-import { ParseTaskInput } from "@capabilities/parse-task/parse-task-types";
-import { CAPABILITY } from "@constants";
-import { Capability } from "@types";
+import z from "zod";
 
-type TCapabilityJobPayloadInputMap = {
-  [CAPABILITY.PARSE_TASK]: ParseTaskInput;
-};
+import { capabilities } from "@capabilities";
+import { Capability } from "@types";
 
 export type TCapabilityJobPayload<TCapability extends Capability> = {
   /**
@@ -19,12 +16,10 @@ export type TCapabilityJobPayload<TCapability extends Capability> = {
    * This is the complete validated input, not just the body, so it can be passed directly to the capability handler as in executeSyncPattern.
    * The structure includes:
    * - params: { capability: Capability }
-   * - query: { pattern: "async", callbackUrl, userId, tokenReservation } (for async pattern)
+   * - query: { pattern: "async", callbackUrl }
    * - body: { ... } (capability-specific input)
-   *
-   * For async pattern, the worker can extract callbackUrl, userId, and tokenReservation from input.query.
    */
-  input: TCapabilityJobPayloadInputMap[TCapability];
+  input: z.infer<(typeof capabilities)[TCapability]["inputSchema"]>;
 
   /**
    * Request ID for distributed tracing.
