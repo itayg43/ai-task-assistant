@@ -270,14 +270,14 @@ if (config.pattern === "async") {
 2. Add `RABBITMQ_URL` to AI service `.env.example` (format: `amqp://guest:guest@rabbitmq:5672`)
 3. Add `RABBITMQ_URL` to AI service `config/env.ts`:
 
-- Use `str()` from envalid (AI service uses envalid, not Zod)
+- Use `url()` from envalid (AI service uses envalid, not Zod) - provides URL validation
 - Add to env schema
 
-4. Add `TASKS_SERVICE_BASE_URL` to Tasks service `.env.example` (format: `http://tasks:3001` for docker, `http://localhost:3001` for local)
-5. Add `TASKS_SERVICE_BASE_URL` to Tasks service `config/env.ts`:
+4. Add `TASKS_SERVICE_URL` to AI service `.env.example` (format: `http://tasks:3001` for docker, `http://localhost:3001` for local)
+5. Add `TASKS_SERVICE_URL` to AI service `config/env.ts`:
 
-- Use Zod validation (Tasks service uses Zod)
-- Add `z.string().url()` to env schema
+- Use `url()` from envalid (AI service uses envalid, not Zod) - provides URL validation
+- Add to env schema
 
 6. Create `backend/services/ai/src/constants/rabbitmq.ts`:
 
@@ -873,16 +873,16 @@ between versions. Key is ensuring setup runs after reconnection."
 
 **Scope**: Worker that consumes jobs, processes them, and calls Tasks service webhook**Tasks**:
 
-1. Add `TASKS_SERVICE_BASE_URL` to AI service `config/env.ts`:
+1. Add `TASKS_SERVICE_URL` to AI service `config/env.ts`:
 
-- Use `str()` from envalid
+- Use `url()` from envalid - provides URL validation
 - Add to env schema
 
 2. Create `backend/services/ai/src/clients/tasks.ts`:
 
 - Import `env` from `@config/env`
 - Import `createHttpClient` from `@shared/clients/http`
-- Create HTTP client: `createHttpClient(env.TASKS_SERVICE_BASE_URL, `http://${env.SERVICE_NAME}:${env.SERVICE_PORT}`)`
+- Create HTTP client: `createHttpClient(env.TASKS_SERVICE_URL, `http://${env.SERVICE_NAME}:${env.SERVICE_PORT}`)`
 - Export `tasksClient` (follow existing pattern from `clients/ai.ts` in tasks service)
 
 3. Create `backend/services/ai/src/workers/` directory (new pattern, not in conventions but needed for workers)
@@ -995,7 +995,7 @@ the message will be requeued when connection closes (if not yet acknowledged)
 
 **Files to Modify**:
 
-- `backend/services/ai/src/config/env.ts` (add TASKS_SERVICE_BASE_URL)
+- `backend/services/ai/src/config/env.ts` (add TASKS_SERVICE_URL)
 - `backend/services/ai/src/server.ts`
 
 ---
@@ -1472,7 +1472,7 @@ Create `docs/implementations/async-ai-processing-rabbitmq.md` with the following
 - `docker-compose.dev.yml`
 - `backend/services/ai/package.json`
 - `backend/services/ai/.env.example`
-- `backend/services/ai/src/config/env.ts` (add RABBITMQ_URL and TASKS_SERVICE_BASE_URL)
+- `backend/services/ai/src/config/env.ts` (add RABBITMQ_URL and TASKS_SERVICE_URL)
 - `backend/services/ai/src/constants/index.ts`
 - `backend/services/ai/src/schemas/execute-capability.ts` (add discriminated union with async fields in query)
 - `backend/services/ai/src/capabilities/index.ts` (add type assertion with comment)

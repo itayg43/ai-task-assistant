@@ -17,9 +17,9 @@ import { app } from "../../app";
 vi.mock("@config/env", () => ({
   env: {
     SERVICE_NAME: "ai",
-    SERVICE_PORT: "3002",
-    RABBITMQ_URL: "amqp://guest:guest@localhost:5672",
-    TASKS_SERVICE_BASE_URL: "http://localhost:3001",
+    SERVICE_PORT: "",
+    RABBITMQ_URL: "",
+    TASKS_SERVICE_URL: "",
   },
 }));
 

@@ -14,8 +14,8 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 
 - Added RabbitMQ service to `docker-compose.yml` with ports 5672 (AMQP) and 15672 (management UI)
   - Uses environment variables `${RABBITMQ_DEFAULT_USER}` and `${RABBITMQ_DEFAULT_PASS}` for credentials
-- Added `RABBITMQ_URL` environment variable to AI service config (using `str()` from envalid)
-- Added `TASKS_SERVICE_BASE_URL` environment variable to AI service config (using `url()` from envalid for better validation)
+- Added `RABBITMQ_URL` environment variable to AI service config (using `url()` from envalid for URL validation)
+- Added `TASKS_SERVICE_URL` environment variable to AI service config (using `url()` from envalid for URL validation)
 - Added `SERVICE_URL` environment variable to Tasks service config (using `url()` from envalid) - Tasks service uses this to refer to itself
 - Created `backend/services/ai/src/constants/rabbitmq.ts` with object-based constants:
   - `RABBITMQ_QUEUE.AI_CAPABILITY_JOBS` (instead of flat `RABBITMQ_QUEUE_NAME`)
@@ -30,7 +30,7 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 **Files Modified**:
 
 - `docker-compose.yml` (RabbitMQ service added with env vars for credentials)
-- `backend/services/ai/src/config/env.ts` (added RABBITMQ_URL and TASKS_SERVICE_BASE_URL with url() validation)
+- `backend/services/ai/src/config/env.ts` (added RABBITMQ_URL and TASKS_SERVICE_URL with url() validation)
 - `backend/services/tasks/src/config/env.ts` (added SERVICE_URL - Tasks service uses this for its own URL)
 - `backend/services/ai/src/constants/index.ts`
 - `backend/services/ai/tsconfig.json`
@@ -39,8 +39,8 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 
 - `docker-compose.dev.yml`: RabbitMQ service not added (user rejected - likely not needed for dev)
 - Constants structure: Changed to object-based pattern (`RABBITMQ_QUEUE.AI_CAPABILITY_JOBS`) for better organization
-- Tasks service: Uses `SERVICE_URL` instead of `TASKS_SERVICE_BASE_URL` for self-reference
-- AI service: Uses `url()` validator for `TASKS_SERVICE_BASE_URL` (better validation)
+- Tasks service: Uses `SERVICE_URL` for self-reference (used to construct callback URLs)
+- AI service: Uses `url()` validator for both `RABBITMQ_URL` and `TASKS_SERVICE_URL` (provides URL validation)
 
 **Issues Encountered**:
 
@@ -54,7 +54,7 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 **Notes**:
 
 - `.env.example` files are filtered by gitignore, so they need to be manually updated with:
-  - AI service: `RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672` and `TASKS_SERVICE_BASE_URL=http://tasks:3001` (for docker) or `http://localhost:3001` (for local)
+  - AI service: `RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672` and `TASKS_SERVICE_URL=http://tasks:3001` (for docker) or `http://localhost:3001` (for local)
   - Tasks service: `SERVICE_URL=http://tasks:3001` (for docker) or `http://localhost:3001` (for local)
 - Future sections will use `RABBITMQ_QUEUE.AI_CAPABILITY_JOBS` and `RABBITMQ_DLQ.AI_CAPABILITY_JOBS_DLQ` instead of the flat constant names
 - Tasks service webhook will use `env.SERVICE_URL` to construct callback URLs

@@ -54,13 +54,6 @@ graph TB
 
 ## Getting Started
 
-### Prerequisites
-
-- Docker & Docker Compose
-- OpenAI API key
-
-### Quick Start
-
 1. **Clone the repository**
 
    ```bash
@@ -101,36 +94,21 @@ graph TB
    npm run start:dev
    ```
 
-   Services will be available at:
-
-   - **Tasks Service**: `http://localhost:3001`
-   - **AI Service**: `http://localhost:3002`
-   - **Redis**: `localhost:6379`
-   - **PostgreSQL**: `localhost:5432`
-   - **Prometheus**: `http://localhost:9090`
-   - **Grafana**: `http://localhost:3000`
-
 ### Additional Commands
 
 ```bash
-# Type checking (runs in watch mode)
+# View logs
+npm run logs:ai
+npm run logs:tasks
+
+# Type checking
 npm run type-check
-
-# Access Redis CLI
-docker exec -it <redis_container_id> redis-cli
-
-# Access PostgreSQL CLI
-docker exec -it <postgres_container_id> psql -U <POSTGRES_USER> -d <POSTGRES_DB>
 
 # Prisma commands (from backend/services/tasks directory)
 cd backend/services/tasks
-npm run prisma:generate  # Generate Prisma client
-npm run prisma:migrate:dev  # Run database migrations
-npm run prisma:seed  # Seed database with sample data
-
-# View logs
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f ai
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f tasks
+npm run prisma:generate
+npm run prisma:migrate:dev
+npm run prisma:seed
 ```
 
 ### Running Tests
@@ -144,11 +122,6 @@ npm run test:prompts
 
 # Run database integration tests (requires .env.test in backend/services/tasks)
 npm run test:db
-
-# Run tests for specific workspace
-npm test -w backend/services/ai
-npm test -w backend/services/tasks
-npm test -w backend/shared
 ```
 
 **Important Notes for `npm run test:db`:**
@@ -916,7 +889,7 @@ A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualizati
      ```
    - **Workaround**: Wait for the database to be ready, then restart the tasks service:
      ```bash
-     docker-compose restart tasks
+     docker compose restart tasks
      ```
    - **Root Cause**: The tasks service starts immediately without waiting for the database to be fully initialized
    - **Potential Solutions**:
