@@ -10,10 +10,7 @@ import {
 } from "@capabilities/parse-task/parse-task-mocks";
 import { publishJob } from "@clients/rabbitmq";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
-import {
-  mockAsyncPatternQueryParams,
-  mockAsyncPatternTokenReservation,
-} from "@mocks/capabilities-controller-mocks";
+import { mockAsyncPatternQueryParams } from "@mocks/capabilities-controller-mocks";
 import { Mocked } from "@shared/types";
 import { app } from "../../app";
 
@@ -193,46 +190,6 @@ describe("capabilitiesController (integration)", () => {
           },
           {
             pattern: CAPABILITY_PATTERN.ASYNC,
-            userId: mockAsyncPatternQueryParams.userId,
-            tokenReservation: JSON.stringify(mockAsyncPatternTokenReservation),
-          }
-        );
-
-        expect(response.status).toBe(StatusCodes.BAD_REQUEST);
-        expect(response.body.message).toBeDefined();
-        expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
-      });
-
-      it(`should return ${StatusCodes.BAD_REQUEST} for missing userId`, async () => {
-        const response = await executeRequest(
-          parseTaskCapabilityUrl,
-          {
-            naturalLanguage: mockNaturalLanguage,
-            config: mockParseTaskInputConfig,
-          },
-          {
-            pattern: CAPABILITY_PATTERN.ASYNC,
-            callbackUrl: mockAsyncPatternQueryParams.callbackUrl,
-            tokenReservation: JSON.stringify(mockAsyncPatternTokenReservation),
-          }
-        );
-
-        expect(response.status).toBe(StatusCodes.BAD_REQUEST);
-        expect(response.body.message).toBeDefined();
-        expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
-      });
-
-      it(`should return ${StatusCodes.BAD_REQUEST} for missing tokenReservation`, async () => {
-        const response = await executeRequest(
-          parseTaskCapabilityUrl,
-          {
-            naturalLanguage: mockNaturalLanguage,
-            config: mockParseTaskInputConfig,
-          },
-          {
-            pattern: CAPABILITY_PATTERN.ASYNC,
-            callbackUrl: mockAsyncPatternQueryParams.callbackUrl,
-            userId: mockAsyncPatternQueryParams.userId,
           }
         );
 

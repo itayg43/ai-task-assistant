@@ -12,9 +12,6 @@ const logger = createLogger("executeAsyncPattern");
  * 2. Publish job to RabbitMQ queue
  * 3. Return empty result (controller returns 202 with aiServiceRequestId)
  *
- * Note: Schema validation middleware ensures input.query contains async fields
- * (callbackUrl, userId, tokenReservation) when pattern is "async".
- *
  * We pass the capability name (from input.params.capability) instead of the full
  * CapabilityConfig because CapabilityConfig contains functions (handler) and Zod schemas
  * that cannot be serialized to JSON. The worker will look up the config from the
