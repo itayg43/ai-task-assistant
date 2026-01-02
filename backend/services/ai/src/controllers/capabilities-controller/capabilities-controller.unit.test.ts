@@ -98,7 +98,7 @@ describe("capabilitiesController (unit)", () => {
       );
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.OK);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        ...mockSyncExecutorResult.result,
+        ...mockSyncExecutorResult,
         aiServiceRequestId: mockAiServiceRequestId,
       });
       expect(mockNext).not.toHaveBeenCalled();
@@ -113,7 +113,7 @@ describe("capabilitiesController (unit)", () => {
       mockPatternExecutor.mockResolvedValue(mockAsyncExecutorResult);
     });
 
-    it("should call executor with validated input and respond with 202 Accepted without result", async () => {
+    it("should call executor with validated input and respond with 202 Accepted with result spread", async () => {
       await executeCapability(
         {} as Request,
         mockResponse as Response,
@@ -130,6 +130,7 @@ describe("capabilitiesController (unit)", () => {
       );
       expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.ACCEPTED);
       expect(mockResponse.json).toHaveBeenCalledWith({
+        ...mockAsyncExecutorResult,
         aiServiceRequestId: mockAiServiceRequestId,
       });
       expect(mockNext).not.toHaveBeenCalled();

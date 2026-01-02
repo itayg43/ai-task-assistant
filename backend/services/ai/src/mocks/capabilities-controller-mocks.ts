@@ -3,28 +3,27 @@ import {
   mockParseTaskValidatedInput,
 } from "@capabilities/parse-task/parse-task-mocks";
 import { CAPABILITY_PATTERN } from "@constants";
-import { mockOpenaiResponseId } from "@mocks/openai-mocks";
+import {
+  mockOpenaiDurationMs,
+  mockOpenaiResponseId,
+  mockOpenaiTokenUsage,
+} from "@mocks/openai-mocks";
 
 export const mockAsyncPatternCallbackUrl =
   "http://localhost:3001/api/v1/webhooks?windowStartTimestamp=1234567890";
 
 export const mockSyncExecutorResult = {
-  result: {
-    openaiMetadata: {
+  openaiMetadata: {
+    core: {
       responseId: mockOpenaiResponseId,
-      tokens: {
-        input: 10,
-        output: 20,
-      },
-      durationMs: 42,
+      tokens: mockOpenaiTokenUsage,
+      durationMs: mockOpenaiDurationMs,
     },
-    result: mockParseTaskOutput,
   },
+  result: mockParseTaskOutput,
 };
 
-export const mockAsyncExecutorResult = {
-  result: {},
-};
+export const mockAsyncExecutorResult = {};
 
 export const mockSyncPatternInput = {
   ...mockParseTaskValidatedInput,

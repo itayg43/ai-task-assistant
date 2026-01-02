@@ -39,11 +39,16 @@ export const executeCapability = async (
       result,
     });
 
-    const isSyncPattern = pattern === CAPABILITY_PATTERN.SYNC;
-    res.status(isSyncPattern ? StatusCodes.OK : StatusCodes.ACCEPTED).json({
-      ...(isSyncPattern && result),
-      aiServiceRequestId: requestId,
-    });
+    res
+      .status(
+        pattern === CAPABILITY_PATTERN.SYNC
+          ? StatusCodes.OK
+          : StatusCodes.ACCEPTED
+      )
+      .json({
+        ...result,
+        aiServiceRequestId: requestId,
+      });
   } catch (error) {
     next(error);
   }

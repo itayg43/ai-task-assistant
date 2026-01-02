@@ -162,7 +162,7 @@ describe("capabilitiesController (integration)", () => {
     });
 
     describe("async pattern", () => {
-      it(`should return ${StatusCodes.ACCEPTED} with only aiServiceRequestId`, async () => {
+      it(`should return ${StatusCodes.ACCEPTED} with aiServiceRequestId`, async () => {
         const response = await executeRequest(
           parseTaskCapabilityUrl,
           {
@@ -174,7 +174,8 @@ describe("capabilitiesController (integration)", () => {
 
         expect(response.status).toBe(StatusCodes.ACCEPTED);
         expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
-        // Async pattern should NOT include result in response
+        // Result is spread for consistency, but async pattern returns empty result
+        // (result and openaiMetadata should not be present for async pattern)
         expect(response.body.result).toBeUndefined();
         expect(response.body.openaiMetadata).toBeUndefined();
         // Verify job was published to RabbitMQ
