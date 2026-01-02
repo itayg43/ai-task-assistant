@@ -140,16 +140,15 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 
 - Created `backend/services/ai/src/types/job-payload.ts` with `TCapabilityJobPayload` generic type definition
   - Generic type: `TCapabilityJobPayload<TCapability extends Capability>` for type-safe capability-specific payloads
-  - Created `TCapabilityJobPayloadInputMap` mapping type that maps each capability to its input type:
-    - `[CAPABILITY.PARSE_TASK]: ParseTaskInput`
-    - Ensures type safety: input type is inferred from the capability type
-    - When new capabilities are added, they must be added to this mapping
   - Includes `capability` field (typed as `TCapability` - capability name, not full config - cannot serialize functions/schemas)
-  - Includes `input` field (typed as `TCapabilityJobPayloadInputMap[TCapability]` - full validated input structure matching executeSyncPattern expectations, type-safe based on capability)
-    - For async pattern, `input.query` contains `callbackUrl`, `userId`, and `tokenReservation` (no duplication)
-    - Worker extracts these fields from `input.query` when needed
+  - Includes `input` field (typed as `z.infer<(typeof capabilities)[TCapability]["inputSchema"]>` - automatically inferred from capability's inputSchema)
+    - The input type is automatically inferred from the capability's inputSchema, ensuring it stays in sync with the capability definition
+    - For async pattern, `input.query` contains `callbackUrl` (which may include `windowStartTimestamp` as a query parameter)
+    - Worker extracts `callbackUrl` from `input.query` when needed
+    - `userId` will be extracted from authentication context in Tasks service webhook
+    - Token reservation will be read from env/config in Tasks service webhook
   - Includes `requestId` field (for distributed tracing)
-  - Note: `callbackUrl`, `userId`, and `tokenReservation` are NOT separate fields - they're in `input.query` to avoid duplication
+  - Note: `callbackUrl` is the only field in `input.query` for async pattern - no `userId` or `tokenReservation` needed
   - Added JSDoc comments explaining each field and design decisions
 - Updated `backend/services/ai/src/types/index.ts` to export `TCapabilityJobPayload` using barrel export pattern
   - Type is now accessible via `@types` path alias (e.g., `import { TCapabilityJobPayload } from "@types"`)
@@ -208,18 +207,19 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 - Updated `execute-capability.ts` schema to add async pattern fields globally (not capability-specific):
   - Used discriminated union on `query.pattern` to conditionally require async fields
   - `callbackUrl: z.string().url()` - Tasks service webhook endpoint (required when pattern is async)
-  - `userId: z.coerce.number().int().positive()` - User ID for task creation (required when pattern is async, coerced from string)
-  - `tokenReservation: z.string().transform(...)` - Token reservation info (required when pattern is async, JSON-encoded string)
-  - Schema handles JSON-encoded string for `tokenReservation` using `z.string().transform()` to parse JSON and validate object structure
-  - Added "Invalid" error messages to all query parameter fields (consistent with params)
+    - The `callbackUrl` may include `windowStartTimestamp` as a query parameter (e.g., `http://tasks:3001/api/v1/webhooks?windowStartTimestamp=1234567890`)
+    - `userId` will be extracted from authentication context in Tasks service (not passed in query)
+    - Token reservation will be read from env/config in Tasks service webhook (not passed in query)
+  - Added "Invalid" error messages to query parameter fields (consistent with params)
 - Created `execute-async-pattern/execute-async-pattern.ts`:
   - Implements async pattern executor that publishes jobs to RabbitMQ
   - Trusts schema validation middleware (no redundant runtime checks)
   - Creates job payload with:
     - `capability` name (from `input.params.capability`) - not full config (functions can't be serialized)
     - Full `input` (validated input with params, query, body) - matches what `executeSyncPattern` expects
+      - The input type is automatically inferred from the capability's inputSchema
     - `requestId` for distributed tracing
-  - Note: `callbackUrl`, `userId`, and `tokenReservation` are already in `input.query` (no duplication)
+  - Note: Only `callbackUrl` is in `input.query` for async pattern (no `userId` or `tokenReservation`)
   - Publishes job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
   - Returns empty result `{} as TOutput` (controller returns 202 with aiServiceRequestId)
   - Handles errors: throws `InternalError` on queue failures
@@ -249,16 +249,16 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
   - Separated into `describe` blocks: "sync pattern", "async pattern", "validation errors"
   - Uses shared mocks from `@mocks/capabilities-controller-mocks`
   - Added RabbitMQ mock for async pattern tests
-  - Tests async pattern validation (missing callbackUrl, userId, tokenReservation)
+  - Tests async pattern validation (missing callbackUrl)
 - Created `mocks/capabilities-controller-mocks.ts`:
   - Shared mock data for both unit and integration tests
-  - Constants: `mockAsyncPatternCallbackUrl`, `mockAsyncPatternUserId`, `mockAsyncPatternTokenReservation`
+  - Constants: `mockAsyncPatternCallbackUrl` (includes `windowStartTimestamp` in URL)
   - Mock objects: `mockSyncExecutorResult`, `mockAsyncExecutorResult`
   - Input mocks: `mockSyncPatternInput`, `mockAsyncPatternInput`
-  - Query params: `mockAsyncPatternQueryParams` (for HTTP requests)
+  - Query params: `mockAsyncPatternQueryParams` (only `pattern` and `callbackUrl`)
 - Updated `capabilities/index.ts`:
-  - Added type assertion with comment explaining why it's needed
-  - Type assertion preserves correct output type for type inference while working around transform's input type limitation
+  - Removed type assertion (no longer needed after simplifying async pattern query parameters)
+  - Input schema is used directly without type assertion
 
 **Files Created**:
 
@@ -283,14 +283,13 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 - Type error: `executeAsyncPattern` return type `WithDurationResult<{}>` didn't match expected `WithDurationResult<TOutput>`
   - Fixed by casting return value to `TOutput` with comment explaining that result is not used for async pattern
   - The controller doesn't use the result for async pattern (returns 202 with aiServiceRequestId)
-- Type error: Schema extension with transform caused input/output type mismatch
-  - Fixed by adding type assertion in `capabilities/index.ts` with detailed comment explaining the limitation
-  - The assertion preserves correct output type for type inference while working around transform's input type limitation
-- `tokenReservation` nested object in query parameters:
-  - Implemented Option 1: JSON-encoded string approach
-  - Client sends: `?tokenReservation={"tokensReserved":1000,"windowStartTimestamp":1234567890}`
-  - Schema uses `z.string().transform()` to parse JSON string and validate object structure
-  - Handles both JSON parsing errors and object validation errors gracefully
+- Simplified async pattern query parameters:
+  - Removed `userId` and `tokenReservation` from query parameters
+  - Only `callbackUrl` is required for async pattern
+  - `windowStartTimestamp` is passed in the `callbackUrl` query parameter (e.g., `http://tasks:3001/api/v1/webhooks?windowStartTimestamp=1234567890`)
+  - `userId` will be extracted from authentication context in Tasks service
+  - Token reservation will be read from env/config in Tasks service webhook
+  - This simplification removed the need for type assertions in `capabilities/index.ts`
 
 **Test Results**:
 
@@ -300,28 +299,28 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 **Notes**:
 
 - **Schema Design**: Async pattern fields are defined globally in `execute-capability.ts` using discriminated union, not capability-specific. This ensures DRY principles and better type safety.
-- **Query Parameters**: Async fields (`callbackUrl`, `userId`, `tokenReservation`) are in query parameters, not body. This follows RESTful conventions where metadata goes in query parameters.
-- **Type Coercion**: Query parameters arrive as strings, so `z.coerce.number()` is used for `userId`, `tokensReserved`, and `windowStartTimestamp`.
-- **tokenReservation JSON Encoding**: The `tokenReservation` field is sent as a JSON-encoded string in query parameters (Option 1). The schema transforms the string to an object and validates the structure. This approach:
-  - Preserves nested object structure
-  - Works with existing schema structure
-  - Requires URL encoding on client side
-  - Handles both JSON parse errors and validation errors gracefully
+- **Query Parameters**: Only `callbackUrl` is required for async pattern. This follows RESTful conventions where metadata goes in query parameters.
+- **Simplified Async Pattern**: The async pattern query parameters were simplified:
+  - Only `callbackUrl` is required (may include `windowStartTimestamp` as a query parameter)
+  - `userId` will be extracted from authentication context in Tasks service (not passed in query)
+  - Token reservation will be read from env/config in Tasks service webhook (not passed in query)
 - **Job Payload Structure**: The job payload stores:
   - `capability` name (string) instead of full `CapabilityConfig` (functions can't be serialized)
   - Full `input` (validated input with params, query, body) - matches what `executeSyncPattern` expects
+    - The input type is automatically inferred from the capability's inputSchema using `z.infer<(typeof capabilities)[TCapability]["inputSchema"]>`
+    - This ensures the type stays in sync with the capability definition without maintaining a separate mapping
   - `requestId` for distributed tracing
-  - Note: `callbackUrl`, `userId`, and `tokenReservation` are NOT duplicated - they're already in `input.query`
-- **No Redundant Fields**: Job payload does not include `callbackUrl`, `userId`, or `tokenReservation` as separate fields. These are extracted from `input.query` by the worker when needed. This eliminates data duplication and ensures single source of truth.
+  - Note: Only `callbackUrl` is in `input.query` for async pattern (no `userId` or `tokenReservation`)
+- **No Redundant Fields**: Job payload does not include `callbackUrl` as a separate field. It's already in `input.query`. This eliminates data duplication and ensures single source of truth.
 - **No Runtime Validation**: The executor trusts schema validation middleware. No redundant checks for fields that are already validated by the discriminated union schema. This simplifies code and follows the principle of trusting validated input.
 - **No Duration Tracking**: Removed `withDurationAsync` wrapper from both sync and async executors for simplicity. Duration tracking not needed for async pattern (job queued, not processed).
 - **Input Structure**: The `input` field stores the complete validated input structure (params, query, body) so it can be passed directly to `executeSyncPattern` in the worker. The worker extracts async fields from `input.query` when needed.
 - **Return Type**: For async pattern, the executor returns `{} as TOutput` to satisfy the type signature, but the actual result is not used by the controller (it returns 202 with aiServiceRequestId)
 - **202 Response**: Async pattern returns 202 Accepted to indicate the request was accepted for processing but not yet completed. Response includes only `aiServiceRequestId`, no result data.
 - **Error Handling**: Queue failures throw `InternalError` to indicate server-side issues (not user input errors)
-- **Validation**: Required fields (`callbackUrl`, `userId`, `tokenReservation`) are validated by the schema when pattern is async (discriminated union ensures they're present). No redundant runtime checks needed.
-- **Test Organization**: Tests are organized into separate `describe` blocks for sync and async patterns, using shared mocks from `@mocks/capabilities-controller-mocks` for consistency. Validation error tests removed (validation happens before executors via schema middleware).
-- **Type Assertion**: A type assertion is needed in `capabilities/index.ts` because `z.string().transform()` creates a type mismatch when extending schemas. The assertion preserves correct output type for type inference while working around the transform's input type limitation.
+- **Validation**: Only `callbackUrl` is validated by the schema when pattern is async (discriminated union ensures it's present). No redundant runtime checks needed.
+- **Test Organization**: Tests are organized into separate `describe` blocks for sync and async patterns, using shared mocks from `@mocks/capabilities-controller-mocks` for consistency. Validation error tests only check for missing `callbackUrl` (validation happens before executors via schema middleware).
+- **Type Inference**: The job payload input type is automatically inferred from the capability's inputSchema, eliminating the need for a separate mapping type. This ensures the type stays in sync with the capability definition automatically.
 
 ### Section 5: AI Service - Worker Implementation
 

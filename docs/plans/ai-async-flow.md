@@ -241,7 +241,10 @@ type TExecuteCapabilityConfig =
 ```typescript
 if (config.pattern === "async") {
   // TypeScript knows config has async-specific fields
-  const { callbackUrl, userId, tokenReservation } = config.params;
+  const { callbackUrl } = config.params;
+  // callbackUrl may include windowStartTimestamp as a query parameter
+  // userId will be extracted from authentication context in Tasks service
+  // tokenReservation will be read from env/config in Tasks service webhook
   // ... use async fields
 } else {
   // TypeScript knows config has sync fields
@@ -665,13 +668,15 @@ between versions. Key is ensuring setup runs after reconnection."
      * This is the complete validated input, not just the body, so it can be passed directly to the capability handler as in executeSyncPattern.
      * The structure includes:
      * - params: { capability: Capability }
-     * - query: { pattern: "async", callbackUrl, userId, tokenReservation } (for async pattern)
+     * - query: { pattern: "async", callbackUrl } (for async pattern)
      * - body: { ... } (capability-specific input)
      *
-     * For async pattern, the worker can extract callbackUrl, userId, and tokenReservation from input.query.
-     * No duplication needed - these fields are already in the validated input.
+     * For async pattern, the worker can extract callbackUrl from input.query.
+     * The callbackUrl may include windowStartTimestamp as a query parameter.
+     * userId will be extracted from authentication context in Tasks service webhook.
+     * Token reservation will be read from env/config in Tasks service webhook.
      */
-    input: TCapabilityJobPayloadInputMap[TCapability];
+    input: z.infer<(typeof capabilities)[TCapability]["inputSchema"]>;
     /**
      * Request ID for distributed tracing.
      * This is propagated from the original request through the async flow.
@@ -680,9 +685,10 @@ between versions. Key is ensuring setup runs after reconnection."
   };
   ```
 
-- **Note**: The type is generic to provide type safety - the `input` type is inferred from the `capability` type using the mapping
-- **Note**: `callbackUrl`, `userId`, and `tokenReservation` are NOT separate fields - they're in `input.query` for async pattern to avoid duplication
-- **Note**: The schema validation ensures async fields are present in `input.query` when pattern is async (discriminated union)
+- **Note**: The type is generic to provide type safety - the `input` type is automatically inferred from the capability's inputSchema
+- **Note**: Only `callbackUrl` is in `input.query` for async pattern - no `userId` or `tokenReservation` needed
+- **Note**: The schema validation ensures `callbackUrl` is present in `input.query` when pattern is async (discriminated union)
+- **Note**: The input type uses `z.infer<(typeof capabilities)[TCapability]["inputSchema"]>` to automatically stay in sync with the capability definition
 
 2. Update `backend/services/ai/src/types/index.ts`:
 
@@ -722,31 +728,19 @@ between versions. Key is ensuring setup runs after reconnection."
 - **IMPORTANT**: Async pattern fields are defined globally in the base schema, not capability-specific. This ensures DRY principles and better type safety.
 - Add discriminated union to `query` field based on `pattern`:
   - When `pattern === "sync"`: Only `pattern` field required
-  - When `pattern === "async"`: Require `callbackUrl`, `userId`, and `tokenReservation` fields
+  - When `pattern === "async"`: Require only `callbackUrl` field
 - Use `z.discriminatedUnion("pattern", [...])` for type-safe conditional validation
 - Field definitions:
   - `callbackUrl: z.string().url()` - Tasks service webhook endpoint (required when async)
-  - `userId: z.coerce.number().int().positive()` - User ID for task creation (required when async, coerced from string query param)
-  - `tokenReservation: z.string().transform((str, ctx) => { ... })` - Token reservation info (required when async, JSON-encoded string)
-    - **JSON Encoding Approach**: Client sends `tokenReservation` as a JSON-encoded string in query parameters (e.g., `?tokenReservation={"tokensReserved":1000,"windowStartTimestamp":1234567890}`)
-    - Use `z.string().transform()` to parse JSON string and validate object structure
-    - Handle both JSON parsing errors and object validation errors gracefully with `ctx.addIssue()` and `z.NEVER`
-    - Validate parsed object: `{ tokensReserved: z.coerce.number(), windowStartTimestamp: z.coerce.number() }`
-- Add "Invalid" error messages to all query parameter fields (consistent with params section)
-- **Note**: Query parameters arrive as strings, so use `z.coerce.number()` for numeric fields (`userId`, `tokensReserved`, `windowStartTimestamp`)
+    - The `callbackUrl` may include `windowStartTimestamp` as a query parameter (e.g., `http://tasks:3001/api/v1/webhooks?windowStartTimestamp=1234567890`)
+    - `userId` will be extracted from authentication context in Tasks service (not passed in query)
+    - Token reservation will be read from env/config in Tasks service webhook (not passed in query)
+- Add "Invalid" error messages to query parameter fields (consistent with params section)
 
 2. Update `backend/services/ai/src/capabilities/index.ts`:
 
-- Add type assertion to `inputSchema` in capability definition:
-  ```typescript
-  inputSchema: parseTaskInputSchema as z.ZodSchema<
-    z.infer<typeof parseTaskInputSchema>
-  >;
-  ```
-- Add comment explaining why type assertion is needed:
-  - `z.string().transform()` in `executeCapabilityInputSchema` creates a type mismatch when extending schemas
-  - TypeScript sees the transform's input type (string) but expects the output type (object)
-  - The assertion preserves the correct output type for type inference while working around the transform's input type limitation
+- No type assertion needed (simplified async pattern query parameters removed the need for transform)
+- Input schema is used directly without type assertion
 
 3. Update `backend/services/ai/src/app.ts`:
 
@@ -765,8 +759,9 @@ between versions. Key is ensuring setup runs after reconnection."
 - Create job payload: `TCapabilityJobPayload`
 - Store `capability` name from `input.params.capability` (not the full config - see comment in job-payload.ts)
 - Store full `input` (validated input with params, query, body) - this matches what executeSyncPattern expects
+  - The input type is automatically inferred from the capability's inputSchema using `z.infer<(typeof capabilities)[TCapability]["inputSchema"]>`
 - Store `requestId` for distributed tracing
-- Note: `callbackUrl`, `userId`, and `tokenReservation` are already in `input.query` (no duplication needed)
+- Note: Only `callbackUrl` is in `input.query` for async pattern (no `userId` or `tokenReservation` needed)
 - Add comment explaining why we store capability name instead of config (functions can't be serialized)
 - Publish job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
 - Wait for successful queue publication
@@ -805,10 +800,10 @@ between versions. Key is ensuring setup runs after reconnection."
 10. Create `backend/services/ai/src/mocks/capabilities-controller-mocks.ts`:
 
 - Create shared mock data for both unit and integration tests:
-  - Constants: `mockAsyncPatternCallbackUrl`, `mockAsyncPatternUserId`, `mockAsyncPatternTokenReservation`
+  - Constants: `mockAsyncPatternCallbackUrl` (includes `windowStartTimestamp` in URL)
   - Mock objects: `mockSyncExecutorResult`, `mockAsyncExecutorResult`
   - Input mocks: `mockSyncPatternInput`, `mockAsyncPatternInput`
-  - Query params: `mockAsyncPatternQueryParams` (for HTTP requests, with string values)
+  - Query params: `mockAsyncPatternQueryParams` (only `pattern` and `callbackUrl`)
 - Follow project conventions for mock organization
 
 11. Update `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.ts`:
@@ -831,7 +826,7 @@ between versions. Key is ensuring setup runs after reconnection."
 - Refactor to use shared mocks from `@mocks/capabilities-controller-mocks`
 - Separate tests into `describe` blocks: "sync pattern", "async pattern", "validation errors"
 - Add RabbitMQ mock for async pattern tests
-- Test async pattern validation (missing callbackUrl, userId, tokenReservation)
+- Test async pattern validation (missing callbackUrl)
 
 **Validation** (MANDATORY - must pass before requesting approval):
 
@@ -844,15 +839,15 @@ between versions. Key is ensuring setup runs after reconnection."
 
 - **MUST update** `docs/implementations/async-ai-processing-rabbitmq.md` after completing this section
 - Document async pattern executor implementation
-- Document schema design (discriminated union, global fields)
-- Document query parameter handling (type coercion, JSON encoding)
-- Document job publishing flow (no redundant fields - callbackUrl, userId, tokenReservation in input.query only)
+- Document schema design (discriminated union, global fields, simplified to only require callbackUrl)
+- Document query parameter handling (only callbackUrl required, windowStartTimestamp in URL)
+- Document job publishing flow (no redundant fields - only callbackUrl in input.query)
 - Document removal of `withDurationAsync` wrapper (simplified implementation)
 - Document removal of redundant validation checks (trust schema validation)
 - Document 202 response handling
-- Document type assertion in capabilities/index.ts
+- Document automatic type inference from capability's inputSchema (no separate mapping needed)
 - Document test organization and shared mocks
-- Document simplified test structure (no validation error tests)
+- Document simplified test structure (only callbackUrl validation)
 
 **Files to Create**:
 
@@ -905,7 +900,7 @@ between versions. Key is ensuring setup runs after reconnection."
 - Import `AI_ERROR_TYPE` from `@constants`
 - Note: For POC, we do NOT track active jobs. RabbitMQ will automatically requeue unacknowledged messages.
 - Implement retry logic helper: - `retryWithBackoff<T>(fn: () => Promise<T>, maxRetries: number): Promise<T>` - Exponential backoff: `min(1000 * Math.pow(2, attempt), 30000) + Math.random() * 1000` - Retry on transient errors, throw on permanent errors
-- Implement `processJob(jobPayload: TCapabilityJobPayload): Promise<void>`: - Extract capability name, input, callbackUrl, requestId, userId, tokenReservation from payload - Get capability config from capabilities registry: - Look up `capabilities[capability]` (same pattern as validateExecutableCapability middleware) - Add comment explaining: "Unlike sync flow which uses res.locals.capabilityConfig (already validated by middleware),
+- Implement `processJob(jobPayload: TCapabilityJobPayload): Promise<void>`: - Extract capability name, input, callbackUrl, requestId from payload - Get capability config from capabilities registry: - Look up `capabilities[capability]` (same pattern as validateExecutableCapability middleware) - Add comment explaining: "Unlike sync flow which uses res.locals.capabilityConfig (already validated by middleware),
 
 we look up from registry here because CapabilityConfig contains functions that cannot be serialized to RabbitMQ.
 
@@ -924,11 +919,13 @@ The capability name was stored in the job payload, and we reconstruct the config
                 - On success: Create success payload matching webhook discriminated union:
                                 - `status: "success"`
                                 - `result: TParsedTask` (from execution result)
-                                - `openaiMetadata`, `aiServiceRequestId`, `userId`, `naturalLanguage`, `tokenReservation`
+                                - `openaiMetadata`, `aiServiceRequestId`, `naturalLanguage`
+                                - Note: `userId` and `tokenReservation` will be handled by Tasks service webhook
                 - On failure: Create failure payload matching webhook discriminated union:
                                 - `status: "failure"`
                                 - `error: { message: string, type?: string }` (extract from error object)
-                                - `aiServiceRequestId`, `userId`, `naturalLanguage`, `openaiMetadata` (if available), `tokenReservation`
+                                - `aiServiceRequestId`, `naturalLanguage`, `openaiMetadata` (if available)
+                                - Note: `userId` and `tokenReservation` will be handled by Tasks service webhook
                 - POST to callbackUrl using `tasksClient.post()` with retry:
                                 - URL: `/api/v1/webhooks`
                                 - Headers: `{ "x-request-id": requestId }`
@@ -1037,20 +1034,20 @@ the message will be requeued when connection closes (if not yet acknowledged)
          z.object({
            status: z.literal("success"),
            aiServiceRequestId: z.string(),
-           userId: z.number().int().positive(),
            naturalLanguage: z.string(),
            result: TParsedTask, // Required when status is "success"
            openaiMetadata: z.record(z.string(), z.object({ ... })), // TOpenaiMetadata structure
-           tokenReservation: z.object({ tokensReserved: z.number(), windowStartTimestamp: z.number() }).optional(),
+           // Note: userId will be extracted from authentication context
+           // Note: tokenReservation will be read from env/config
          }),
          z.object({
            status: z.literal("failure"),
            aiServiceRequestId: z.string(),
-           userId: z.number().int().positive(),
            naturalLanguage: z.string(),
            error: z.object({ message: z.string(), type: z.string().optional() }), // Required when status is "failure"
            openaiMetadata: z.record(z.string(), z.object({ ... })).optional(), // Optional for failures
-           tokenReservation: z.object({ tokensReserved: z.number(), windowStartTimestamp: z.number() }).optional(),
+           // Note: userId will be extracted from authentication context
+           // Note: tokenReservation will be read from env/config
          }),
        ]);
   ```
@@ -1107,7 +1104,7 @@ the message will be requeued when connection closes (if not yet acknowledged)
 - Import `createTask, createManySubtasks, findTaskById` from `@repositories/tasks-repository`
 - Import `taskToResponseDto` from `@utils/task-to-response-dto`
 - Import `extractOpenaiTokenUsage` from `@utils/extract-openai-token-usage`
-- Implement `handleWebhookCallback`: - Extract `requestId` from `res.locals` - Extract validated body from request (will be set by validateSchema middleware) - Extract `userId`, `naturalLanguage`, `result`, `openaiMetadata`, `status`, `error`, `tokenReservation` - **Set authentication context**: `res.locals.authenticationContext = { userId }` (override hardcoded value from authentication middleware) - Set `res.locals.tokenUsage` with: - `tokensReserved`: from tokenReservation (if provided) - `windowStartTimestamp`: from tokenReservation (if provided) - `actualTokens`: extracted from openaiMetadata using `extractOpenaiTokenUsage` - Log "Handle webhook callback - starting" with baseLogContext - If status is "success": - TypeScript will narrow type based on discriminated union - `result` field is guaranteed to exist - Create task in database using transaction: - Call `createTask` with userId, naturalLanguage, result (from narrowed type) - If result.subtasks exists, call `createManySubtasks` - Call `findTaskById` to get task with subtasks - Log "Handle webhook callback - succeeded" - Return 201 Created with task data: `{ tasksServiceRequestId: requestId, task: taskToResponseDto(task) }` - If status is "failure": - TypeScript will narrow type based on discriminated union - `error` field is guaranteed to exist - Log error details (from narrowed `error` field) - Set `actualTokens: 0` in `res.locals.tokenUsage` (release reserved tokens - no actual usage) - Return 201 Created with error acknowledgment (webhook was received and processed) - Call `next()` to continue to post-response middleware (token usage reconciliation) - Note: Token reconciliation will release reserved tokens since actualTokens is 0 - Handle errors: pass to error handler via `next(error)`
+- Implement `handleWebhookCallback`: - Extract `requestId` from `res.locals` - Extract validated body from request (will be set by validateSchema middleware) - Extract `naturalLanguage`, `result`, `openaiMetadata`, `status`, `error` from body - **Get userId from authentication context**: `const { userId } = getAuthenticationContext(res)` (authentication middleware sets this) - **Get token reservation from env/config**: Read `tokensReserved` from `env.CREATE_TASK_ESTIMATED_TOKEN_USAGE` and calculate `windowStartTimestamp` from current time and window size - Set `res.locals.tokenUsage` with: - `tokensReserved`: from env config - `windowStartTimestamp`: calculated from current time and window size - `actualTokens`: extracted from openaiMetadata using `extractOpenaiTokenUsage` - Log "Handle webhook callback - starting" with baseLogContext - If status is "success": - TypeScript will narrow type based on discriminated union - `result` field is guaranteed to exist - Create task in database using transaction: - Call `createTask` with userId, naturalLanguage, result (from narrowed type) - If result.subtasks exists, call `createManySubtasks` - Call `findTaskById` to get task with subtasks - Log "Handle webhook callback - succeeded" - Return 201 Created with task data: `{ tasksServiceRequestId: requestId, task: taskToResponseDto(task) }` - If status is "failure": - TypeScript will narrow type based on discriminated union - `error` field is guaranteed to exist - Log error details (from narrowed `error` field) - Set `actualTokens: 0` in `res.locals.tokenUsage` (release reserved tokens - no actual usage) - Return 201 Created with error acknowledgment (webhook was received and processed) - Call `next()` to continue to post-response middleware (token usage reconciliation) - Note: Token reconciliation will release reserved tokens since actualTokens is 0 - Handle errors: pass to error handler via `next(error)`
 - Follow controller pattern from project conventions
 
 3. Create `backend/services/tasks/src/controllers/webhook-controller/index.ts`:
@@ -1213,7 +1210,7 @@ the message will be requeued when connection closes (if not yet acknowledged)
 
 - Import `env` from `@config/env`
 - Update `createTaskHandler` signature to accept `tokenUsage` parameter: - `createTaskHandler(requestId: string, userId: number, naturalLanguage: string, tokenUsage?: { tokensReserved: number; windowStartTimestamp: number })`
-- Update `createTaskHandler` to: - Always use async pattern (remove sync logic or keep as fallback) - Extract `userId` from parameters - Construct `callbackUrl` from `env.TASKS_SERVICE_BASE_URL + "/api/v1/webhooks"` - Call `executeCapability` with: - `pattern: "async"` - `params: { naturalLanguage, config: DEFAULT_PARSE_TASK_CONFIG, callbackUrl, userId, tokenReservation: tokenUsage ? { tokensReserved: tokenUsage.tokensReserved, windowStartTimestamp: tokenUsage.windowStartTimestamp } : undefined }` - Handle response (discriminated union): - Check `response.status === "queued" && response.pattern === "async"` - TypeScript will narrow type - `response.data` will be `{ aiServiceRequestId: string }` - Return response (discriminated union type) - Remove database operations (moved to webhook) - Remove token usage extraction (moved to webhook)
+- Update `createTaskHandler` to: - Always use async pattern (remove sync logic or keep as fallback) - Extract `userId` from parameters - Construct `callbackUrl` from `env.SERVICE_URL + "/api/v1/webhooks"` - If `tokenUsage` is provided, append `windowStartTimestamp` to callbackUrl: `callbackUrl + "?windowStartTimestamp=" + tokenUsage.windowStartTimestamp` - Call `executeCapability` with: - `pattern: "async"` - `params: { naturalLanguage, config: DEFAULT_PARSE_TASK_CONFIG, callbackUrl }` (only callbackUrl, no userId or tokenReservation) - Handle response (discriminated union): - Check `response.status === "queued" && response.pattern === "async"` - TypeScript will narrow type - `response.data` will be `{ aiServiceRequestId: string }` - Return response (discriminated union type) - Remove database operations (moved to webhook) - Remove token usage extraction (moved to webhook)
 
 3. Update `backend/services/tasks/src/controllers/tasks-controller/tasks-controller.ts`:
 
@@ -1239,7 +1236,7 @@ the message will be requeued when connection closes (if not yet acknowledged)
 
                 - Update function signature: `Promise<TExecuteCapabilityResult<TCapabilityResult>>`
                 - Use type guard: `if (config.pattern === "async")` to narrow config type
-                - Include `callbackUrl`, `userId`, and `tokenReservation` in request body when async
+                - Include only `callbackUrl` in query parameters when async (no userId or tokenReservation)
                 - Include `requestId` in headers (`x-request-id`)
                 - Handle 202 Accepted response: return `{ status: "queued", pattern: "async", data: { aiServiceRequestId: string } }`
                 - Handle 200 OK response: return `{ status: "success", pattern: "sync", data: response }`
@@ -1420,7 +1417,7 @@ Create `docs/implementations/async-ai-processing-rabbitmq.md` with the following
 ## Key Design Decisions
 
 1. **Always Async**: Tasks service always uses async pattern for create task
-2. **Callback URL**: Built from `TASKS_SERVICE_BASE_URL` environment variable
+2. **Callback URL**: Built from `SERVICE_URL` environment variable (Tasks service uses this for self-reference)
 3. **Token Reservation**: Tokens reserved before queueing (existing middleware)
 4. **Token Reconciliation**: Actual tokens reconciled in Tasks service webhook endpoint (existing middleware)
 5. **Metrics Exclusion**: 202 responses excluded from metrics (async requests are queued, not completed)
@@ -1430,15 +1427,18 @@ Create `docs/implementations/async-ai-processing-rabbitmq.md` with the following
 9. **Webhook Error Handlers**: Webhook router includes `tasksErrorHandler` and `tokenUsageErrorHandler` for proper error handling
 10. **Request ID Propagation**: Worker passes original `requestId` in webhook call headers for distributed tracing
 11. **Worker Error Handling**: Worker handles capability execution errors and sends proper error structure to webhook
-12. **UserId in Webhook**: Webhook extracts `userId` from payload and sets in `res.locals.authenticationContext` (overrides authentication middleware hardcoded value)
-13. **HTTP Client in Clients Directory**: Worker uses HTTP client in `clients/tasks.ts` following existing pattern
-14. **Server Startup Pattern**: Worker started using `initializeServer` callbacks (startCallback)
-15. **Retry Strategy**: Exponential backoff with jitter, max 3 retries, DLQ for permanent failures
-16. **Graceful Shutdown**: Stop consumer, close connections immediately (no active job tracking for POC)
-17. **Message Acknowledgment**: Acknowledge only after successful webhook callback (ensures job not lost)
-18. **Token Reconciliation on Failure**: Set actualTokens to 0 to release reserved tokens
-19. **Worker Startup Failure**: AI service fails to start if worker fails (fail fast approach)
-20. **Discriminated Unions**: Use discriminated unions for webhook payloads, capability responses, and job results for better type inference
+12. **UserId in Webhook**: Webhook gets `userId` from authentication context (set by authentication middleware, not from payload)
+13. **Token Reservation in Webhook**: Webhook reads token reservation from env/config (not from payload)
+14. **Simplified Async Pattern Query**: Only `callbackUrl` is required for async pattern; `windowStartTimestamp` is passed in the `callbackUrl` query parameter
+15. **Automatic Type Inference**: Job payload input type is automatically inferred from capability's inputSchema using `z.infer<(typeof capabilities)[TCapability]["inputSchema"]>`, eliminating the need for a separate mapping type
+16. **HTTP Client in Clients Directory**: Worker uses HTTP client in `clients/tasks.ts` following existing pattern
+17. **Server Startup Pattern**: Worker started using `initializeServer` callbacks (startCallback)
+18. **Retry Strategy**: Exponential backoff with jitter, max 3 retries, DLQ for permanent failures
+19. **Graceful Shutdown**: Stop consumer, close connections immediately (no active job tracking for POC)
+20. **Message Acknowledgment**: Acknowledge only after successful webhook callback (ensures job not lost)
+21. **Token Reconciliation on Failure**: Set actualTokens to 0 to release reserved tokens
+22. **Worker Startup Failure**: AI service fails to start if worker fails (fail fast approach)
+23. **Discriminated Unions**: Use discriminated unions for webhook payloads, capability responses, and job results for better type inference
 
 ## Complete File List
 
