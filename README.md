@@ -837,15 +837,17 @@ A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualizati
    - **Implementation Log**: See `docs/implementations/async-ai-processing-rabbitmq.md` for progress tracking
    - **Architecture**: Convert synchronous AI requests to async job queue processing
    - **Flow**:
-     - Client submits task → Tasks service returns `202 Accepted` with `aiServiceRequestId` immediately
+     - Client submits task → Tasks service returns `202 Accepted` with `aiServiceRequestId` and message immediately
      - Job published to RabbitMQ queue
      - Worker pool processes jobs independently (scale workers separately from API)
      - Worker calls Tasks service webhook endpoint with results
      - Token usage reconciled in webhook callback
    - **Implementation Details**:
      - Reuse existing `requestId` from AI service for unified tracking
-     - Async pattern fields (`callbackUrl`, `userId`, `tokenReservation`) defined globally in schema using discriminated union
+     - Async pattern fields (`callbackUrl`) defined globally in schema using discriminated union
      - Job payload includes full validated input structure (async fields in `input.query`, no duplication)
+     - Executor returns message: "The ${capability} capability has been added to the queue and will start processing shortly."
+     - Controller always spreads result for consistency between sync and async patterns
      - Executor trusts schema validation (no redundant runtime checks)
      - No duration tracking wrapper (simplified implementation)
      - Token reservation passed through async flow in `input.query` and reconciled in webhook

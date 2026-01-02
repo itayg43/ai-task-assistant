@@ -765,7 +765,7 @@ between versions. Key is ensuring setup runs after reconnection."
 - Add comment explaining why we store capability name instead of config (functions can't be serialized)
 - Publish job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
 - Wait for successful queue publication
-- Return `{} as TOutput` (empty result - controller returns 202 with aiServiceRequestId)
+- Return `{ message: "The ${config.name} capability has been added to the queue and will start processing shortly." } as TOutput` (controller returns 202 with aiServiceRequestId and message)
 - Handle errors: throw `InternalError` on queue failures
 - Use structured logging with requestId
 - **No `withDurationAsync` wrapper**: Removed for simplicity (duration tracking not needed for async pattern)
@@ -808,12 +808,11 @@ between versions. Key is ensuring setup runs after reconnection."
 
 11. Update `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.ts`:
 
-- Refactor to use `isSyncPattern` boolean for clarity
+- Always spread `result` for consistency between sync and async patterns
 - Check if pattern is async (from validatedInput.query.pattern)
-- If async, return 202 Accepted instead of 200 OK
-- Include minimal response: `{ aiServiceRequestId: requestId }` (no result data)
-- If sync, return 200 OK with full result and `aiServiceRequestId`
-- Use conditional spread: `...(isSyncPattern && result)` to include result only for sync
+- If async, return 202 Accepted with `{ ...result, aiServiceRequestId: requestId }` (result includes message)
+- If sync, return 200 OK with `{ ...result, aiServiceRequestId: requestId }` (result includes openaiMetadata and parsed task)
+- Consistent spreading pattern allows future message additions without code changes
 
 12. Update `backend/services/ai/src/controllers/capabilities-controller/capabilities-controller.unit.test.ts`:
 

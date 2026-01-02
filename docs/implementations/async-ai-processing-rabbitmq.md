@@ -221,7 +221,7 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
     - `requestId` for distributed tracing
   - Note: Only `callbackUrl` is in `input.query` for async pattern (no `userId` or `tokenReservation`)
   - Publishes job to RabbitMQ using `publishJob(RABBITMQ_QUEUE.AI_CAPABILITY_JOBS, jobPayload)`
-  - Returns empty result `{} as TOutput` (controller returns 202 with aiServiceRequestId)
+  - Returns message result `{ message: "The ${config.name} capability has been added to the queue and will start processing shortly." } as TOutput` (controller returns 202 with aiServiceRequestId and message)
   - Handles errors: throws `InternalError` on queue failures
   - Uses structured logging with requestId
   - No `withDurationAsync` wrapper (removed for simplicity, duration tracking not needed for async pattern)
@@ -238,10 +238,10 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
   - Tests both sync and async patterns return executor functions
   - Mocks `@config/env` to prevent startup errors
 - Updated `capabilities-controller.ts`:
-  - Refactored to use `isSyncPattern` boolean for clarity
-  - Returns 202 Accepted for async pattern with `{ aiServiceRequestId: requestId }` (no result)
-  - Returns 200 OK for sync pattern with full result and `aiServiceRequestId`
-  - Uses conditional spread `...(isSyncPattern && result)` to include result only for sync
+  - Always spreads `result` for consistency between sync and async patterns
+  - Returns 202 Accepted for async pattern with `{ ...result, aiServiceRequestId: requestId }` (result includes message)
+  - Returns 200 OK for sync pattern with `{ ...result, aiServiceRequestId: requestId }` (result includes openaiMetadata and parsed task)
+  - Consistent spreading pattern allows future message additions without code changes
 - Updated `capabilities-controller.unit.test.ts`:
   - Separated into `describe` blocks: "sync pattern", "async pattern", "error handling"
   - Uses shared mocks from `@mocks/capabilities-controller-mocks`
@@ -315,8 +315,9 @@ This document tracks the implementation of async AI processing using RabbitMQ. T
 - **No Runtime Validation**: The executor trusts schema validation middleware. No redundant checks for fields that are already validated by the discriminated union schema. This simplifies code and follows the principle of trusting validated input.
 - **No Duration Tracking**: Removed `withDurationAsync` wrapper from both sync and async executors for simplicity. Duration tracking not needed for async pattern (job queued, not processed).
 - **Input Structure**: The `input` field stores the complete validated input structure (params, query, body) so it can be passed directly to `executeSyncPattern` in the worker. The worker extracts async fields from `input.query` when needed.
-- **Return Type**: For async pattern, the executor returns `{} as TOutput` to satisfy the type signature, but the actual result is not used by the controller (it returns 202 with aiServiceRequestId)
-- **202 Response**: Async pattern returns 202 Accepted to indicate the request was accepted for processing but not yet completed. Response includes only `aiServiceRequestId`, no result data.
+- **Return Type**: For async pattern, the executor returns `{ message: "The ${config.name} capability has been added to the queue and will start processing shortly." } as TOutput`. The message provides clear feedback to clients that the request was accepted and queued.
+- **202 Response**: Async pattern returns 202 Accepted to indicate the request was accepted for processing but not yet completed. Response includes `message`, `aiServiceRequestId`, and any other fields from the executor result (spread for consistency).
+- **Consistent Result Spreading**: The controller always spreads `result` for both sync and async patterns, ensuring consistent response structure. This allows future enhancements (like additional message fields) without code changes.
 - **Error Handling**: Queue failures throw `InternalError` to indicate server-side issues (not user input errors)
 - **Validation**: Only `callbackUrl` is validated by the schema when pattern is async (discriminated union ensures it's present). No redundant runtime checks needed.
 - **Test Organization**: Tests are organized into separate `describe` blocks for sync and async patterns, using shared mocks from `@mocks/capabilities-controller-mocks` for consistency. Validation error tests only check for missing `callbackUrl` (validation happens before executors via schema middleware).

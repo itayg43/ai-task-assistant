@@ -10,7 +10,7 @@ const logger = createLogger("executeAsyncPattern");
  * Flow:
  * 1. Create job payload with capability name, full validated input, and request ID
  * 2. Publish job to RabbitMQ queue
- * 3. Return empty result (controller returns 202 with aiServiceRequestId)
+ * 3. Return message indicating the capability has been queued (controller returns 202 with aiServiceRequestId)
  *
  * We pass the capability name (from input.params.capability) instead of the full
  * CapabilityConfig because CapabilityConfig contains functions (handler) and Zod schemas
@@ -45,8 +45,9 @@ export const executeAsyncPattern = async <TInput, TOutput>(
       baseLogContext
     );
 
-    // Cast to TOutput to satisfy the type signature, but the actual result is not meaningful
-    return {} as TOutput;
+    return {
+      message: `The ${config.name} capability has been added to the queue and will start processing shortly.`,
+    } as TOutput;
   } catch (error) {
     logger.error(
       "executeAsyncPattern - failed to publish job",

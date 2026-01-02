@@ -174,7 +174,8 @@ describe("capabilitiesController (integration)", () => {
 
         expect(response.status).toBe(StatusCodes.ACCEPTED);
         expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
-        // Result is spread for consistency, but async pattern returns empty result
+        expect(response.body.message).toEqual(expect.any(String));
+        // Result is spread for consistency, but async pattern returns message only
         // (result and openaiMetadata should not be present for async pattern)
         expect(response.body.result).toBeUndefined();
         expect(response.body.openaiMetadata).toBeUndefined();

@@ -23,7 +23,10 @@ export const mockSyncExecutorResult = {
   result: mockParseTaskOutput,
 };
 
-export const mockAsyncExecutorResult = {};
+export const mockAsyncExecutorResult = {
+  message:
+    "The parse-task capability has been added to the queue and will start processing shortly.",
+};
 
 export const mockSyncPatternInput = {
   ...mockParseTaskValidatedInput,

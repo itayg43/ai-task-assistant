@@ -45,7 +45,9 @@ describe("executeAsyncPattern", () => {
           requestId: mockAiServiceRequestId,
         }
       );
-      expect(result).toEqual({});
+      expect(result).toMatchObject({
+        message: expect.any(String),
+      });
     });
   });
 
