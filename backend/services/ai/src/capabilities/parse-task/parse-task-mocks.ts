@@ -10,7 +10,7 @@ import {
   ParseTaskOutputCoreV2,
   ParseTaskOutputSubtasks,
 } from "@capabilities/parse-task/parse-task-types";
-import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import { CAPABILITY } from "@constants";
 import {
   mockOpenaiDurationMs,
   mockOpenaiResponseId,
@@ -88,16 +88,8 @@ export const mockParseTaskCapabilityResponse: CapabilityResponse<
 };
 
 export const mockParseTaskValidatedInput: ParseTaskInput = {
-  params: {
-    capability: CAPABILITY.PARSE_TASK,
-  },
-  query: {
-    pattern: CAPABILITY_PATTERN.SYNC,
-  },
-  body: {
-    naturalLanguage: mockNaturalLanguage,
-    config: mockParseTaskInputConfig,
-  },
+  naturalLanguage: mockNaturalLanguage,
+  config: mockParseTaskInputConfig,
 };
 
 export const mockParseTaskCapabilityConfig: CapabilityConfig<any, any> = {
@@ -105,5 +97,5 @@ export const mockParseTaskCapabilityConfig: CapabilityConfig<any, any> = {
   handler: async () => mockParseTaskCapabilityResponse,
   inputSchema: parseTaskInputSchema,
   outputSchema: createCapabilityResponseSchema(parseTaskOutputSchema),
-  promptInjectionFields: ["body.naturalLanguage"],
+  promptInjectionFields: ["naturalLanguage"],
 };

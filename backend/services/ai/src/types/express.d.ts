@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { AnyCapabilityConfig } from "@types";
+import { AnyCapabilityConfig, CapabilityPattern } from "@types";
 
 declare global {
   namespace Express {
@@ -11,6 +11,7 @@ declare global {
       >
         ? T
         : never;
+      capabilityPattern?: CapabilityPattern;
       requestId: string;
     }
   }

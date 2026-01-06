@@ -1,9 +1,8 @@
 import z from "zod";
 
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
-import { baseRequestSchema } from "@shared/schemas";
 
-export const executeCapabilityInputSchema = baseRequestSchema.extend({
+export const executeCapabilityInputSchema = z.object({
   params: z.object({
     capability: z.nativeEnum(CAPABILITY, {
       message: "Invalid",

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { withDurationAsync, withDurationSync } from "./with-duration";
+import { withDurationAsync } from "./with-duration";
 
 describe("withDuration", () => {
   beforeEach(() => {
@@ -9,26 +9,6 @@ describe("withDuration", () => {
 
   afterEach(() => {
     vi.useRealTimers();
-  });
-
-  describe("withDurationSync", () => {
-    it("should measure duration of synchronous operations", () => {
-      vi.setSystemTime(0);
-
-      const result = withDurationSync(() => {
-        let sum = 0;
-        for (let i = 0; i < 100; i++) {
-          sum += i;
-        }
-
-        vi.advanceTimersByTime(50);
-
-        return sum;
-      });
-
-      expect(result.result).toBe(4950);
-      expect(result.durationMs).toBe(50);
-    });
   });
 
   describe("withDurationAsync", () => {

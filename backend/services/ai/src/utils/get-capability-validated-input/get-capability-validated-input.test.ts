@@ -26,10 +26,8 @@ describe("getCapabilityValidatedInput", () => {
       mockResponse as Response
     );
 
-    expect(validatedInput.params).toBeDefined();
-    expect(validatedInput.query).toBeDefined();
-    expect(validatedInput.body.naturalLanguage).toBeDefined();
-    expect(validatedInput.body.config).toBeDefined();
+    expect(validatedInput.naturalLanguage).toBeDefined();
+    expect(validatedInput.config).toBeDefined();
   });
 
   it("should throw an error when the capability validated input not defined", () => {

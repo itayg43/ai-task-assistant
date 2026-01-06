@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { capabilities } from "@capabilities";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
+import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { executeCapabilityInputSchema } from "@schemas";
 import { NotFoundError } from "@shared/errors";
 
@@ -28,9 +29,55 @@ describe("validateExecutableCapability", () => {
     );
   };
 
+  const createMockRequest = (
+    capability: (typeof CAPABILITY)[keyof typeof CAPABILITY]
+  ) => ({
+    params: {
+      capability,
+    },
+  });
+
+  const createMockResponse = () => ({
+    locals: {
+      requestId: mockAiServiceRequestId,
+    },
+  });
+
   beforeEach(() => {
+    mockNext = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    [CAPABILITY.PARSE_TASK, CAPABILITY_PATTERN.SYNC, "parse-task"],
+    [CAPABILITY.PARSE_TASK, CAPABILITY_PATTERN.ASYNC, "parse-task"],
+  ])(
+    "should validate successfully and call next() for capability %s with pattern %s",
+    (capability, pattern, capabilityKey) => {
+      vi.mocked(executeCapabilityInputSchema.parse).mockReturnValue({
+        params: { capability },
+        query: { pattern },
+      });
+
+      mockReq = createMockRequest(capability);
+      mockRes = createMockResponse();
+
+      executeMiddleware();
+
+      expect(executeCapabilityInputSchema.parse).toHaveBeenCalledWith(mockReq);
+      expect(mockRes.locals!.capabilityConfig).toBe(
+        capabilities[capabilityKey as keyof typeof capabilities]
+      );
+      expect(mockRes.locals!.capabilityPattern).toBe(pattern);
+      expect(mockNext).toHaveBeenCalledWith();
+    }
+  );
+
+  it("should call next() with NotFoundError when capability does not exist", () => {
     vi.mocked(executeCapabilityInputSchema.parse).mockReturnValue({
-      body: {},
       params: {
         capability: CAPABILITY.PARSE_TASK,
       },
@@ -39,33 +86,10 @@ describe("validateExecutableCapability", () => {
       },
     });
 
-    mockReq = {
-      params: {
-        capability: CAPABILITY.PARSE_TASK,
-      },
-    };
-    mockRes = {
-      locals: {
-        requestId: "test-request-id",
-      },
-    };
-    mockNext = vi.fn();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("should validate successfully and call next()", () => {
-    executeMiddleware();
-
-    expect(executeCapabilityInputSchema.parse).toHaveBeenCalledWith(mockReq);
-    expect(mockRes.locals!.capabilityConfig).toBe(capabilities["parse-task"]);
-    expect(mockNext).toHaveBeenCalledWith();
-  });
-
-  it("should call next() with NotFoundError when capability does not exist", () => {
     (capabilities as any)["parse-task"] = undefined;
+
+    mockReq = createMockRequest(CAPABILITY.PARSE_TASK);
+    mockRes = createMockResponse();
 
     executeMiddleware();
 

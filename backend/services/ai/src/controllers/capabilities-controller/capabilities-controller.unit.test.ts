@@ -7,16 +7,26 @@ import {
   mockParseTaskOutput,
   mockParseTaskValidatedInput,
 } from "@capabilities/parse-task/parse-task-mocks";
+import { CAPABILITY_PATTERN } from "@constants";
 import { executeCapability } from "@controllers/capabilities-controller/capabilities-controller";
 import { getPatternExecutor } from "@controllers/capabilities-controller/executors/get-pattern-executor";
-import { mockOpenaiResponseId } from "@mocks/openai-mocks";
+import {
+  mockOpenaiDurationMs,
+  mockOpenaiResponseId,
+  mockOpenaiTokenUsage,
+} from "@mocks/openai-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { Mocked } from "@shared/types";
 import { getCapabilityConfig } from "@utils/get-capability-config";
+import { getCapabilityPattern } from "@utils/get-capability-pattern";
 import { getCapabilityValidatedInput } from "@utils/get-capability-validated-input";
 
 vi.mock("@utils/get-capability-config", () => ({
   getCapabilityConfig: vi.fn(),
+}));
+
+vi.mock("@utils/get-capability-pattern", () => ({
+  getCapabilityPattern: vi.fn(),
 }));
 
 vi.mock("@utils/get-capability-validated-input", () => ({
@@ -32,34 +42,41 @@ vi.mock(
 
 describe("capabilitiesController (unit)", () => {
   const mockExecutorResult = {
-    result: {
-      openaiMetadata: {
-        responseId: mockOpenaiResponseId,
-        tokens: {
-          input: 10,
-          output: 20,
-        },
-        durationMs: 42,
-      },
-      result: mockParseTaskOutput,
+    openaiMetadata: {
+      responseId: mockOpenaiResponseId,
+      tokens: mockOpenaiTokenUsage,
+      durationMs: mockOpenaiDurationMs,
     },
-    durationMs: 100,
+    result: mockParseTaskOutput,
   };
 
   let mockPatternExecutor: ReturnType<typeof vi.fn>;
   let mockResponse: Partial<Response>;
   let mockNext: ReturnType<typeof vi.fn>;
   let mockedGetCapabilityConfig: Mocked<typeof getCapabilityConfig>;
+  let mockedGetCapabilityPattern: Mocked<typeof getCapabilityPattern>;
   let mockedGetCapabilityValidatedInput: Mocked<
     typeof getCapabilityValidatedInput
   >;
   let mockedGetPatternExecutor: Mocked<typeof getPatternExecutor>;
+
+  const createMockResponse = () => ({
+    locals: {
+      requestId: mockAiServiceRequestId,
+      capabilityPattern: CAPABILITY_PATTERN.SYNC,
+    },
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn(),
+  });
 
   beforeEach(() => {
     mockPatternExecutor = vi.fn().mockResolvedValue(mockExecutorResult);
 
     mockedGetCapabilityConfig = vi.mocked(getCapabilityConfig);
     mockedGetCapabilityConfig.mockReturnValue(mockParseTaskCapabilityConfig);
+
+    mockedGetCapabilityPattern = vi.mocked(getCapabilityPattern);
+    mockedGetCapabilityPattern.mockReturnValue(CAPABILITY_PATTERN.SYNC);
 
     mockedGetCapabilityValidatedInput = vi.mocked(getCapabilityValidatedInput);
     mockedGetCapabilityValidatedInput.mockReturnValue(
@@ -69,13 +86,7 @@ describe("capabilitiesController (unit)", () => {
     mockedGetPatternExecutor = vi.mocked(getPatternExecutor);
     mockedGetPatternExecutor.mockReturnValue(mockPatternExecutor);
 
-    mockResponse = {
-      locals: {
-        requestId: mockAiServiceRequestId,
-      },
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn(),
-    };
+    mockResponse = createMockResponse();
     mockNext = vi.fn();
   });
 
@@ -89,11 +100,14 @@ describe("capabilitiesController (unit)", () => {
     expect(mockedGetCapabilityConfig).toHaveBeenCalledWith(
       mockResponse as Response
     );
+    expect(mockedGetCapabilityPattern).toHaveBeenCalledWith(
+      mockResponse as Response
+    );
     expect(mockedGetCapabilityValidatedInput).toHaveBeenCalledWith(
       mockResponse as Response
     );
     expect(mockedGetPatternExecutor).toHaveBeenCalledWith(
-      mockParseTaskValidatedInput.query.pattern
+      CAPABILITY_PATTERN.SYNC
     );
     expect(mockPatternExecutor).toHaveBeenCalledWith(
       mockParseTaskCapabilityConfig,
@@ -102,7 +116,7 @@ describe("capabilitiesController (unit)", () => {
     );
     expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.OK);
     expect(mockResponse.json).toHaveBeenCalledWith({
-      ...mockExecutorResult.result,
+      ...mockExecutorResult,
       aiServiceRequestId: mockAiServiceRequestId,
     });
     expect(mockNext).not.toHaveBeenCalled();

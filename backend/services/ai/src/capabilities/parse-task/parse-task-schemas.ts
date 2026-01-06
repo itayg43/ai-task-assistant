@@ -1,7 +1,5 @@
 import z from "zod";
 
-import { executeCapabilityInputSchema } from "@schemas";
-
 const parseTaskInputConfigPrioritiesScoreRangeSchema = z.object({
   min: z.number().min(0),
   max: z.number().positive(),
@@ -21,11 +19,9 @@ export const parseTaskInputConfigSchema = z.object({
   priorities: parseTaskInputConfigPrioritiesSchema,
 });
 
-export const parseTaskInputSchema = executeCapabilityInputSchema.extend({
-  body: z.object({
-    naturalLanguage: z.string().trim().nonempty().max(255),
-    config: parseTaskInputConfigSchema,
-  }),
+export const parseTaskInputSchema = z.object({
+  naturalLanguage: z.string().trim().nonempty().max(255),
+  config: parseTaskInputConfigSchema,
 });
 
 const parseTaskOutputCorePrioritySchema = z.object({

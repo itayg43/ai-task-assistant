@@ -13,14 +13,3 @@ export const withDurationAsync = async <T>(
     durationMs: duration,
   };
 };
-
-export const withDurationSync = <T>(fn: () => T): WithDurationResult<T> => {
-  const start = getStartTimestamp();
-  const result = fn();
-  const duration = getElapsedDuration(start);
-
-  return {
-    result,
-    durationMs: duration,
-  };
-};
