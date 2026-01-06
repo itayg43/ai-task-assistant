@@ -1,22 +1,24 @@
 import { AxiosError, AxiosResponse } from "axios";
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import z from "zod";
 
-import { DEFAULT_ERROR_MESSAGE } from "../../constants";
-import { BaseError } from "../../errors";
 import {
-  createErrorHandler,
+  DEFAULT_ERROR_MESSAGE,
   ZOD_SCHEMA_VALIDATION_ERROR,
-} from "./error-handler";
+} from "../../constants";
+import { BaseError } from "../../errors";
+import { createErrorHandler } from "./error-handler";
 
 describe("createErrorHandler", () => {
   const mockRequestId = "test-request-id-123";
 
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
-  let mockNextFunction: NextFunction;
+  let mockNextFunction: ReturnType<typeof vi.fn>;
+
+  let mockErrorHandler: ReturnType<typeof createErrorHandler>;
 
   beforeEach(() => {
     mockRequest = {};
@@ -30,6 +32,8 @@ describe("createErrorHandler", () => {
       },
     };
     mockNextFunction = vi.fn();
+
+    mockErrorHandler = createErrorHandler("test");
   });
 
   afterEach(() => {
@@ -38,13 +42,12 @@ describe("createErrorHandler", () => {
 
   describe("BaseError", () => {
     it("should return BaseError status code and message", () => {
-      const errorHandler = createErrorHandler("test");
       const mockBaseError = new BaseError(
         "Test base error",
         StatusCodes.BAD_REQUEST
       );
 
-      errorHandler(
+      mockErrorHandler(
         mockBaseError,
         mockRequest as Request,
         mockResponse as Response,
@@ -59,7 +62,6 @@ describe("createErrorHandler", () => {
     });
 
     it("should filter sensitive fields from BaseError context", () => {
-      const errorHandler = createErrorHandler("test");
       const mockBaseError = new BaseError(
         "Test base error",
         StatusCodes.BAD_REQUEST,
@@ -74,7 +76,7 @@ describe("createErrorHandler", () => {
         }
       );
 
-      errorHandler(
+      mockErrorHandler(
         mockBaseError,
         mockRequest as Request,
         mockResponse as Response,
@@ -95,7 +97,6 @@ describe("createErrorHandler", () => {
     });
 
     it("should preserve safe fields in BaseError context", () => {
-      const errorHandler = createErrorHandler("test");
       const mockBaseError = new BaseError(
         "Test base error",
         StatusCodes.BAD_REQUEST,
@@ -107,7 +108,7 @@ describe("createErrorHandler", () => {
         }
       );
 
-      errorHandler(
+      mockErrorHandler(
         mockBaseError,
         mockRequest as Request,
         mockResponse as Response,
@@ -125,7 +126,6 @@ describe("createErrorHandler", () => {
     });
 
     it("should not allow context.message to overwrite error message", () => {
-      const errorHandler = createErrorHandler("test");
       const mockBaseError = new BaseError(
         "Error message",
         StatusCodes.BAD_REQUEST,
@@ -135,7 +135,7 @@ describe("createErrorHandler", () => {
         }
       );
 
-      errorHandler(
+      mockErrorHandler(
         mockBaseError,
         mockRequest as Request,
         mockResponse as Response,
@@ -151,7 +151,6 @@ describe("createErrorHandler", () => {
 
   describe("ZodError", () => {
     it("should return BAD_REQUEST status with formatted validation errors", () => {
-      const errorHandler = createErrorHandler("test");
       const schema = z.object({
         name: z.string().min(2),
         age: z.number().min(18),
@@ -164,7 +163,7 @@ describe("createErrorHandler", () => {
         mockZodError = error as z.ZodError;
       }
 
-      errorHandler(
+      mockErrorHandler(
         mockZodError!,
         mockRequest as Request,
         mockResponse as Response,
@@ -182,7 +181,6 @@ describe("createErrorHandler", () => {
 
   describe("AxiosError", () => {
     it("should return response status and message when available", () => {
-      const errorHandler = createErrorHandler("test");
       const mockAxiosError = new AxiosError(
         undefined,
         undefined,
@@ -196,7 +194,7 @@ describe("createErrorHandler", () => {
         } as AxiosResponse
       );
 
-      errorHandler(
+      mockErrorHandler(
         mockAxiosError,
         mockRequest as Request,
         mockResponse as Response,
@@ -211,10 +209,9 @@ describe("createErrorHandler", () => {
     });
 
     it("should fallback to default status and message when response is undefined", () => {
-      const errorHandler = createErrorHandler("test");
       const mockAxiosError = new AxiosError("Network Error");
 
-      errorHandler(
+      mockErrorHandler(
         mockAxiosError,
         mockRequest as Request,
         mockResponse as Response,
@@ -233,10 +230,9 @@ describe("createErrorHandler", () => {
 
   describe("Error", () => {
     it("should return INTERNAL_SERVER_ERROR status with error message", () => {
-      const errorHandler = createErrorHandler("test");
       const mockError = new Error("Test error");
 
-      errorHandler(
+      mockErrorHandler(
         mockError,
         mockRequest as Request,
         mockResponse as Response,
@@ -255,10 +251,9 @@ describe("createErrorHandler", () => {
 
   describe("Unknown error", () => {
     it("should return INTERNAL_SERVER_ERROR status with default message for non-Error objects", () => {
-      const errorHandler = createErrorHandler("test");
       const unknownError = "This is not an Error object";
 
-      errorHandler(
+      mockErrorHandler(
         unknownError,
         mockRequest as Request,
         mockResponse as Response,

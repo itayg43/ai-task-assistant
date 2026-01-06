@@ -1,27 +1,21 @@
-import { StatusCodes } from "http-status-codes";
-
 import { createLogger } from "../../config/create-logger";
-import { BaseError } from "../../errors";
 import { RetryConfig } from "../../types";
+import {
+  extractErrorInfo,
+  isNonRetryableError,
+} from "../../utils/extract-error-info";
 
 const logger = createLogger("withRetry");
 
-const isNonRetryableError = (error: unknown): boolean => {
-  if (error instanceof BaseError) {
-    return error.statusCode === StatusCodes.BAD_REQUEST;
-  }
-
-  return false;
-};
-
 export const withRetry = async <T>(
-  { maxAttempts, baseDelayMs, backoffMultiplier }: RetryConfig,
+  config: RetryConfig,
   fn: () => Promise<T>,
   context?: Record<string, unknown>
 ) => {
+  const { maxAttempts, baseDelayMs, backoffMultiplier } = config;
+
   let attempt = 1;
   let lastError: unknown;
-  let lastErrorMessage: string;
 
   while (attempt <= maxAttempts) {
     try {
@@ -30,12 +24,12 @@ export const withRetry = async <T>(
       return await fn();
     } catch (error) {
       lastError = error;
-      lastErrorMessage =
-        lastError instanceof Error ? lastError.message : String(lastError);
 
-      if (isNonRetryableError(error)) {
+      const extractedErrorInfo = extractErrorInfo(lastError);
+
+      if (isNonRetryableError(extractedErrorInfo)) {
         logger.info(`Non-retryable error encountered, not retrying`, {
-          errorMessage: lastErrorMessage,
+          errorMessage: extractedErrorInfo.message,
           ...context,
         });
 
@@ -58,7 +52,7 @@ export const withRetry = async <T>(
         attempt,
         maxAttempts,
         delay,
-        errorMessage: lastErrorMessage,
+        errorMessage: extractedErrorInfo.message,
         ...context,
       });
 

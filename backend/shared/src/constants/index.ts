@@ -18,3 +18,4 @@ export {
   TOKEN_USAGE_FIELD_TOKENS_USED,
   TOKEN_USAGE_FIELD_WINDOW_START_TIMESTAMP,
 } from "./token-usage";
+export { ZOD_SCHEMA_VALIDATION_ERROR } from "./zod-schema-validation-error";

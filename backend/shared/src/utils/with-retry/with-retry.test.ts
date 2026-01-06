@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { BadRequestError } from "../../errors";
+import {
+  AuthenticationError,
+  BadRequestError,
+  ForbiddenError,
+  InternalError,
+  NotFoundError,
+} from "../../errors";
 import { RetryConfig } from "../../types";
 import { withRetry } from "./with-retry";
 
@@ -46,17 +52,49 @@ describe("withRetry", () => {
     expect(mockFn).toHaveBeenCalledTimes(3);
   });
 
-  it("should not retry on 400 BadRequestError", async () => {
-    const badRequestError = new BadRequestError("Input is too vague", {
-      suggestions: ["Add more details"],
+  describe("non-retryable errors (400-499)", () => {
+    it.each([
+      {
+        name: "400 BadRequestError",
+        error: new BadRequestError("Input is too vague", {
+          suggestions: ["Add more details"],
+        }),
+      },
+      {
+        name: "401 AuthenticationError",
+        error: new AuthenticationError("Unauthorized"),
+      },
+      {
+        name: "403 ForbiddenError",
+        error: new ForbiddenError("Forbidden"),
+      },
+      {
+        name: "404 NotFoundError",
+        error: new NotFoundError("Not found"),
+      },
+    ])("should not retry on $name", async ({ error }) => {
+      const mockFn = vi.fn().mockRejectedValue(error);
+
+      await expect(withRetry(mockRetryConfig, mockFn)).rejects.toThrow(error);
+
+      expect(mockFn).toHaveBeenCalledTimes(1);
     });
+  });
 
-    const mockFn = vi.fn().mockRejectedValue(badRequestError);
+  describe("retryable errors (500+)", () => {
+    it("should retry on 500 InternalError", async () => {
+      const internalError = new InternalError("Internal server error");
 
-    await expect(withRetry(mockRetryConfig, mockFn)).rejects.toThrow(
-      badRequestError
-    );
+      const mockFn = vi
+        .fn()
+        .mockRejectedValueOnce(internalError)
+        .mockRejectedValueOnce(internalError)
+        .mockResolvedValue("success");
 
-    expect(mockFn).toHaveBeenCalledTimes(1);
+      const result = await withRetry(mockRetryConfig, mockFn);
+
+      expect(result).toBe("success");
+      expect(mockFn).toHaveBeenCalledTimes(3);
+    });
   });
 });

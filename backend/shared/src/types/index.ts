@@ -1,5 +1,6 @@
 export type { AuthenticationContext } from "./authentication-context";
 export type { DurationUnit } from "./duration-unit";
+export type { ExtractedErrorInfo } from "./extracted-error-info";
 export type { GetElapsedDurationOptions } from "./get-elpased-duration-options";
 export type { HttpErrorResponseData } from "./http-error-response-data";
 export type { LoggerLogContext } from "./logger-log-context";
