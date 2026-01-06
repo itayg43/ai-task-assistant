@@ -10,7 +10,7 @@ export const validateCapabilityInput = async (
   try {
     const config = getCapabilityConfig(res);
 
-    const validatedInput = config.inputSchema.parse(req);
+    const validatedInput = config.inputSchema.parse(req.body);
 
     res.locals.capabilityValidatedInput = validatedInput;
 

@@ -13,7 +13,7 @@ export const capabilities = {
     handler: parseTaskHandler,
     inputSchema: parseTaskInputSchema,
     outputSchema: createCapabilityResponseSchema(parseTaskOutputSchema),
-    promptInjectionFields: ["body.naturalLanguage"],
+    promptInjectionFields: ["naturalLanguage"],
   }),
 } as const;
 

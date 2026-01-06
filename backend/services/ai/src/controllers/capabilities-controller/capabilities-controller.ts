@@ -4,6 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import { getPatternExecutor } from "@controllers/capabilities-controller/executors/get-pattern-executor";
 import { createLogger } from "@shared/config/create-logger";
 import { getCapabilityConfig } from "@utils/get-capability-config";
+import { getCapabilityPattern } from "@utils/get-capability-pattern";
 import { getCapabilityValidatedInput } from "@utils/get-capability-validated-input";
 
 const logger = createLogger("capabilitiesController");
@@ -17,30 +18,21 @@ export const executeCapability = async (
     const requestId = res.locals.requestId;
 
     const config = getCapabilityConfig(res);
-    const validatedInput = getCapabilityValidatedInput(res);
-
-    const {
-      params: { capability },
-      query: { pattern },
-    } = validatedInput;
+    const input = getCapabilityValidatedInput(res);
+    const pattern = getCapabilityPattern(res);
 
     logger.info("executeCapability - starting", {
       requestId,
-      validatedInput,
+      input,
     });
 
     const patternExecutor = getPatternExecutor(pattern);
-    const { result, durationMs } = await patternExecutor(
-      config,
-      validatedInput,
-      requestId
-    );
+    const result = await patternExecutor(config, input, requestId);
 
     logger.info("executeCapability - succeeded", {
       requestId,
-      capability,
+      capability: config.name,
       result,
-      totalDurationMs: durationMs,
     });
 
     res.status(StatusCodes.OK).json({

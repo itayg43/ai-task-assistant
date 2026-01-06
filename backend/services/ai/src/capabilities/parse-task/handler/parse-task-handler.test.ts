@@ -84,10 +84,7 @@ describe("parseTaskHandler", () => {
     return await parseTaskHandler(
       {
         ...mockParseTaskValidatedInput,
-        body: {
-          ...mockParseTaskValidatedInput.body,
-          naturalLanguage: mockNaturalLanguage,
-        },
+        naturalLanguage: mockNaturalLanguage,
       },
       mockAiServiceRequestId
     );

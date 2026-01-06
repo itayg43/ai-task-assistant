@@ -67,7 +67,7 @@ describe("validateCapabilityInput", () => {
 
     await executeMiddleware();
 
-    expect(mockInputSchemaParseFunction).toHaveBeenCalledWith(mockRequest);
+    expect(mockInputSchemaParseFunction).toHaveBeenCalledWith(mockRequest.body);
     expect(mockResponse.locals?.capabilityValidatedInput).toEqual(
       mockParseTaskValidatedInput
     );
@@ -82,7 +82,7 @@ describe("validateCapabilityInput", () => {
 
     await executeMiddleware();
 
-    expect(mockInputSchemaParseFunction).toHaveBeenCalledWith(mockRequest);
+    expect(mockInputSchemaParseFunction).toHaveBeenCalledWith(mockRequest.body);
     expect(mockNextFunction).toHaveBeenCalledWith(validationError);
   });
 

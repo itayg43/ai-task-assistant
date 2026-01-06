@@ -8,7 +8,7 @@ import {
   mockParseTaskCapabilityResponse,
   mockParseTaskInputConfig,
 } from "@capabilities/parse-task/parse-task-mocks";
-import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import { CAPABILITY_PATTERN } from "@constants";
 import { Mocked } from "@shared/types";
 import { app } from "../../app";
 
@@ -69,16 +69,8 @@ describe("capabilitiesController (integration)", () => {
 
       expect(mockedParseTaskHandler).toHaveBeenCalledWith(
         {
-          body: {
-            naturalLanguage: mockNaturalLanguage,
-            config: mockParseTaskInputConfig,
-          },
-          params: {
-            capability: CAPABILITY.PARSE_TASK,
-          },
-          query: {
-            pattern: CAPABILITY_PATTERN.SYNC,
-          },
+          naturalLanguage: mockNaturalLanguage,
+          config: mockParseTaskInputConfig,
         },
         response.body.aiServiceRequestId
       );

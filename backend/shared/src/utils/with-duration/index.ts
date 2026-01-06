@@ -1,1 +1,1 @@
-export { withDurationAsync, withDurationSync } from "./with-duration";
+export { withDurationAsync } from "./with-duration";
