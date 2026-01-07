@@ -6,8 +6,8 @@ This document tracks the implementation of **OpenAI API Monitoring with Promethe
 
 ## Architecture Alignment
 
-This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
-- Router middleware order (metrics → routes → error handlers)
+This implementation follows project conventions for:
+
 - Integration metrics pattern (tracking external API calls separately from service metrics)
 - Metrics middleware pattern
 
@@ -155,15 +155,7 @@ Router handles root path `/` (which becomes `/metrics` when mounted):
 
 #### 3.4 Middleware Chain Order
 
-Following project conventions, the middleware chain follows this order:
-
-1. **Metrics middleware** - Track all requests (at router level)
-2. **Routes** - Route handlers with validation, rate limiting, etc.
-3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
-4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
-5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
-
-The metrics router is placed in `app.ts` before authentication middleware to allow Prometheus scraping without authentication.
+This implementation follows the standard middleware chain order (see project conventions). The metrics router is placed in `app.ts` before authentication middleware to allow Prometheus scraping without authentication.
 
 ## Part 4: Instrument executeParse
 

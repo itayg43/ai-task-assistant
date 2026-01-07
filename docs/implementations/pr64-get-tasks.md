@@ -6,10 +6,11 @@ This document summarizes the implementation of **Tasks Retrieval with Pagination
 
 ## Architecture Alignment
 
-This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
-- Controller patterns (no error handling in controllers, only `next(error)`)
+This implementation follows project conventions for:
+
 - Schema validation with Zod (using `validateSchema` middleware)
 - Repository pattern (data access layer with dependency injection)
+- Controller patterns (no error handling in controllers, only `next(error)`)
 
 ## Architecture Changes
 
@@ -202,14 +203,8 @@ export type FindTasksResult = {
 
 ### 10. Error Handling
 
-Errors are handled by the global error handler in `app.ts`. Domain-specific error handling (if needed) would be added to router-level error handlers following project conventions. Controllers only call `next(error)` without handling errors directly.
+Errors are handled by the global error handler in `app.ts`. Controllers follow the standard pattern: delegate all errors to error handler middleware via `next(error)`.
 
 ### 11. Middleware Chain Order
 
-Following project conventions, the middleware chain follows this order:
-
-1. **Metrics middleware** - Track all requests (at router level)
-2. **Routes** - Route handlers with validation, rate limiting, etc.
-3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
-4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
-5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
+This implementation follows the standard middleware chain order (see project conventions). No special middleware ordering requirements beyond standard patterns.
