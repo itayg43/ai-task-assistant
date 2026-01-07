@@ -6,10 +6,10 @@ This document summarizes the implementation of the **Token Usage Rate Limiter** 
 
 ## Architecture Alignment
 
-This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
-- Router-level error handlers (domain-specific error handling for token reconciliation)
+This implementation follows project conventions for:
+
 - Post-response middleware (token usage update after response is sent)
-- Router middleware order (pre-request → routes → post-response → error handlers)
+- Router-level error handlers (domain-specific error handling for token reconciliation)
 
 ## Architecture Changes
 
@@ -309,15 +309,14 @@ tasksRouter.use(tokenUsageErrorHandler); // Error handler: adjust on errors
 
 **Middleware Order**:
 
-Following project conventions, the middleware chain follows this order:
+This implementation follows the standard middleware chain order (see project conventions) with specific placement:
 
-1. **Metrics middleware** - Track all requests (at router level)
-2. **Schema Validation** - Validates request body
-3. **Token Usage Rate Limiter** - Holds estimated tokens (pre-request)
-4. **Create Task Controller** - Processes request, sets actual tokens
-5. **Update Token Usage** - Adjusts tokens after successful response (post-response middleware)
-6. **Domain error handlers** - Handle domain-specific errors (adjust tokens on errors, before global error handler)
-7. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
+1. **Token Usage Rate Limiter** - Holds estimated tokens (pre-request middleware)
+2. **Create Task Controller** - Processes request, sets actual tokens
+3. **Update Token Usage** - Adjusts tokens after successful response (post-response middleware)
+4. **Domain error handlers** - Handle domain-specific errors (adjust tokens on errors)
+
+**Note**: Error handler implementation details are expanded in PR #84.
 
 ### 10. Configuration
 

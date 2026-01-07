@@ -6,9 +6,9 @@ This document summarizes the implementation of **Tasks Service Error Handling Mi
 
 ## Architecture Alignment
 
-This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
+This implementation follows project conventions for:
+
 - Router-level error handlers (domain-specific error handling in routers)
-- Controller patterns (no error handling in controllers, only `next(error)`)
 - Two-level error handling (domain handlers + global handler)
 - Error sanitization to prevent information leakage
 - Metrics recording in error handlers (not controllers)
@@ -67,6 +67,7 @@ export const TASKS_OPERATION = {
 **Error Types Handled**:
 
 1. **`PARSE_TASK_VAGUE_INPUT_ERROR`**:
+
    - Records vague input metric via `recordVagueInput(requestId)`
    - Reconciles token usage if `tokenUsage` and `openaiMetadata` are available
    - Extracts actual token usage from OpenAI metadata
@@ -101,7 +102,8 @@ export const tasksErrorHandler = (
       break;
     }
     case AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED: {
-      // Handle prompt injection
+      recordPromptInjection(TASKS_OPERATION.CREATE_TASK, res.locals.requestId);
+      next(new BadRequestError(errorData.message));
       break;
     }
     default: {
@@ -115,27 +117,23 @@ export const tasksErrorHandler = (
 
 - Extracts `requestId`, `tokenUsage` from `res.locals`
 - Records vague input metric
-- Validates `openaiMetadata` presence and structure
-- If valid: extracts actual tokens and reconciles token usage reservation
-- Sanitizes error by creating new `BadRequestError` with only `message` and `suggestions`
+- Reconciles token usage if both `tokenUsage` and valid `openaiMetadata` exist:
+  - Uses `extractOpenaiTokenUsage()` utility to get actual token count
+  - Sets `tokenUsage.actualTokens` to actual value
+  - Calls `openaiUpdateTokenUsage()` middleware to update Redis state
+- Sanitizes error by creating new `BadRequestError` with only `message` and `suggestions` (removes `openaiMetadata`, `aiServiceRequestId`, etc.)
 
-**Token Usage Reconciliation**:
+**Prompt Injection Error Handler**:
 
-- Only reconciles if both `tokenUsage` and valid `openaiMetadata` exist
-- Uses `extractOpenaiTokenUsage()` utility to get actual token count
-- Sets `tokenUsage.actualTokens` to actual value
-- Calls `openaiUpdateTokenUsage()` middleware to update Redis state
+- Records prompt injection metric
+- Sanitizes error by creating new `BadRequestError` with only generic message ("Invalid input provided.")
+- Removes all context to prevent information leakage about detection mechanisms
 
-**Error Sanitization Strategy**:
-
-- **Vague Input Errors**: Keep user-facing `suggestions`, remove all internal details (`openaiMetadata`, `aiServiceRequestId`, etc.)
-- **Prompt Injection Errors**: Remove all context to prevent attackers from learning about detection mechanisms
-- Creates new error objects to ensure no internal context leaks through
+**Note**: Token usage reconciliation infrastructure is documented in PR #65. Error sanitization patterns are documented in PR #70.
 
 **Tests**: Comprehensive unit tests covering:
 
-- Vague input error handling with token usage reconciliation
-- Vague input error handling without token usage (missing tokenUsage or openaiMetadata)
+- Vague input error handling with/without token usage reconciliation
 - Error sanitization verification (new error objects, only safe context)
 - Prompt injection error handling and metric recording
 - Error passthrough for non-BaseError and unhandled error types
@@ -144,6 +142,8 @@ export const tasksErrorHandler = (
 ### 4. Create Token Usage Error Handler Middleware
 
 **Rationale**: Ensures token usage reservations are always released on errors, even for unexpected failures that aren't handled by domain-specific error handlers. This prevents token reservations from being "stuck" when errors occur.
+
+**Note**: Token usage rate limiter infrastructure and reconciliation logic are documented in PR #65.
 
 **File**: `backend/services/tasks/src/middlewares/token-usage-error-handler/token-usage-error-handler.ts`
 
@@ -192,8 +192,7 @@ export const tokenUsageErrorHandler = (
 **Tests**: Unit tests covering:
 
 - Token usage release for unexpected errors
-- Skip update when no reservation exists
-- Skip update when already reconciled (using parameterized tests with `it.each`)
+- Skip conditions (no reservation or already reconciled) using parameterized tests with `it.each`
 - Proper error propagation
 
 ### 5. Wire Error Handlers to Tasks Router
@@ -204,20 +203,19 @@ export const tokenUsageErrorHandler = (
 
 **Middleware Chain Order**:
 
-Following project conventions, the middleware chain follows this order:
-
-1. **Metrics middleware** - Track all requests (at router level)
-2. **Routes** - Route handlers with validation, rate limiting, etc.
-3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
-4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
-5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
+This implementation follows the standard middleware chain order (see project conventions). The error handlers are placed after routes and before the global error handler:
 
 **Implementation**:
 
 ```typescript
 tasksRouter.use(tasksMetricsMiddleware);
 
-tasksRouter.post("/", [validateSchema(createTaskSchema), openaiTokenUsageRateLimiter.createTask], createTask, openaiUpdateTokenUsage);
+tasksRouter.post(
+  "/",
+  [validateSchema(createTaskSchema), openaiTokenUsageRateLimiter.createTask],
+  createTask,
+  openaiUpdateTokenUsage
+);
 tasksRouter.get("/", [validateSchema(getTasksSchema)], getTasks);
 
 // Domain-specific error handlers (after routes, before global error handler)
@@ -233,43 +231,13 @@ tasksRouter.use(tasksErrorHandler);
 tasksRouter.use(tokenUsageErrorHandler);
 ```
 
-**Order Dependency**:
-
-- `tasksErrorHandler` must run before `tokenUsageErrorHandler`
-- `tasksErrorHandler` handles specific error types and may reconcile token usage
-- `tokenUsageErrorHandler` handles ALL remaining errors and releases full reservation
-- This ensures domain-specific errors are handled first, and unexpected errors still release reservations
+**Order Dependency**: `tasksErrorHandler` must run before `tokenUsageErrorHandler` to ensure domain-specific errors are handled first (with potential token reconciliation), while unexpected errors still release reservations.
 
 ### 6. Update Controller to Delegate Errors
 
-**Rationale**: Controllers should not handle errors directly. They should only call `next(error)` to pass errors to error handler middleware.
-
 **File**: `backend/services/tasks/src/controllers/tasks-controller/tasks-controller.ts`
 
-**Pattern**:
-
-```typescript
-export const createTask = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    // ... business logic ...
-    res.status(StatusCodes.CREATED).json(response);
-    next(); // Continue to post-response middleware
-  } catch (error) {
-    next(error); // Pass to error handler middleware
-  }
-};
-```
-
-**Key Points**:
-
-- Controllers never handle errors directly
-- All errors are passed to error handler middleware via `next(error)`
-- Success responses call `next()` to continue to post-response middleware
-- Error handlers are responsible for metrics, sanitization, and state reconciliation
+Controllers follow the standard pattern: delegate all errors to error handler middleware via `next(error)`. Success responses call `next()` to continue to post-response middleware.
 
 ## Error Flow
 
@@ -296,14 +264,18 @@ export const createTask = async (
 
 ### Error Flow - Domain Error (Prompt Injection)
 
-1. Request → Metrics Middleware → Routes → Controller
-2. Controller calls AI service, receives `PROMPT_INJECTION_DETECTED`
+1. Request → Metrics Middleware → Routes → Token Usage Rate Limiter (reserves tokens) → Controller
+2. Controller calls AI service, receives `PROMPT_INJECTION_DETECTED` (prompt injection detected before OpenAI API call)
 3. Controller calls `next(error)` to pass error to error handlers
 4. `tasksErrorHandler`:
    - Records prompt injection metric
    - Sanitizes error (removes all context)
-   - Calls `next(sanitizedError)`
-5. `tokenUsageErrorHandler`: Skips (no tokenUsage for prompt injection - blocked before AI call)
+   - Calls `next(sanitizedError)` (does not reconcile tokens - no OpenAI metadata available)
+5. `tokenUsageErrorHandler`:
+   - Detects unreconciled token reservation (tokens were reserved but no OpenAI call was made)
+   - Sets `actualTokens = 0` to release full reservation
+   - Updates Redis state
+   - Calls `next(error)`
 6. Global error handler: Formats and sends error response
 
 ### Error Flow - Unexpected Error
@@ -322,14 +294,12 @@ export const createTask = async (
 
 ### Error Sanitization
 
-**Vague Input Errors**:
-- Removes: `openaiMetadata`, `aiServiceRequestId`, internal error details
-- Keeps: `message`, `suggestions` (user-facing guidance)
+Error sanitization prevents information leakage to clients:
 
-**Prompt Injection Errors**:
-- Removes: All context (type, aiServiceRequestId, detection details)
-- Keeps: Only generic message ("Invalid input provided.")
-- Rationale: Prevents attackers from learning about detection mechanisms
+- **Vague Input Errors**: Removes `openaiMetadata`, `aiServiceRequestId`, and internal details. Keeps `message` and `suggestions` (user-facing guidance).
+- **Prompt Injection Errors**: Removes all context (type, `aiServiceRequestId`, detection details). Keeps only generic message ("Invalid input provided.") to prevent attackers from learning about detection mechanisms.
+
+**Note**: See PR #70 for detailed error sanitization implementation and security considerations.
 
 ### Information Hiding
 
@@ -343,6 +313,7 @@ export const createTask = async (
 ### Unit Tests
 
 **Tasks Error Handler** (`tasks-error-handler.test.ts`):
+
 - Uses base mock data pattern from `@mocks/tasks-mocks`
 - Parameterized tests with `it.each` for similar scenarios
 - Tests error sanitization (verifies new error objects)
@@ -350,6 +321,7 @@ export const createTask = async (
 - Tests error passthrough for unhandled types
 
 **Token Usage Error Handler** (`token-usage-error-handler.test.ts`):
+
 - Parameterized tests with `it.each` for skip conditions
 - Tests token usage release for unexpected errors
 - Tests proper error propagation
@@ -371,7 +343,7 @@ export const createTask = async (
 
 ### Existing Metrics
 
-- **`tasks_vague_input_total`**: Now recorded in error handler (moved from controller)
+- **`tasks_vague_input_total`**: Now recorded in error handler (moved from controller in PR #82)
   - Maintains separation of concerns
   - Consistent with other domain metrics
 
@@ -388,4 +360,3 @@ export const createTask = async (
 - **PR #82**: Tasks Service Metrics (introduced `recordVagueInput`)
 - **PR #70**: Prompt Injection Mitigation (introduced `PROMPT_INJECTION_DETECTED` error type)
 - **PR #65**: Token Usage Rate Limiter (introduced token usage reconciliation infrastructure)
-

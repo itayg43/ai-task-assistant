@@ -6,10 +6,10 @@ This document tracks the implementation of **Tasks Service Prometheus Metrics**.
 
 ## Architecture Alignment
 
-This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
-- Router-level error handlers (domain-specific error handling in routers)
+This implementation follows project conventions for:
+
 - Metrics middleware pattern (service-level metrics tracking)
-- Controller patterns (no error handling in controllers)
+- Router-level error handlers (domain-specific error handling in routers)
 
 ## Implementation Details
 
@@ -26,6 +26,8 @@ This implementation follows patterns documented in `.cursor/rules/project-conven
 - Updated AI service router imports to use `@shared/routers/metricsRouter`
 - Added `prom-client: ^15.1.0` to shared package dependencies
 - Deleted the old AI service prom.ts and metrics-router files
+
+**Note**: The metrics router was originally implemented in PR #71. This refactoring moves it to the shared package for reuse.
 
 ### 2. Create Generic Metrics Middleware in Shared Package
 
@@ -96,13 +98,7 @@ All helper functions include `logger.debug()` calls for observability.
 
 **Middleware Chain Order**:
 
-Following project conventions, the middleware chain follows this order:
-
-1. **Metrics middleware** - Track all requests (at router level)
-2. **Routes** - Route handlers with validation, rate limiting, etc.
-3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
-4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
-5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
+This implementation follows the standard middleware chain order (see project conventions). The metrics middleware is placed first in the router to capture full request duration.
 
 ### 5. Record Vague Input Metric in Domain Error Handler
 
@@ -114,6 +110,8 @@ Following project conventions, the middleware chain follows this order:
 - Checks if error is `BaseError` with type `AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR`
 - Calls `recordVagueInput(requestId)` before sanitizing and passing error to next middleware
 - Middleware is placed in router after routes, before global error handler (following project conventions for router-level error handlers)
+
+**Note**: Error handler implementation details are expanded in PR #84.
 
 **Tests**: Added unit tests covering:
 
@@ -130,6 +128,8 @@ Following project conventions, the middleware chain follows this order:
 - Integrated router using `routers.use(METRICS_ROUTE, metricsRouter)`
 - Router placement follows the same pattern as AI service (before authentication middleware)
 - The shared router exposes GET `/metrics` endpoint that returns Prometheus-formatted metrics for all registered metrics (both OpenAI and Tasks metrics)
+
+**Note**: See PR #71 for the original metrics router implementation and integration details.
 
 **Tests**:
 

@@ -198,7 +198,7 @@ sequenceDiagram
 The Tasks service implements a two-tier rate limiting strategy to protect both the API and OpenAI resources:
 
 1. **API Token Bucket Rate Limiter**: Controls overall request rate to the service
-2. **OpenAI Token Usage Rate Limiter**: Manages OpenAI API token consumption within sliding windows
+2. **OpenAI Token Usage Rate Limiter**: Manages OpenAI API token consumption within fixed windows
 
 ### Create Task Flow
 
@@ -242,12 +242,6 @@ sequenceDiagram
         end
     end
 ```
-
-**Key Points:**
-
-- **Token Reservation**: The service reserves an estimated number of OpenAI tokens before making the AI request
-- **Post-Response Reconciliation**: After the response is sent to the client, actual token usage is reconciled against the reservation
-- **Two-Tier Protection**: Both API-level and OpenAI-level rate limiting prevent resource exhaustion
 
 ### Get Tasks Flow
 
@@ -320,10 +314,10 @@ sequenceDiagram
 
 **Error Scenarios:**
 
-- **Vague Input Error**: Tasks error handler records metric, reconciles token usage with actual tokens from AI response, and sanitizes error to include only user-facing suggestions
-- **Prompt Injection Error**: Tasks error handler records metric and sanitizes error to prevent information leakage about detection mechanisms
-- **Other Errors**: Token usage error handler releases full reservation (tokens set to 0) to prevent incorrect window tracking
-- **No Reservation**: Error passes through without token reconciliation
+- **Vague Input**: Records metric, reconciles token usage with actual tokens from AI response, sanitizes error (keeps suggestions). See [Vague Input Error](#vague-input-error) example.
+- **Prompt Injection**: Records metric, sanitizes error (removes all context). Token usage error handler releases full reservation (no OpenAI API call was made). See [Prompt Injection Detected](#prompt-injection-detected) example.
+- **Other Errors**: Token usage error handler releases full reservation (tokens set to 0) to prevent incorrect window tracking.
+- **No Reservation**: Error passes through without token reconciliation (e.g., errors before rate limiter middleware).
 
 ## API Examples
 
@@ -459,11 +453,9 @@ POST /api/v1/capabilities/parse-task?pattern=sync
 }
 ```
 
-**Token usage handling:** The Tasks service holds an estimated amount of OpenAI tokens when a create request begins, then adjusts to the actual usage after the AI service returns metadata. On errors, held tokens are released or adjusted to keep window-based limits accurate.
-
 ### Vague Input Error
 
-When input is too vague, the system provides helpful suggestions:
+When input is too vague, the system provides helpful suggestions. See the [Error Handling Flow](#error-handling-flow) section for details on how this error is processed:
 
 **1. Client Request to Tasks Service:**
 
@@ -482,19 +474,7 @@ POST /api/v1/capabilities/parse-task?pattern=sync
 
 {
   "naturalLanguage": "Plan something soon",
-  "config": {
-    "categories": ["work", "personal", "health", "finance", "errand"],
-    "priorities": {
-      "levels": ["low", "medium", "high", "critical"],
-      "scores": {
-        "low": { "min": 0, "max": 3 },
-        "medium": { "min": 4, "max": 6 },
-        "high": { "min": 7, "max": 8 },
-        "critical": { "min": 9, "max": 10 }
-      },
-      "overallScoreRange": { "min": 0, "max": 10 }
-    }
-  }
+  "config": { ... }
 }
 ```
 
@@ -679,7 +659,7 @@ GET /api/v1/tasks?skip=0&take=5&orderBy=priorityScore&orderDirection=desc
 
 ### Prompt Injection Detected
 
-When a request contains prompt injection patterns, the system detects and blocks it immediately:
+When a request contains prompt injection patterns, the system detects and blocks it immediately. See the [Error Handling Flow](#error-handling-flow) section for details on how this error is processed:
 
 **1. Client Request to Tasks Service (Malicious):**
 
@@ -716,7 +696,7 @@ The AI service detects the injection and returns a generic error (internal loggi
 
 **4. Tasks Service Error Response to Client (HTTP 400):**
 
-The Tasks service records a prompt injection metric, sanitizes the error before forwarding to prevent information leakage, and ensures no internal details are exposed:
+The Tasks service records the `tasks_prompt_injection_total` metric and sanitizes the error response (removes all internal context) before forwarding:
 
 ```json
 {
@@ -724,8 +704,6 @@ The Tasks service records a prompt injection metric, sanitizes the error before 
   "tasksServiceRequestId": "83351b92-a14e-4a0f-99eb-1fbe88a20bcc"
 }
 ```
-
-**Note**: The Tasks service records the `tasks_prompt_injection_total` metric for security monitoring, but the error response is sanitized to prevent attackers from learning about detection mechanisms.
 
 ## Shared Library
 
@@ -774,17 +752,24 @@ The application includes monitoring for both AI and Tasks service operations usi
 
 - **Prometheus**: Collects metrics from both AI and Tasks services via the `/metrics` endpoint
 - **Grafana**: Provides dashboards and visualization for collected metrics
-- **Metrics Endpoints**:
-  - AI Service: `http://localhost:3002/metrics`
-  - Tasks Service: `http://localhost:3001/metrics`
 
 ### Metrics Tracked
 
 The AI service exposes the following Prometheus metrics:
 
+**AI Service API Metrics** (tracks HTTP requests to the AI service):
+
+- **`ai_api_requests_total`**: Total number of AI service API requests (labeled by capability, status)
+- **`ai_api_request_duration_ms`**: Request duration histogram with percentiles (P95, P99 available)
+
+**OpenAI API Integration Metrics** (tracks actual OpenAI API calls):
+
 - **`openai_api_requests_total`**: Total number of OpenAI API requests (labeled by capability, operation, status)
 - **`openai_api_request_duration_ms`**: Request duration histogram with percentiles (P95, P99 available)
 - **`openai_api_tokens_total`**: Total token usage (labeled by capability, operation, type, model)
+
+**Security Metrics**:
+
 - **`prompt_injection_blocked_total`**: Total number of requests blocked due to prompt injection detection (labeled by pattern_type)
 
 The Tasks service exposes the following Prometheus metrics:
@@ -798,7 +783,26 @@ The Tasks service exposes the following Prometheus metrics:
 
 #### AI Service Dashboard
 
-A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization of OpenAI API metrics:
+A pre-configured dashboard (`ai-service-dashboard.json`) provides visualization of AI service API metrics:
+
+**Key Performance Indicators:**
+
+- **Requests**: Total request volume for the AI service in the selected time range
+- **Prompt Injection Rate**: Percentage of requests blocked due to prompt injection detection
+- **Vague Input Rate**: Percentage of requests rejected as too vague
+- **Success Rate**: Percentage of successful requests (excluding prompt injection and vague input errors) with color-coded thresholds (Red <95%, Orange 95-98%, Yellow 98-99%, Green >99%)
+- **Average Duration**: Average request duration for successful requests
+- **P95 Duration**: 95th percentile duration for successful requests
+
+**Capability Breakdowns:**
+
+- **Requests by Capability**: Distribution of requests across different capabilities
+- **Success Rate by Capability**: Success rate broken down by capability
+- **Duration by Capability**: Average and P95 duration broken down by capability
+
+#### OpenAI API Dashboard
+
+A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization of OpenAI API integration metrics:
 
 **Key Performance Indicators (Parse Task Capability):**
 
@@ -814,10 +818,10 @@ A pre-configured dashboard (`openai-api-dashboard.json`) provides visualization 
 - **Average Tokens per Request**: Line chart showing average tokens per request broken down by operation (core/subtasks) and type (input/output)
 - **Average Cost per 100 Requests**: Line chart showing average cost per 100 requests broken down by operation (core/subtasks) and type (input/output), calculated using per 1K token pricing
 
-**Security Monitoring (Prompt Injection Detection):**
+**Security Monitoring:**
 
-- **Prompt Injection Blocked**: Total count of blocked prompt injection attempts
-- **Blocked by Pattern Type**: Breakdown of blocked prompt injection attempts by detection pattern
+- **Prompt Injection Blocked**: Total count of blocked attempts
+- **Blocked by Pattern Type**: Breakdown by detection pattern
 
 #### Cost Calculation
 

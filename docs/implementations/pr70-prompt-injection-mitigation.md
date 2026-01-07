@@ -6,7 +6,8 @@ This document summarizes the implementation of **Prompt Injection Detection & Bl
 
 ## Architecture Alignment
 
-This implementation follows patterns documented in `.cursor/rules/project-conventions.mdc`:
+This implementation follows project conventions for:
+
 - Router middleware order (validation → prompt injection check → capability execution)
 - Domain-specific error handlers (error sanitization in routers)
 - Two-level error handling (domain handlers + global handler)
@@ -58,15 +59,7 @@ This implementation follows patterns documented in `.cursor/rules/project-conven
 
 **Middleware Chain Order**:
 
-Following project conventions, the middleware chain follows this order:
-
-1. **Metrics middleware** - Track all requests (at router level)
-2. **Routes** - Route handlers with validation, rate limiting, etc.
-3. **Domain error handlers** - Handle domain-specific errors (record metrics, sanitize errors, reconcile state)
-4. **Post-response middleware** - Update state after response (e.g., token usage reconciliation)
-5. **Global error handler** - Final error handler in `app.ts` (catches all unhandled errors)
-
-The prompt injection validation middleware runs after input validation and before capability execution.
+This implementation follows the standard middleware chain order (see project conventions). The prompt injection validation middleware runs after input validation and before capability execution.
 
 ### Part 4: Error Response Sanitization (PR #75)
 
