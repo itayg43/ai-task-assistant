@@ -4,8 +4,8 @@ import { StatusCodes } from "http-status-codes";
 import { getPatternExecutor } from "@controllers/capabilities-controller/executors/get-pattern-executor";
 import { createLogger } from "@shared/config/create-logger";
 import { getCapabilityConfig } from "@utils/get-capability-config";
-import { getCapabilityPattern } from "@utils/get-capability-pattern";
 import { getCapabilityValidatedInput } from "@utils/get-capability-validated-input";
+import { getCapabilityValidatedQuery } from "@utils/get-capability-validated-query";
 
 const logger = createLogger("capabilitiesController");
 
@@ -18,16 +18,16 @@ export const executeCapability = async (
     const requestId = res.locals.requestId;
 
     const config = getCapabilityConfig(res);
-    const input = getCapabilityValidatedInput(res);
-    const pattern = getCapabilityPattern(res);
+    const validatedInput = getCapabilityValidatedInput(res);
+    const validatedQuery = getCapabilityValidatedQuery(res);
 
     logger.info("executeCapability - starting", {
       requestId,
-      input,
+      input: validatedInput,
     });
 
-    const patternExecutor = getPatternExecutor(pattern);
-    const result = await patternExecutor(config, input, requestId);
+    const patternExecutor = getPatternExecutor(validatedQuery.pattern);
+    const result = await patternExecutor(config, validatedInput, requestId);
 
     logger.info("executeCapability - succeeded", {
       requestId,

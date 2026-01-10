@@ -23,7 +23,7 @@ alwaysApply: false
 
 - **Unit tests**: `.test.ts` suffix (e.g., `tasks-repository.test.ts`)
 - **Integration tests**: `.integration.test.ts` suffix (e.g., `tasks-repository.integration.test.ts`)
-- **Prompt evaluation tests**: `evals/level-*.test.ts` in prompt version directories (e.g., `prompts/core/v1/evals/level-1.test.ts`)
+- **Prompt evaluation tests**: `evals/level-*.test.ts` in prompt version directories
 - Place test files next to source files or in `__tests__` directories
 
 ## Choosing Test Type
@@ -67,22 +67,25 @@ describe("componentName", () => {
   let mockDependency: Mocked<typeof dependency>;
 
   beforeEach(() => {
-    mockDependency = createMockDependency();
+    mockDependency = vi.mocked(dependency);
+    mockDependency.someMethod.mockReturnValue("default");
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("methodName", () => {
-    it("should handle specific scenario", () => {
-      // Arrange
-      // Act
-      // Assert
-    });
+  it("should handle specific scenario", () => {
+    // Arrange - modify mocks if needed for this specific test
+    mockDependency.someMethod.mockReturnValue("custom");
+
+    // Act
+    // Assert
   });
 });
 ```
+
+**Note:** For detailed mock setup patterns (including Express request/response mocks), see the **Mock Setup Pattern** section below.
 
 **Example without mocks:**
 
@@ -121,11 +124,10 @@ describe("componentName (integration)", () => {
   let prismaClient: ReturnType<typeof createPrismaClient>;
 
   beforeAll(async () => {
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
+    if (!process.env.DATABASE_URL) {
       throw new Error("Please define DATABASE_URL in .env.test");
     }
-    prismaClient = createPrismaClient(dbUrl);
+    prismaClient = createPrismaClient(process.env.DATABASE_URL);
     await prismaClient.$connect();
   });
 
@@ -147,6 +149,63 @@ describe("componentName (integration)", () => {
 ```
 
 ## Mock Patterns
+
+### Mock Setup Pattern
+
+**Define mocks directly in `beforeEach` and modify them in individual test cases when needed.**
+
+**Pattern:**
+
+- Declare mock variables at the top of the test suite: `let mockRequest: Partial<Request>;`
+- Initialize mocks in `beforeEach` with default values
+- Modify mocks directly in individual `it` blocks when test-specific changes are needed
+- Avoid creating helper functions like `createMockResponse()` - define mocks directly
+
+**Example:**
+
+```typescript
+describe("capabilitiesController (unit)", () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockNextFunction: ReturnType<typeof vi.fn>;
+  let mockedGetCapabilityConfig: Mocked<typeof getCapabilityConfig>;
+
+  beforeEach(() => {
+    mockedGetCapabilityConfig = vi.mocked(getCapabilityConfig);
+    mockedGetCapabilityConfig.mockReturnValue(mockParseTaskCapabilityConfig);
+    mockRequest = {};
+    mockResponse = {
+      locals: { requestId: mockAiServiceRequestId },
+      status: vi.fn().mockReturnThis(), // Use .mockReturnThis() for method chaining
+      json: vi.fn(),
+    };
+    mockNextFunction = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should handle default request", async () => {
+    await executeCapability(
+      mockRequest as Request,
+      mockResponse as Response,
+      mockNextFunction
+    );
+  });
+
+  it("should handle modified request", async () => {
+    mockRequest = { ...mockRequest, body: { customField: "value" } };
+    await executeCapability(
+      mockRequest as Request,
+      mockResponse as Response,
+      mockNextFunction
+    );
+  });
+});
+```
+
+**Note:** For Express response mocks, use `.mockReturnThis()` to enable method chaining.
 
 ### Mock Type Guidelines
 
@@ -193,32 +252,12 @@ vi.mock("@middlewares/token-bucket-rate-limiter", () => ({
 
 **Prefer real schema validation over mocking when testing middleware that uses fixed schemas.**
 
-**When to use real schema validation:**
-
-- Testing middleware that validates requests using fixed schemas (e.g., `executeCapabilityInputSchema`)
-- The schema is part of the codebase being tested
-- You want to ensure schema changes are caught by tests automatically
-- Testing the integration between middleware and schema validation
-
-**When to mock schemas:**
-
-- Testing middleware that uses dynamic schemas from configuration (e.g., `capabilityConfig.inputSchema`)
-- The schema comes from external sources or runtime configuration
-- Testing error handling paths requires controlling schema behavior
+- **Use real schema validation**: For fixed schemas (e.g., `executeCapabilityInputSchema`) that are part of the codebase - ensures schema changes are caught automatically
+- **Mock schemas**: For dynamic schemas from configuration (e.g., `capabilityConfig.inputSchema`) or when controlling schema behavior for error testing
 
 **Example with real schema validation:**
 
 ```typescript
-import { Request, Response } from "express";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import { capabilities } from "@capabilities";
-import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
-import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
-import { mockAiServiceRequestId } from "@mocks/request-ids";
-
-vi.mock("@capabilities");
-
 describe("validateExecutableCapability", () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
@@ -243,23 +282,10 @@ describe("validateExecutableCapability", () => {
       mockResponse as Response,
       mockNext
     );
-
     expect(mockResponse.locals!.capabilityValidatedQuery).toEqual({
       pattern: CAPABILITY_PATTERN.SYNC,
     });
     expect(mockNext).toHaveBeenCalledWith();
-  });
-
-  it("should call next() with ZodError when schema validation fails", () => {
-    mockRequest.params!.capability = "invalid-capability" as any;
-
-    validateExecutableCapability(
-      mockRequest as Request,
-      mockResponse as Response,
-      mockNext
-    );
-
-    expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
   });
 });
 ```
@@ -267,37 +293,19 @@ describe("validateExecutableCapability", () => {
 **Example with mocked schema (for dynamic schemas):**
 
 ```typescript
-import { NextFunction, Request, Response } from "express";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import z from "zod";
-
-import {
-  mockParseTaskCapabilityConfig,
-  mockParseTaskValidatedInput,
-} from "@capabilities/parse-task/parse-task-mocks";
-import { validateCapabilityInput } from "@middlewares/validate-capability-input";
-import { mockAiServiceRequestId } from "@mocks/request-ids";
-import { AnyCapabilityConfig } from "@types";
-
 describe("validateCapabilityInput", () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
-  let mockNextFunction: NextFunction;
-  let mockInputSchema: z.ZodSchema<any>;
+  let mockNextFunction: ReturnType<typeof vi.fn>;
   let mockInputSchemaParseFunction: ReturnType<typeof vi.fn>;
   let mockCapabilityConfig: AnyCapabilityConfig;
 
   beforeEach(() => {
     mockInputSchemaParseFunction = vi.fn();
-    mockInputSchema = {
-      parse: mockInputSchemaParseFunction,
-    } as unknown as z.ZodSchema<any>;
-
     mockCapabilityConfig = {
       ...mockParseTaskCapabilityConfig,
-      inputSchema: mockInputSchema,
+      inputSchema: { parse: mockInputSchemaParseFunction } as z.ZodSchema<any>,
     };
-
     mockRequest = { body: {} };
     mockResponse = {
       locals: {
@@ -314,18 +322,12 @@ describe("validateCapabilityInput", () => {
 
   it("should validate using capability config schema", async () => {
     mockInputSchemaParseFunction.mockReturnValue(mockParseTaskValidatedInput);
-
     await validateCapabilityInput(
       mockRequest as Request,
       mockResponse as Response,
       mockNextFunction
     );
-
     expect(mockInputSchemaParseFunction).toHaveBeenCalledWith(mockRequest.body);
-    expect(mockResponse.locals?.capabilityValidatedInput).toEqual(
-      mockParseTaskValidatedInput
-    );
-    expect(mockNextFunction).toHaveBeenCalled();
   });
 });
 ```
@@ -334,37 +336,18 @@ describe("validateCapabilityInput", () => {
 
 **Create `*-mocks.ts` files for reusable mock data constants and objects.**
 
-**When to use:**
-
-- Mock data is reused across multiple test files
-- Complex objects or data structures need to be shared
-- Mock values are domain-specific (e.g., capability responses, API responses)
-
-**Location:**
-
-- Place in `mocks/` directories (e.g., `src/mocks/openai-mocks.ts`)
-- Or alongside the code they mock (e.g., `src/capabilities/parse-task/parse-task-mocks.ts`)
-- Use `@mocks/*` path aliases when importing
-
-**Naming:**
-
-- Use `*-mocks.ts` suffix (e.g., `openai-mocks.ts`, `parse-task-mocks.ts`, `tasks-mocks.ts`)
-- Export constants with `mock` prefix: `mockOpenaiRequestId`, `mockParseTaskOutputCore`
+- **When to use**: Mock data reused across multiple test files, complex objects, domain-specific values
+- **Location**: Place in `mocks/` directories or alongside code they mock; use `@mocks/*` path aliases
+- **Naming**: Use `*-mocks.ts` suffix; export constants with `mock` prefix
 
 **Example:**
 
 ```typescript
 // src/mocks/openai-mocks.ts
 export const mockOpenaiRequestId = "openai-request-id";
-export const mockOpenaiTokenUsage = {
-  input: 150,
-  output: 135,
-};
+export const mockOpenaiTokenUsage = { input: 150, output: 135 };
 
 // src/capabilities/parse-task/parse-task-mocks.ts
-import { mockOpenaiTokenUsage } from "@mocks/openai-mocks";
-
-export const mockNaturalLanguage = "Submit Q2 report by next Friday";
 export const mockParseTaskOutputCore: ParseTaskOutputCore = {
   title: "Submit Q2 report",
   dueDate: "2024-01-19T23:59:59Z",
@@ -374,36 +357,28 @@ export const mockParseTaskOutputCore: ParseTaskOutputCore = {
 
 // Usage in tests
 import { mockParseTaskOutputCore } from "@capabilities/parse-task/parse-task-mocks";
-
 it("should handle parse task", () => {
   expect(functionUnderTest(mockParseTaskOutputCore)).toBe(expected);
 });
 ```
 
-**Difference from factories:**
+**Differences:**
 
-- **Mock value files**: Export static constants/objects (`mockParseTaskOutputCore`)
-- **Mock factories**: Export functions that create mocks (`createLoggerMock()`)
-
-**Difference from test constants:**
-
-- **Mock value files**: Complex domain objects, placed in `mocks/` or alongside code
-- **Test constants**: Simple values, placed in `__tests__` directories
+- **Mock value files**: Static constants/objects (`mockParseTaskOutputCore`) - complex domain objects
+- **Mock factories**: Functions that create mocks (`createLoggerMock()`) - shared/reusable
+- **Test constants**: Simple values in `__tests__` directories
 
 ### Mock Factories
 
-**Prefer factory functions over inline mocks for consistency.**
+**Use factory functions for shared/reusable mocks used across multiple test files.**
 
-**Shared factories** (`@shared/src/mocks/*`):
+- **Mock factories**: For shared mocks (logger, Redis client) used across multiple test files
+- **Direct setup in `beforeEach`**: For test-local mocks (Express request/response, test-specific dependencies)
 
-- `createLoggerMock()` - Logger mocks
-- `createPromClientMock()` - Prometheus client mocks
-- `createMetricsRecorderMock()` - Metrics recorder mocks
-- `createRedisClientMock()` - Redis client mocks
+**Available factories:**
 
-**Service-specific factories** (`@mocks/*`):
-
-- `createMockPrismaClient()` - Prisma client mocks
+- **Shared** (`@shared/src/mocks/*`): `createLoggerMock()`, `createPromClientMock()`, `createMetricsRecorderMock()`, `createRedisClientMock()`
+- **Service-specific** (`@mocks/*`): `createMockPrismaClient()`
 
 **Example:**
 
@@ -416,17 +391,6 @@ let mockLogger: Mocked<typeof logger>;
 beforeEach(() => {
   mockLogger = createLoggerMock();
 });
-```
-
-### Express Response Mocks
-
-Use `.mockReturnThis()` to enable method chaining:
-
-```typescript
-mockResponse = {
-  status: vi.fn().mockReturnThis(),
-  json: vi.fn(),
-};
 ```
 
 ### Complex Mocks (`__mocks__` directories)
@@ -443,26 +407,13 @@ vi.mock("@middlewares/cors", () => {
 
 ### Table-Driven Tests
 
-Use for multiple similar scenarios:
+Use `it.each()` for multiple similar scenarios:
 
 ```typescript
-// Option 1: forEach
-const cases = [
-  { description: "scenario A", input: valueA, expected: resultA },
-  { description: "scenario B", input: valueB, expected: resultB },
-];
-
-cases.forEach(({ description, input, expected }) => {
-  it(description, () => {
-    expect(functionUnderTest(input)).toBe(expected);
-  });
-});
-
-// Option 2: it.each (preferred for parameterized tests)
 it.each(testCases)(
   "should parse $naturalLanguage",
   async ({ naturalLanguage, expected }) => {
-    // test implementation
+    expect(functionUnderTest(naturalLanguage)).toBe(expected);
   }
 );
 ```
@@ -490,61 +441,37 @@ vi.advanceTimersByTime(1000);
 - `expect.any(ErrorClass)` - Error type checking
 - `expect.any(String)` - Dynamic values (e.g., request IDs)
 - `expect.objectContaining({ key: "value" })` - Partial object matching
-- `.toHaveBeenCalledWith(...)` - Function call assertions
-- `.toHaveBeenCalledTimes(n)` - Call count assertions
-
-**Example:**
-
-```typescript
-expect(mockNextFunction).toHaveBeenCalledWith(expect.any(BadRequestError));
-expect(response.body.id).toEqual(expect.any(String));
-expect(mockFunction).toHaveBeenCalledWith(
-  expect.objectContaining({ key: "value" })
-);
-```
+- `.toHaveBeenCalledWith(...)`, `.toHaveBeenCalledTimes(n)` - Function call assertions
 
 ### Error Testing
 
-- Test both error creation and handling
-- Verify error messages are sanitized (no sensitive data)
-- Test error status codes match expected values
-- Use `expect.any(ErrorClass)` for error type verification
+- Test both error creation and handling; verify error messages are sanitized (no sensitive data)
+- Test error status codes match expected values; use `expect.any(ErrorClass)` for type verification
 
 ### Async Testing
 
-- Always use `async/await` for async test functions
-- Use `mockResolvedValue()` for async mocks
-- Use `mockRejectedValue()` for error cases
+- Always use `async/await` for async test functions; use `mockResolvedValue()`/`mockRejectedValue()` for async mocks
 - Ensure proper cleanup in `afterEach`/`afterAll`
 
 ## Test Organization
 
 ### Test Constants and Helpers
 
-- Place test constants in `__tests__` directories (e.g., `__tests__/token-bucket-test-constants.ts`)
-- Use descriptive names: `mockTokenBucketConfig`, `mockUserId`
-- Export constants for reuse across test files
-- Consider test data builders for complex objects
+- Place test constants in `__tests__` directories; use descriptive names (`mockTokenBucketConfig`, `mockUserId`)
+- Export constants for reuse across test files; consider test data builders for complex objects
 
 ### Mock Data Organization
 
-**Summary of mock/test data patterns:**
-
-- **Mock value files** (`*-mocks.ts`): Reusable mock data constants and objects (detailed in Mock Value Files section above)
-- **Mock factories**: Functions that create mocks (detailed in Mock Factories section above)
-- **Test constants**: Simple values in `__tests__` directories (detailed in Test Constants and Helpers section above)
-
-**General principles:**
-
+- **Mock value files** (`*-mocks.ts`): Reusable mock data constants (see Mock Value Files section)
+- **Mock factories**: Functions that create mocks (see Mock Factories section)
+- **Test constants**: Simple values in `__tests__` directories (see Test Constants section)
 - Keep mock data close to usage, extract common mocks to shared locations
 - Use `@mocks/*` path aliases when importing mock value files
 
 ### Test File Organization
 
-- Keep tests focused on single behavior or scenario
-- Use descriptive test names that explain what is being tested
-- Follow Arrange-Act-Assert pattern (Arrange: set up, Act: execute, Assert: verify)
-- Test happy paths, error cases, and edge cases
+- Keep tests focused on single behavior; use descriptive test names
+- Follow Arrange-Act-Assert pattern; test happy paths, error cases, and edge cases
 - Separate unit tests from integration tests
 
 ## Test Configuration
@@ -557,36 +484,22 @@ expect(mockFunction).toHaveBeenCalledWith(
 
 ### Integration Tests
 
-**Database tests** (`vitest.db.config.ts`):
-
-- Includes: `src/repositories/**/*.integration.test.ts`
-- Runs sequentially: `pool: "forks"`, `singleFork: true`
-- Timeout: `testTimeout: 30000`
-
-**Prompt evaluation tests** (`vitest.prompts.config.ts`):
-
-- Includes: `src/**/evals/**/*.test.ts`
-- Timeout: `testTimeout: 30000`
-
-**Always exclude:** `node_modules`, `dist`, and test-specific directories
+- **Database tests** (`vitest.db.config.ts`): Includes `src/repositories/**/*.integration.test.ts`, runs sequentially (`pool: "forks"`, `singleFork: true`), timeout `30000`
+- **Prompt evaluation tests** (`vitest.prompts.config.ts`): Includes `src/**/evals/**/*.test.ts`, timeout `30000`
+- **Always exclude:** `node_modules`, `dist`, and test-specific directories
 
 ### Running Tests
 
 - Unit tests: `npm test` (runs all `.test.ts` files)
 - Integration tests: `npm run test:db` or `npm run test:prompts`
-- Service-specific: `npm test -w backend/services/{service-name}`
-- CI mode: `npm test -- --run`
+- Service-specific: `npm test -w backend/services/{service-name}`; CI mode: `npm test -- --run`
 
 ## Prompt Evaluation Tests
 
-**Location:** `evals/` directories within prompt version folders  
-**Naming:** `level-1.test.ts`, `level-2.test.ts`  
-**Patterns:**
+**Location:** `evals/` directories within prompt version folders; **Naming:** `level-1.test.ts`, `level-2.test.ts`
 
-- Test actual AI responses against expected schemas
-- Use `it.each()` with test cases for multiple scenarios
-- Set fake timers for consistent date parsing tests
-- Validate output against Zod schemas: `expect(() => schema.parse(output)).not.toThrow()`
+- Test actual AI responses against expected schemas; use `it.each()` for multiple scenarios
+- Set fake timers for consistent date parsing; validate output: `expect(() => schema.parse(output)).not.toThrow()`
 
 **Example:**
 
@@ -603,7 +516,7 @@ describe("corePromptV1 - Level1Tests", () => {
 
   it.each(testCases)(
     "should parse $naturalLanguage",
-    async ({ naturalLanguage, expected }) => {
+    async ({ naturalLanguage }) => {
       const { output } = await executeParseTask(naturalLanguage);
       expect(() => parseTaskOutputCoreSchema.parse(output)).not.toThrow();
     }
@@ -613,10 +526,9 @@ describe("corePromptV1 - Level1Tests", () => {
 
 ## Best Practices
 
-- **Isolation**: Each test should be independent and not affect others
-- **Cleanup**: Clean up test data and mocks after each test (`vi.clearAllMocks()` only when mocks are used)
+- **Isolation**: Each test should be independent; cleanup test data and mocks (`vi.clearAllMocks()` only when mocks are used)
 - **Clarity**: Test names should clearly describe what is being tested
-- **Coverage**: Aim for high coverage but focus on testing critical paths
+- **Coverage**: Aim for high coverage but focus on critical paths
 - **Speed**: Unit tests should be fast (<100ms each); integration tests may be slower but reasonable
 - **Environment**: Integration tests require proper environment setup (`.env.test` files)
 - **Error Messages**: Verify error messages don't leak sensitive information

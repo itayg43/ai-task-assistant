@@ -18,19 +18,19 @@ import {
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { Mocked } from "@shared/types";
 import { getCapabilityConfig } from "@utils/get-capability-config";
-import { getCapabilityPattern } from "@utils/get-capability-pattern";
 import { getCapabilityValidatedInput } from "@utils/get-capability-validated-input";
+import { getCapabilityValidatedQuery } from "@utils/get-capability-validated-query";
 
 vi.mock("@utils/get-capability-config", () => ({
   getCapabilityConfig: vi.fn(),
 }));
 
-vi.mock("@utils/get-capability-pattern", () => ({
-  getCapabilityPattern: vi.fn(),
-}));
-
 vi.mock("@utils/get-capability-validated-input", () => ({
   getCapabilityValidatedInput: vi.fn(),
+}));
+
+vi.mock("@utils/get-capability-validated-query", () => ({
+  getCapabilityValidatedQuery: vi.fn(),
 }));
 
 vi.mock(
@@ -50,44 +50,46 @@ describe("capabilitiesController (unit)", () => {
     result: mockParseTaskOutput,
   };
 
-  let mockPatternExecutor: ReturnType<typeof vi.fn>;
-  let mockResponse: Partial<Response>;
-  let mockNext: ReturnType<typeof vi.fn>;
   let mockedGetCapabilityConfig: Mocked<typeof getCapabilityConfig>;
-  let mockedGetCapabilityPattern: Mocked<typeof getCapabilityPattern>;
   let mockedGetCapabilityValidatedInput: Mocked<
     typeof getCapabilityValidatedInput
   >;
+  let mockedGetCapabilityValidatedQuery: Mocked<
+    typeof getCapabilityValidatedQuery
+  >;
   let mockedGetPatternExecutor: Mocked<typeof getPatternExecutor>;
+  let mockPatternExecutor: ReturnType<typeof vi.fn>;
 
-  const createMockResponse = () => ({
-    locals: {
-      requestId: mockAiServiceRequestId,
-      capabilityPattern: CAPABILITY_PATTERN.SYNC,
-    },
-    status: vi.fn().mockReturnThis(),
-    json: vi.fn(),
-  });
-
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockNextFunction: ReturnType<typeof vi.fn>;
   beforeEach(() => {
-    mockPatternExecutor = vi.fn().mockResolvedValue(mockExecutorResult);
-
     mockedGetCapabilityConfig = vi.mocked(getCapabilityConfig);
     mockedGetCapabilityConfig.mockReturnValue(mockParseTaskCapabilityConfig);
-
-    mockedGetCapabilityPattern = vi.mocked(getCapabilityPattern);
-    mockedGetCapabilityPattern.mockReturnValue(CAPABILITY_PATTERN.SYNC);
 
     mockedGetCapabilityValidatedInput = vi.mocked(getCapabilityValidatedInput);
     mockedGetCapabilityValidatedInput.mockReturnValue(
       mockParseTaskValidatedInput as any
     );
 
+    mockedGetCapabilityValidatedQuery = vi.mocked(getCapabilityValidatedQuery);
+    mockedGetCapabilityValidatedQuery.mockReturnValue({
+      pattern: CAPABILITY_PATTERN.SYNC,
+    });
+
+    mockPatternExecutor = vi.fn().mockResolvedValue(mockExecutorResult);
     mockedGetPatternExecutor = vi.mocked(getPatternExecutor);
     mockedGetPatternExecutor.mockReturnValue(mockPatternExecutor);
 
-    mockResponse = createMockResponse();
-    mockNext = vi.fn();
+    mockRequest = {};
+    mockResponse = {
+      locals: {
+        requestId: mockAiServiceRequestId,
+      },
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    mockNextFunction = vi.fn();
   });
 
   afterEach(() => {
@@ -95,15 +97,19 @@ describe("capabilitiesController (unit)", () => {
   });
 
   it("should call executor with validated input and respond with result", async () => {
-    await executeCapability({} as Request, mockResponse as Response, mockNext);
+    await executeCapability(
+      mockRequest as Request,
+      mockResponse as Response,
+      mockNextFunction
+    );
 
     expect(mockedGetCapabilityConfig).toHaveBeenCalledWith(
       mockResponse as Response
     );
-    expect(mockedGetCapabilityPattern).toHaveBeenCalledWith(
+    expect(mockedGetCapabilityValidatedInput).toHaveBeenCalledWith(
       mockResponse as Response
     );
-    expect(mockedGetCapabilityValidatedInput).toHaveBeenCalledWith(
+    expect(mockedGetCapabilityValidatedQuery).toHaveBeenCalledWith(
       mockResponse as Response
     );
     expect(mockedGetPatternExecutor).toHaveBeenCalledWith(
@@ -119,15 +125,19 @@ describe("capabilitiesController (unit)", () => {
       ...mockExecutorResult,
       aiServiceRequestId: mockAiServiceRequestId,
     });
-    expect(mockNext).not.toHaveBeenCalled();
+    expect(mockNextFunction).not.toHaveBeenCalled();
   });
 
   it("should pass executor errors to next", async () => {
     const mockError = new Error("failure");
     mockPatternExecutor.mockRejectedValue(mockError);
 
-    await executeCapability({} as Request, mockResponse as Response, mockNext);
+    await executeCapability(
+      mockRequest as Request,
+      mockResponse as Response,
+      mockNextFunction
+    );
 
-    expect(mockNext).toHaveBeenCalledWith(mockError);
+    expect(mockNextFunction).toHaveBeenCalledWith(mockError);
   });
 });
