@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import { cleanEnv, port, str } from "envalid";
+import { cleanEnv, port, str, url } from "envalid";
 
 import {
   PARSE_TASK_CORE_PROMPT_VERSIONS,
@@ -13,6 +13,8 @@ export const env = cleanEnv(process.env, {
   SERVICE_PORT: port(),
 
   OPENAI_API_KEY: str(),
+
+  RABBITMQ_URL: url(),
 
   PARSE_TASK_CORE_PROMPT_VERSION: str({
     choices: PARSE_TASK_CORE_PROMPT_VERSIONS,
