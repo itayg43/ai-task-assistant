@@ -8,9 +8,9 @@ import { CapabilityConfig } from "@types";
 const logger = createLogger("executeSyncPattern");
 
 export const executeSyncPattern = async <TInput, TOutput>(
+  requestId: string,
   config: CapabilityConfig<TInput, TOutput>,
-  input: TInput,
-  requestId: string
+  input: TInput
 ) => {
   try {
     const handlerResult = await config.handler(input, requestId);

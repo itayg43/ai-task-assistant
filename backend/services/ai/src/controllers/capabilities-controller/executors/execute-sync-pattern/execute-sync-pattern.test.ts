@@ -39,9 +39,9 @@ describe("executeSyncPattern", () => {
     mockParse.mockReturnValue(mockResult);
 
     const result = await executeSyncPattern(
+      mockAiServiceRequestId,
       mockConfig,
-      mockInput,
-      mockAiServiceRequestId
+      mockInput
     );
 
     expect(mockConfig.handler).toHaveBeenCalledWith(
@@ -67,7 +67,7 @@ describe("executeSyncPattern", () => {
     });
 
     await expect(
-      executeSyncPattern(mockConfig, mockInput, mockAiServiceRequestId)
+      executeSyncPattern(mockAiServiceRequestId, mockConfig, mockInput)
     ).rejects.toThrow(InternalError);
   });
 });
