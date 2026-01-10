@@ -6,7 +6,9 @@ import { withRetry } from "../../utils/with-retry";
 
 const logger = createLogger("rabbitmq");
 
-export const createRabbitMQConnection = async (url: string) => {
+export const createRabbitMQConnection = async (
+  url: string
+): Promise<amqp.ChannelModel> => {
   return withRetry(
     DEFAULT_RETRY_CONFIG,
     async () => {

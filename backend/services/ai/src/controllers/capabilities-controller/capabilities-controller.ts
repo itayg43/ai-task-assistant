@@ -1,7 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { getPatternExecutor } from "@controllers/capabilities-controller/executors/get-pattern-executor";
+import { CAPABILITY_PATTERN } from "@constants";
+import { executeAsyncPattern } from "@controllers/capabilities-controller/executors/execute-async-pattern";
+import { executeSyncPattern } from "@controllers/capabilities-controller/executors/execute-sync-pattern";
 import { createLogger } from "@shared/config/create-logger";
 import { getCapabilityConfig } from "@utils/get-capability-config";
 import { getCapabilityValidatedInput } from "@utils/get-capability-validated-input";
@@ -24,21 +26,31 @@ export const executeCapability = async (
     logger.info("executeCapability - starting", {
       requestId,
       input: validatedInput,
+      query: validatedQuery,
     });
 
-    const patternExecutor = getPatternExecutor(validatedQuery.pattern);
-    const result = await patternExecutor(config, validatedInput, requestId);
+    let result;
+    if (validatedQuery.pattern === CAPABILITY_PATTERN.SYNC) {
+      result = await executeSyncPattern(requestId, config, validatedInput);
+    } else {
+      result = await executeAsyncPattern(
+        requestId,
+        config,
+        validatedInput,
+        validatedQuery.callbackUrl
+      );
+    }
 
-    logger.info("executeCapability - succeeded", {
-      requestId,
-      capability: config.name,
-      result,
-    });
-
-    res.status(StatusCodes.OK).json({
-      ...result,
-      aiServiceRequestId: requestId,
-    });
+    res
+      .status(
+        validatedQuery.pattern === CAPABILITY_PATTERN.ASYNC
+          ? StatusCodes.ACCEPTED
+          : StatusCodes.OK
+      )
+      .json({
+        ...result,
+        aiServiceRequestId: requestId,
+      });
   } catch (error) {
     next(error);
   }

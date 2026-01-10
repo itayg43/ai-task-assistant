@@ -9,7 +9,7 @@ import {
 } from "@capabilities/parse-task/parse-task-mocks";
 import { CAPABILITY_PATTERN } from "@constants";
 import { executeCapability } from "@controllers/capabilities-controller/capabilities-controller";
-import { getPatternExecutor } from "@controllers/capabilities-controller/executors/get-pattern-executor";
+import { executeSyncPattern } from "@controllers/capabilities-controller/executors/execute-sync-pattern";
 import {
   mockOpenaiDurationMs,
   mockOpenaiResponseId,
@@ -20,6 +20,10 @@ import { Mocked } from "@shared/types";
 import { getCapabilityConfig } from "@utils/get-capability-config";
 import { getCapabilityValidatedInput } from "@utils/get-capability-validated-input";
 import { getCapabilityValidatedQuery } from "@utils/get-capability-validated-query";
+
+vi.mock("@config/env", () => ({
+  env: {},
+}));
 
 vi.mock("@utils/get-capability-config", () => ({
   getCapabilityConfig: vi.fn(),
@@ -34,9 +38,9 @@ vi.mock("@utils/get-capability-validated-query", () => ({
 }));
 
 vi.mock(
-  "@controllers/capabilities-controller/executors/get-pattern-executor",
+  "@controllers/capabilities-controller/executors/execute-sync-pattern",
   () => ({
-    getPatternExecutor: vi.fn(),
+    executeSyncPattern: vi.fn(),
   })
 );
 
@@ -57,8 +61,7 @@ describe("capabilitiesController (unit)", () => {
   let mockedGetCapabilityValidatedQuery: Mocked<
     typeof getCapabilityValidatedQuery
   >;
-  let mockedGetPatternExecutor: Mocked<typeof getPatternExecutor>;
-  let mockPatternExecutor: ReturnType<typeof vi.fn>;
+  let mockedExecuteSyncPattern: Mocked<typeof executeSyncPattern>;
 
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
@@ -77,9 +80,8 @@ describe("capabilitiesController (unit)", () => {
       pattern: CAPABILITY_PATTERN.SYNC,
     });
 
-    mockPatternExecutor = vi.fn().mockResolvedValue(mockExecutorResult);
-    mockedGetPatternExecutor = vi.mocked(getPatternExecutor);
-    mockedGetPatternExecutor.mockReturnValue(mockPatternExecutor);
+    mockedExecuteSyncPattern = vi.mocked(executeSyncPattern);
+    mockedExecuteSyncPattern.mockResolvedValue(mockExecutorResult);
 
     mockRequest = {};
     mockResponse = {
@@ -112,13 +114,10 @@ describe("capabilitiesController (unit)", () => {
     expect(mockedGetCapabilityValidatedQuery).toHaveBeenCalledWith(
       mockResponse as Response
     );
-    expect(mockedGetPatternExecutor).toHaveBeenCalledWith(
-      CAPABILITY_PATTERN.SYNC
-    );
-    expect(mockPatternExecutor).toHaveBeenCalledWith(
+    expect(mockedExecuteSyncPattern).toHaveBeenCalledWith(
+      mockAiServiceRequestId,
       mockParseTaskCapabilityConfig,
-      mockParseTaskValidatedInput,
-      mockAiServiceRequestId
+      mockParseTaskValidatedInput
     );
     expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.OK);
     expect(mockResponse.json).toHaveBeenCalledWith({
@@ -130,7 +129,7 @@ describe("capabilitiesController (unit)", () => {
 
   it("should pass executor errors to next", async () => {
     const mockError = new Error("failure");
-    mockPatternExecutor.mockRejectedValue(mockError);
+    mockedExecuteSyncPattern.mockRejectedValue(mockError);
 
     await executeCapability(
       mockRequest as Request,
