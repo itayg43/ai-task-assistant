@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { mockCallbackUrl } from "@capabilities/parse-task/parse-task-mocks";
 import { CAPABILITY_PATTERN } from "@constants";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { BadRequestError } from "@shared/errors";
@@ -27,8 +28,6 @@ describe("getCapabilityValidatedQuery", () => {
   });
 
   it("should return the capability validated query for ASYNC pattern", () => {
-    const mockCallbackUrl = "https://example.com/callback";
-
     mockResponse = {
       locals: {
         requestId: mockAiServiceRequestId,

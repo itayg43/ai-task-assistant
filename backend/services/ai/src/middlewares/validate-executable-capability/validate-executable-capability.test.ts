@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { capabilities } from "@capabilities";
+import { mockCallbackUrl } from "@capabilities/parse-task/parse-task-mocks";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
@@ -55,8 +56,6 @@ describe("validateExecutableCapability", () => {
   });
 
   it("should validate successfully and call next() for capability with async pattern", () => {
-    const mockCallbackUrl = "https://example.com/callback";
-
     mockRequest = {
       ...mockRequest,
       query: {
