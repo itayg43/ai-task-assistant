@@ -3,7 +3,7 @@ import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/res
 import { Counter, Histogram, register } from "@shared/clients/prom";
 import { createLogger } from "@shared/config/create-logger";
 
-const logger = createLogger("openai-metrics");
+const logger = createLogger("openaiMetrics");
 
 // Counter for total API requests
 // Tracks success and failure counts to calculate success rate

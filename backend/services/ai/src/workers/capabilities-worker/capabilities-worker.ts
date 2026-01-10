@@ -6,22 +6,76 @@ import { AI_ERROR_TYPE, RABBITMQ_QUEUE } from "@constants";
 import { executeSyncPattern } from "@controllers/capabilities-controller/executors/execute-sync-pattern";
 import { capabilitiesQueueMessageDataSchema } from "@schemas";
 import { createLogger } from "@shared/config/create-logger";
+import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { BadRequestError, InternalError } from "@shared/errors";
+import { ExtractedErrorInfo } from "@shared/types";
+import { extractErrorInfo } from "@shared/utils/extract-error-info";
+import { withRetry } from "@shared/utils/with-retry";
 
 const logger = createLogger("capabilitiesWorker");
+
+const wait = async (delayMs: number = 1500) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
+};
+
+const sendSuccessCallbackHandler = async (
+  channel: amqp.Channel,
+  message: amqp.ConsumeMessage,
+  requestId: string,
+  _callbackUrl: string,
+  _result: unknown
+) => {
+  try {
+    await withRetry(DEFAULT_RETRY_CONFIG, wait, {
+      operation: "sendSuccessCallback",
+    });
+
+    channel.ack(message);
+  } catch (error) {
+    logger.error("Failed to send success callback", error, {
+      requestId,
+    });
+
+    channel.nack(message, false, false);
+  }
+};
+
+const sendErrorCallbackHandler = async (
+  channel: amqp.Channel,
+  message: amqp.ConsumeMessage,
+  requestId: string | undefined,
+  _errorInfo: ExtractedErrorInfo
+) => {
+  try {
+    await withRetry(DEFAULT_RETRY_CONFIG, wait, {
+      operation: "sendErrorCallback",
+    });
+
+    channel.ack(message);
+  } catch (error) {
+    logger.error("Failed to send error callback", error, {
+      requestId,
+    });
+
+    channel.nack(message, false, false);
+  }
+};
 
 const capabilitiesMessageHandler = async (
   channel: amqp.Channel,
   message: amqp.ConsumeMessage
 ) => {
+  let reqId: string | undefined;
+
   try {
     const parsedMessage = JSON.parse(message.content.toString());
-    const validatedMessage =
+    const { requestId, capability, input, callbackUrl } =
       capabilitiesQueueMessageDataSchema.parse(parsedMessage);
-    const { requestId, capability, input, callbackUrl } = validatedMessage;
+    reqId = requestId;
 
     const config = capabilities[capability];
-
     if (!config) {
       throw new BadRequestError(`Capability ${capability} not found`);
     }
@@ -29,13 +83,19 @@ const capabilitiesMessageHandler = async (
     const validatedInput = config.inputSchema.parse(input);
     const result = await executeSyncPattern(requestId, config, validatedInput);
 
-    // send callback the result
-
-    channel.ack(message);
+    // send success callback - handler will ack/nack
+    await sendSuccessCallbackHandler(
+      channel,
+      message,
+      requestId,
+      callbackUrl,
+      result
+    );
   } catch (error) {
-    // send callback the error
+    const errorInfo = extractErrorInfo(error);
 
-    channel.ack(message);
+    // send error callback - handler will ack/nack
+    await sendErrorCallbackHandler(channel, message, reqId, errorInfo);
   }
 };
 
@@ -50,7 +110,7 @@ export const consumeCapabilitiesMessage = async () => {
           return;
         }
 
-        capabilitiesMessageHandler(channel, message);
+        await capabilitiesMessageHandler(channel, message);
       },
       {
         noAck: false,
