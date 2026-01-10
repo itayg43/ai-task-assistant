@@ -25,7 +25,8 @@
       "@capabilities/*": ["src/capabilities/*"],
       "@utils/*": ["src/utils/*"],
       "@mocks/*": ["src/mocks/*"],
-      "@metrics/*": ["src/metrics/*"]
+      "@metrics/*": ["src/metrics/*"],
+      "@workers/*": ["src/workers/*"]
     }
   },
   "include": ["src/"],
