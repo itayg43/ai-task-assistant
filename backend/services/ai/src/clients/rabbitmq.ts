@@ -1,13 +1,11 @@
 import * as amqp from "amqplib";
 
 import { env } from "@config/env";
-import { RABBITMQ_QUEUE } from "@constants";
 import {
   closeRabbitMQConnection,
   createRabbitMQConnection,
 } from "@shared/clients/rabbitmq";
-import { RabbitMQQueue } from "@types";
-import { CapabilitiesQueueMessageData } from "src/types/capabilities-queue-message-data";
+import { QueueToMessageDataMap, RabbitMQQueue } from "@types";
 
 let globalConnection: amqp.ChannelModel | null = null;
 let globalChannel: amqp.Channel | null = null;
@@ -52,13 +50,9 @@ export const getRabbitMQChannel = async (
   return globalChannel;
 };
 
-type MessageDataMap = {
-  [RABBITMQ_QUEUE.CAPABILITIES]: CapabilitiesQueueMessageData;
-};
-
 export const sendMessageToRabbitMQQueue = async <TQueue extends RabbitMQQueue>(
   queue: TQueue,
-  messageData: MessageDataMap[TQueue]
+  messageData: QueueToMessageDataMap[TQueue]
 ) => {
   const channel = await getRabbitMQChannel(queue);
 
