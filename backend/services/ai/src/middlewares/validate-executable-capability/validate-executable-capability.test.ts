@@ -1,49 +1,40 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { capabilities } from "@capabilities";
 import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
 import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
-import { executeCapabilityInputSchema } from "@schemas";
-import { NotFoundError } from "@shared/errors";
 
 vi.mock("@capabilities");
 
-vi.mock("@schemas", () => ({
-  executeCapabilityInputSchema: {
-    parse: vi.fn(),
-  },
-}));
-
 describe("validateExecutableCapability", () => {
-  let mockReq: Partial<Request>;
-  let mockRes: Partial<Response>;
-  let mockNext: NextFunction;
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockNext: ReturnType<typeof vi.fn>;
 
   const executeMiddleware = () => {
     validateExecutableCapability(
-      mockReq as Request,
-      mockRes as Response,
+      mockRequest as Request,
+      mockResponse as Response,
       mockNext
     );
   };
 
-  const createMockRequest = (
-    capability: (typeof CAPABILITY)[keyof typeof CAPABILITY]
-  ) => ({
-    params: {
-      capability,
-    },
-  });
-
-  const createMockResponse = () => ({
-    locals: {
-      requestId: mockAiServiceRequestId,
-    },
-  });
-
   beforeEach(() => {
+    mockRequest = {
+      params: {
+        capability: CAPABILITY.PARSE_TASK,
+      },
+      query: {
+        pattern: CAPABILITY_PATTERN.SYNC,
+      },
+    };
+    mockResponse = {
+      locals: {
+        requestId: mockAiServiceRequestId,
+      },
+    };
     mockNext = vi.fn();
   });
 
@@ -51,49 +42,51 @@ describe("validateExecutableCapability", () => {
     vi.clearAllMocks();
   });
 
-  it.each([
-    [CAPABILITY.PARSE_TASK, CAPABILITY_PATTERN.SYNC, "parse-task"],
-    [CAPABILITY.PARSE_TASK, CAPABILITY_PATTERN.ASYNC, "parse-task"],
-  ])(
-    "should validate successfully and call next() for capability %s with pattern %s",
-    (capability, pattern, capabilityKey) => {
-      vi.mocked(executeCapabilityInputSchema.parse).mockReturnValue({
-        params: { capability },
-        query: { pattern },
-      });
+  it("should validate successfully and call next() for capability with sync pattern", () => {
+    executeMiddleware();
 
-      mockReq = createMockRequest(capability);
-      mockRes = createMockResponse();
-
-      executeMiddleware();
-
-      expect(executeCapabilityInputSchema.parse).toHaveBeenCalledWith(mockReq);
-      expect(mockRes.locals!.capabilityConfig).toBe(
-        capabilities[capabilityKey as keyof typeof capabilities]
-      );
-      expect(mockRes.locals!.capabilityPattern).toBe(pattern);
-      expect(mockNext).toHaveBeenCalledWith();
-    }
-  );
-
-  it("should call next() with NotFoundError when capability does not exist", () => {
-    vi.mocked(executeCapabilityInputSchema.parse).mockReturnValue({
-      params: {
-        capability: CAPABILITY.PARSE_TASK,
-      },
-      query: {
-        pattern: CAPABILITY_PATTERN.SYNC,
-      },
+    expect(mockResponse.locals!.capabilityConfig).toBe(
+      capabilities["parse-task" as keyof typeof capabilities]
+    );
+    expect(mockResponse.locals!.capabilityValidatedQuery).toEqual({
+      pattern: CAPABILITY_PATTERN.SYNC,
     });
+    expect(mockNext).toHaveBeenCalledWith();
+  });
 
-    (capabilities as any)["parse-task"] = undefined;
+  it("should validate successfully and call next() for capability with async pattern", () => {
+    const mockCallbackUrl = "https://example.com/callback";
 
-    mockReq = createMockRequest(CAPABILITY.PARSE_TASK);
-    mockRes = createMockResponse();
+    mockRequest = {
+      ...mockRequest,
+      query: {
+        pattern: CAPABILITY_PATTERN.ASYNC,
+        callbackUrl: mockCallbackUrl,
+      },
+    };
 
     executeMiddleware();
 
-    expect(executeCapabilityInputSchema.parse).toHaveBeenCalledWith(mockReq);
-    expect(mockNext).toHaveBeenCalledWith(expect.any(NotFoundError));
+    expect(mockResponse.locals!.capabilityConfig).toBe(
+      capabilities["parse-task" as keyof typeof capabilities]
+    );
+    expect(mockResponse.locals!.capabilityValidatedQuery).toEqual({
+      pattern: CAPABILITY_PATTERN.ASYNC,
+      callbackUrl: mockCallbackUrl,
+    });
+    expect(mockNext).toHaveBeenCalledWith();
+  });
+
+  it("should call next() with ZodError when executeCapabilityInputSchema.parse failed", () => {
+    mockRequest = {
+      ...mockRequest,
+      params: {
+        capability: "undefined-capability",
+      },
+    };
+
+    executeMiddleware();
+
+    expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
   });
 });

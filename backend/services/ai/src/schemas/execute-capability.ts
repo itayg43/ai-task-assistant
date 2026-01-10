@@ -8,9 +8,19 @@ export const executeCapabilityInputSchema = z.object({
       message: "Invalid",
     }),
   }),
-  query: z.object({
-    pattern: z.nativeEnum(CAPABILITY_PATTERN, {
+  query: z.discriminatedUnion(
+    "pattern",
+    [
+      z.object({
+        pattern: z.literal(CAPABILITY_PATTERN.ASYNC),
+        callbackUrl: z.string().url(),
+      }),
+      z.object({
+        pattern: z.literal(CAPABILITY_PATTERN.SYNC),
+      }),
+    ],
+    {
       message: "Invalid",
-    }),
-  }),
+    }
+  ),
 });

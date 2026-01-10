@@ -189,6 +189,147 @@ vi.mock("@middlewares/token-bucket-rate-limiter", () => ({
 }));
 ```
 
+### Schema Validation Testing
+
+**Prefer real schema validation over mocking when testing middleware that uses fixed schemas.**
+
+**When to use real schema validation:**
+
+- Testing middleware that validates requests using fixed schemas (e.g., `executeCapabilityInputSchema`)
+- The schema is part of the codebase being tested
+- You want to ensure schema changes are caught by tests automatically
+- Testing the integration between middleware and schema validation
+
+**When to mock schemas:**
+
+- Testing middleware that uses dynamic schemas from configuration (e.g., `capabilityConfig.inputSchema`)
+- The schema comes from external sources or runtime configuration
+- Testing error handling paths requires controlling schema behavior
+
+**Example with real schema validation:**
+
+```typescript
+import { Request, Response } from "express";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { capabilities } from "@capabilities";
+import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
+import { mockAiServiceRequestId } from "@mocks/request-ids";
+
+vi.mock("@capabilities");
+
+describe("validateExecutableCapability", () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockNext: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockRequest = {
+      params: { capability: CAPABILITY.PARSE_TASK },
+      query: { pattern: CAPABILITY_PATTERN.SYNC },
+    };
+    mockResponse = { locals: { requestId: mockAiServiceRequestId } };
+    mockNext = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should validate successfully with real schema", () => {
+    validateExecutableCapability(
+      mockRequest as Request,
+      mockResponse as Response,
+      mockNext
+    );
+
+    expect(mockResponse.locals!.capabilityValidatedQuery).toEqual({
+      pattern: CAPABILITY_PATTERN.SYNC,
+    });
+    expect(mockNext).toHaveBeenCalledWith();
+  });
+
+  it("should call next() with ZodError when schema validation fails", () => {
+    mockRequest.params!.capability = "invalid-capability" as any;
+
+    validateExecutableCapability(
+      mockRequest as Request,
+      mockResponse as Response,
+      mockNext
+    );
+
+    expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+  });
+});
+```
+
+**Example with mocked schema (for dynamic schemas):**
+
+```typescript
+import { NextFunction, Request, Response } from "express";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import z from "zod";
+
+import {
+  mockParseTaskCapabilityConfig,
+  mockParseTaskValidatedInput,
+} from "@capabilities/parse-task/parse-task-mocks";
+import { validateCapabilityInput } from "@middlewares/validate-capability-input";
+import { mockAiServiceRequestId } from "@mocks/request-ids";
+import { AnyCapabilityConfig } from "@types";
+
+describe("validateCapabilityInput", () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockNextFunction: NextFunction;
+  let mockInputSchema: z.ZodSchema<any>;
+  let mockInputSchemaParseFunction: ReturnType<typeof vi.fn>;
+  let mockCapabilityConfig: AnyCapabilityConfig;
+
+  beforeEach(() => {
+    mockInputSchemaParseFunction = vi.fn();
+    mockInputSchema = {
+      parse: mockInputSchemaParseFunction,
+    } as unknown as z.ZodSchema<any>;
+
+    mockCapabilityConfig = {
+      ...mockParseTaskCapabilityConfig,
+      inputSchema: mockInputSchema,
+    };
+
+    mockRequest = { body: {} };
+    mockResponse = {
+      locals: {
+        requestId: mockAiServiceRequestId,
+        capabilityConfig: mockCapabilityConfig,
+      },
+    };
+    mockNextFunction = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should validate using capability config schema", async () => {
+    mockInputSchemaParseFunction.mockReturnValue(mockParseTaskValidatedInput);
+
+    await validateCapabilityInput(
+      mockRequest as Request,
+      mockResponse as Response,
+      mockNextFunction
+    );
+
+    expect(mockInputSchemaParseFunction).toHaveBeenCalledWith(mockRequest.body);
+    expect(mockResponse.locals?.capabilityValidatedInput).toEqual(
+      mockParseTaskValidatedInput
+    );
+    expect(mockNextFunction).toHaveBeenCalled();
+  });
+});
+```
+
 ### Mock Value Files
 
 **Create `*-mocks.ts` files for reusable mock data constants and objects.**

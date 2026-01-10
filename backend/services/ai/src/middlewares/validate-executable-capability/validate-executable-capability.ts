@@ -12,7 +12,7 @@ export const validateExecutableCapability = (
   try {
     const {
       params: { capability },
-      query: { pattern },
+      query,
     } = executeCapabilityInputSchema.parse(req);
 
     const capabilityConfig =
@@ -23,7 +23,7 @@ export const validateExecutableCapability = (
     }
 
     res.locals.capabilityConfig = capabilityConfig;
-    res.locals.capabilityPattern = pattern;
+    res.locals.capabilityValidatedQuery = query;
 
     next();
   } catch (error) {
