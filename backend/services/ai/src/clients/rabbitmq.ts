@@ -1,28 +1,68 @@
 import * as amqp from "amqplib";
 
 import { env } from "@config/env";
+import { RABBITMQ_QUEUE } from "@constants";
 import {
   closeRabbitMQConnection,
   createRabbitMQConnection,
 } from "@shared/clients/rabbitmq";
+import { RabbitMQQueue } from "@types";
+import { CapabilitiesQueueMessageData } from "src/types/capabilities-queue-message-data";
 
-let rabbitMQConnection: amqp.ChannelModel | null = null;
+let globalConnection: amqp.ChannelModel | null = null;
+let globalChannel: amqp.Channel | null = null;
 
 export const connectRabbitMQClient = async () => {
-  rabbitMQConnection = await createRabbitMQConnection(env.RABBITMQ_URL);
+  globalConnection = await createRabbitMQConnection(env.RABBITMQ_URL);
 };
 
 export const closeRabbitMQClient = async () => {
-  if (rabbitMQConnection) {
-    await closeRabbitMQConnection(rabbitMQConnection);
-    rabbitMQConnection = null;
+  if (globalChannel) {
+    await globalChannel.close();
+    globalChannel = null;
+  }
+
+  if (globalConnection) {
+    await closeRabbitMQConnection(globalConnection);
+    globalConnection = null;
   }
 };
 
 export const getRabbitMQConnection = (): amqp.ChannelModel => {
-  if (!rabbitMQConnection) {
-    throw new Error("RabbitMQ connection not initialized");
+  if (!globalConnection) {
+    throw new Error("Global rabbitmq connection not initialized");
   }
 
-  return rabbitMQConnection;
+  return globalConnection;
+};
+
+export const getRabbitMQChannel = async (
+  queue: RabbitMQQueue
+): Promise<amqp.Channel> => {
+  const connection = getRabbitMQConnection();
+
+  if (!globalChannel) {
+    globalChannel = await connection.createChannel();
+  }
+
+  await globalChannel.assertQueue(queue, {
+    durable: true,
+  });
+
+  return globalChannel;
+};
+
+type MessageDataMap = {
+  [RABBITMQ_QUEUE.CAPABILITIES]: CapabilitiesQueueMessageData;
+};
+
+export const sendMessageToRabbitMQQueue = async <TQueue extends RabbitMQQueue>(
+  queue: TQueue,
+  messageData: MessageDataMap[TQueue]
+) => {
+  const channel = await getRabbitMQChannel(queue);
+
+  channel.sendToQueue(queue, Buffer.from(JSON.stringify(messageData)), {
+    persistent: true,
+  });
 };
