@@ -16,14 +16,12 @@ import { consumeCapabilitiesMessage } from "@workers/capabilities-worker";
 
 const {
   mockGetRabbitMQChannel,
-  mockExecuteSyncPattern,
   mockWithRetry,
   mockCapabilities,
   mockExtractErrorInfo,
   mockTasksClient,
 } = vi.hoisted(() => ({
   mockGetRabbitMQChannel: vi.fn(),
-  mockExecuteSyncPattern: vi.fn(),
   mockWithRetry: vi.fn(),
   mockCapabilities: {
     "parse-task": {
@@ -31,6 +29,11 @@ const {
       inputSchema: {
         parse: vi.fn((input) => input),
       },
+      handler: vi.fn(),
+      outputSchema: {
+        parse: vi.fn((result) => result),
+      },
+      promptInjectionFields: [],
     },
   },
   mockExtractErrorInfo: vi.fn(),
@@ -42,13 +45,6 @@ const {
 vi.mock("@clients/rabbitmq", () => ({
   getRabbitMQChannel: mockGetRabbitMQChannel,
 }));
-
-vi.mock(
-  "@controllers/capabilities-controller/executors/execute-sync-pattern",
-  () => ({
-    executeSyncPattern: mockExecuteSyncPattern,
-  })
-);
 
 vi.mock("@shared/utils/with-retry", () => ({
   withRetry: mockWithRetry,
@@ -87,9 +83,13 @@ describe("capabilitiesWorker", () => {
     // Configure the mock to return our mockChannel when getRabbitMQChannel is called
     mockGetRabbitMQChannel.mockResolvedValue(mockChannel);
 
-    mockExecuteSyncPattern.mockResolvedValue({
+    // Setup capability handler and output schema mocks
+    mockCapabilities["parse-task"].handler.mockResolvedValue({
       message: "success",
     });
+    mockCapabilities["parse-task"].outputSchema.parse.mockImplementation(
+      (result) => result
+    );
 
     mockWithRetry.mockImplementation(async (_config, fn) => {
       return await fn();
@@ -148,14 +148,16 @@ describe("capabilitiesWorker", () => {
       // 2. Validates it against capabilitiesQueueMessageDataSchema
       // 3. Retrieves the capability config from the capabilities registry
       // 4. Validates the input using the capability's inputSchema.parse()
-      // 5. Passes the validated input and config to executeSyncPattern
-      expect(mockExecuteSyncPattern).toHaveBeenCalledWith(
-        mockAiServiceRequestId,
-        expect.objectContaining({
-          name: CAPABILITY.PARSE_TASK,
-        }),
-        mockParseTaskValidatedInput
+      // 5. Executes the capability handler and validates output
+      expect(mockCapabilities["parse-task"].handler).toHaveBeenCalledWith(
+        mockParseTaskValidatedInput,
+        mockAiServiceRequestId
       );
+      expect(
+        mockCapabilities["parse-task"].outputSchema.parse
+      ).toHaveBeenCalledWith({
+        message: "success",
+      });
     });
 
     it("should nack message when JSON parsing fails", async () => {
@@ -174,7 +176,7 @@ describe("capabilitiesWorker", () => {
         false
       );
       expect(mockChannel.ack).not.toHaveBeenCalled();
-      expect(mockExecuteSyncPattern).not.toHaveBeenCalled();
+      expect(mockCapabilities["parse-task"].handler).not.toHaveBeenCalled();
     });
 
     it("should nack message when schema validation fails", async () => {
@@ -196,7 +198,7 @@ describe("capabilitiesWorker", () => {
         false
       );
       expect(mockChannel.ack).not.toHaveBeenCalled();
-      expect(mockExecuteSyncPattern).not.toHaveBeenCalled();
+      expect(mockCapabilities["parse-task"].handler).not.toHaveBeenCalled();
     });
 
     it("should handle capability not found error", async () => {
@@ -245,7 +247,10 @@ describe("capabilitiesWorker", () => {
       const mockResult = {
         message: "success",
       };
-      mockExecuteSyncPattern.mockResolvedValue(mockResult);
+      mockCapabilities["parse-task"].handler.mockResolvedValue(mockResult);
+      mockCapabilities["parse-task"].outputSchema.parse.mockReturnValue(
+        mockResult
+      );
 
       await consumeCapabilitiesMessage();
 
@@ -273,7 +278,7 @@ describe("capabilitiesWorker", () => {
   describe("sendErrorCallbackHandler", () => {
     it("should send error callback with correct payload and acknowledge message when execution fails", async () => {
       const executionError = new InternalError("Execution failed");
-      mockExecuteSyncPattern.mockRejectedValue(executionError);
+      mockCapabilities["parse-task"].handler.mockRejectedValue(executionError);
       const mockErrorInfo = {
         status: 500,
         message: "Execution failed",
@@ -301,7 +306,7 @@ describe("capabilitiesWorker", () => {
 
     it("should nack message when error callback fails after retries", async () => {
       const executionError = new InternalError("Execution failed");
-      mockExecuteSyncPattern.mockRejectedValue(executionError);
+      mockCapabilities["parse-task"].handler.mockRejectedValue(executionError);
       mockExtractErrorInfo.mockReturnValue({
         status: 500,
         message: "Execution failed",
