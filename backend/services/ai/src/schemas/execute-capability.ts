@@ -1,26 +1,12 @@
 import z from "zod";
 
-import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import { CAPABILITY } from "@constants";
 
 export const executeCapabilityInputSchema = z.object({
   params: z.object({
-    capability: z.nativeEnum(CAPABILITY, {
-      message: "Invalid",
-    }),
+    capability: z.nativeEnum(CAPABILITY),
   }),
-  query: z.discriminatedUnion(
-    "pattern",
-    [
-      z.object({
-        pattern: z.literal(CAPABILITY_PATTERN.ASYNC),
-        callbackUrl: z.string().url(),
-      }),
-      z.object({
-        pattern: z.literal(CAPABILITY_PATTERN.SYNC),
-      }),
-    ],
-    {
-      message: "Invalid",
-    }
-  ),
+  query: z.object({
+    callbackUrl: z.string().url(),
+  }),
 });

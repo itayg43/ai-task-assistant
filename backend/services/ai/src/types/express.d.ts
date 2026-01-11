@@ -1,8 +1,7 @@
 import z from "zod";
 
-import { CAPABILITY_PATTERN } from "@constants";
-import { AnyCapabilityConfig } from "@types";
 import { executeCapabilityInputSchema } from "@schemas";
+import { AnyCapabilityConfig } from "@types";
 
 declare global {
   namespace Express {
