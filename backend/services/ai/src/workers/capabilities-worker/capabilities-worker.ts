@@ -14,12 +14,6 @@ import { withRetry } from "@shared/utils/with-retry";
 
 const logger = createLogger("capabilitiesWorker");
 
-const wait = async (delayMs: number = 1500) => {
-  return new Promise((resolve) => {
-    setTimeout(resolve, delayMs);
-  });
-};
-
 const sendSuccessCallbackHandler = async (
   channel: amqp.Channel,
   message: amqp.ConsumeMessage,
@@ -28,7 +22,7 @@ const sendSuccessCallbackHandler = async (
   _result: unknown
 ) => {
   try {
-    await withRetry(DEFAULT_RETRY_CONFIG, wait, {
+    await withRetry(DEFAULT_RETRY_CONFIG, async () => {}, {
       operation: "sendSuccessCallback",
     });
 
@@ -49,7 +43,7 @@ const sendErrorCallbackHandler = async (
   _errorInfo: ExtractedErrorInfo
 ) => {
   try {
-    await withRetry(DEFAULT_RETRY_CONFIG, wait, {
+    await withRetry(DEFAULT_RETRY_CONFIG, async () => {}, {
       operation: "sendErrorCallback",
     });
 
