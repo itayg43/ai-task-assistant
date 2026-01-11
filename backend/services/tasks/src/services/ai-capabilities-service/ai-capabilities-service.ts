@@ -32,7 +32,7 @@ export const executeCapability = async <
     const { data } = await aiClient.post<
       TAiCapabilityResponse<TCapabilityResult>
     >(
-      `/capabilities/${config.capability}?pattern=${config.pattern}`,
+      `/capabilities/${config.capability}?pattern=${config.pattern}&callbackUrl=${config.callbackUrl}`,
       config.params
     );
 

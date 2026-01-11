@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { NextFunction, Request, Response, Router } from "express";
+import { StatusCodes } from "http-status-codes";
 
 import { tokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter";
 import { healthRouter } from "@routers/health-router";
@@ -24,4 +25,17 @@ routers.use(
     tokenBucketRateLimiter.api,
   ],
   tasksRouter
+);
+
+routers.use(
+  "/api/v1/webhooks",
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      console.log(JSON.stringify(req.body, null, 2));
+
+      res.sendStatus(StatusCodes.OK);
+    } catch (error) {
+      next(error);
+    }
+  }
 );

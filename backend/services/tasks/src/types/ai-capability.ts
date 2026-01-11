@@ -28,6 +28,7 @@ export type TAiCapabilityResponse<TResult> = {
 
 export type TExecuteCapabilityConfig<TCapability extends TAiCapability> = {
   capability: TCapability;
-  pattern: "sync";
+  pattern: "sync" | "async";
+  callbackUrl: string;
   params: TAiCapabilityMap[TCapability]["params"];
 };

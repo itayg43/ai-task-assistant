@@ -23,7 +23,8 @@ export const createTaskHandler = async (
     TParsedTask
   >(requestId, {
     capability: "parse-task",
-    pattern: "sync",
+    pattern: "async",
+    callbackUrl: "http://tasks:3001/api/v1/webhooks",
     params: {
       naturalLanguage,
       config: DEFAULT_PARSE_TASK_CONFIG,
