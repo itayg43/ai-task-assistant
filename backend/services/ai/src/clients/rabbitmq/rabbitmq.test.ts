@@ -10,6 +10,7 @@ import {
 } from "@clients/rabbitmq/rabbitmq";
 import { CAPABILITY, RABBITMQ_QUEUE } from "@constants";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
+import { ServiceUnavailableError } from "@shared/errors";
 import { CapabilitiesQueueMessageData } from "@types";
 
 const { mockCreateRabbitMQConnection, mockCloseRabbitMQConnection, mockEnv } =
@@ -37,8 +38,9 @@ describe("rabbitmq", () => {
   beforeEach(() => {
     mockChannel = {
       assertQueue: vi.fn().mockResolvedValue(undefined),
-      sendToQueue: vi.fn(),
+      sendToQueue: vi.fn().mockReturnValue(true),
       close: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn(),
     } as unknown as amqp.Channel;
 
     mockConnection = {
@@ -134,6 +136,21 @@ describe("rabbitmq", () => {
       expect(channel).toBe(mockChannel);
     });
 
+    it("should set up error and close listeners on channel creation", async () => {
+      await connectRabbitMQClient();
+
+      await getRabbitMQChannel(RABBITMQ_QUEUE.CAPABILITIES);
+
+      expect(mockChannel.on).toHaveBeenCalledWith(
+        "error",
+        expect.any(Function)
+      );
+      expect(mockChannel.on).toHaveBeenCalledWith(
+        "close",
+        expect.any(Function)
+      );
+    });
+
     it("should reuse existing channel on subsequent calls", async () => {
       await connectRabbitMQClient();
 
@@ -227,6 +244,15 @@ describe("rabbitmq", () => {
       await expect(
         sendMessageToRabbitMQQueue(RABBITMQ_QUEUE.CAPABILITIES, mockMessageData)
       ).rejects.toThrow(expect.any(Error));
+    });
+
+    it("should throw error when sendToQueue returns false (buffer full)", async () => {
+      await connectRabbitMQClient();
+      (mockChannel.sendToQueue as Mock).mockReturnValue(false);
+
+      await expect(
+        sendMessageToRabbitMQQueue(RABBITMQ_QUEUE.CAPABILITIES, mockMessageData)
+      ).rejects.toThrow(ServiceUnavailableError);
     });
   });
 });

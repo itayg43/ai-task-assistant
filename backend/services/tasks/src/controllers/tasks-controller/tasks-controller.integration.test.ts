@@ -168,7 +168,8 @@ describe("tasksController (integration)", () => {
         errorType: AI_ERROR_TYPE.RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED,
         errorClass: ServiceUnavailableError,
         expectedStatus: StatusCodes.SERVICE_UNAVAILABLE,
-        errorMessage: "Failed to send parse-task message to capabilities queue",
+        errorMessage:
+          "Unable to process your request at this time. Please try again or contact support.",
         naturalLanguage: mockNaturalLanguage,
         description: "RabbitMQ send message failure",
       },

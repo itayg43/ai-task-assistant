@@ -16,6 +16,7 @@ export type TAiPromptInjectionDetectedErrorData = TBaseAiErrorData & {
 };
 
 export type TAiRabbitMQSendMessageToQueueFailedErrorData = TBaseAiErrorData & {
+  queue: string;
   type: typeof AI_ERROR_TYPE.RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED;
 };
 

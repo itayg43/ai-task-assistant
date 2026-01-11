@@ -10,7 +10,7 @@ import {
   mockRequestId,
   mockTokenUsage,
 } from "@mocks/tasks-mocks";
-import { BadRequestError } from "@shared/errors";
+import { BadRequestError, ServiceUnavailableError } from "@shared/errors";
 import { Mocked } from "@shared/types";
 import { TAiParseTaskVagueInputErrorData } from "@types";
 
@@ -204,6 +204,31 @@ describe("tasksErrorHandler", () => {
       const sanitizedError = next.mock.calls[0][0] as BadRequestError;
       expect(sanitizedError).not.toBe(promptInjectionError);
       expect(sanitizedError.message).toBe(mockPromptInjectionErrorData.message);
+      expect(sanitizedError.context).toBeUndefined();
+    });
+  });
+
+  describe(`${AI_ERROR_TYPE.RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED}`, () => {
+    it("should sanitize error: create new ServiceUnavailableError with user-facing message", () => {
+      const rabbitMqErrorData = {
+        message: "Failed to send message to capabilities queue",
+        queue: "capabilities",
+        type: AI_ERROR_TYPE.RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED,
+      };
+      const rabbitMqError = new ServiceUnavailableError(
+        rabbitMqErrorData.message,
+        rabbitMqErrorData
+      );
+
+      executeMiddleware(rabbitMqError);
+
+      expect(next).toHaveBeenCalledWith(expect.any(ServiceUnavailableError));
+      const sanitizedError = next.mock.calls[0][0] as ServiceUnavailableError;
+      expect(sanitizedError).not.toBe(rabbitMqError);
+      expect(sanitizedError.message).toBe(
+        "Unable to process your request at this time. Please try again or contact support."
+      );
+      // Verify no internal details leak to the client
       expect(sanitizedError.context).toBeUndefined();
     });
   });

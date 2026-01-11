@@ -1,7 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
-import { executeAsyncPattern } from "@controllers/capabilities-controller/executors/execute-async-pattern";
+import { sendMessageToRabbitMQQueue } from "@clients/rabbitmq";
+import { RABBITMQ_QUEUE } from "@constants";
 import { getCapabilityConfig } from "@utils/get-capability-config";
 import { getCapabilityValidatedInput } from "@utils/get-capability-validated-input";
 import { getCapabilityValidatedQuery } from "@utils/get-capability-validated-query";
@@ -13,20 +14,19 @@ export const executeCapability = async (
 ) => {
   try {
     const requestId = res.locals.requestId;
-
     const config = getCapabilityConfig(res);
-    const validatedInput = getCapabilityValidatedInput(res);
-    const validatedQuery = getCapabilityValidatedQuery(res);
+    const input = getCapabilityValidatedInput(res);
+    const { callbackUrl } = getCapabilityValidatedQuery(res);
 
-    const message = await executeAsyncPattern(
+    await sendMessageToRabbitMQQueue(RABBITMQ_QUEUE.CAPABILITIES, {
       requestId,
-      config,
-      validatedInput,
-      validatedQuery.callbackUrl
-    );
+      capability: config.name,
+      input,
+      callbackUrl,
+    });
 
     res.status(StatusCodes.ACCEPTED).json({
-      message,
+      message: "The request has been received and will be executed shortly.",
       aiServiceRequestId: requestId,
     });
   } catch (error) {
