@@ -26,9 +26,13 @@ export type TAiCapabilityResponse<TResult> = {
   aiServiceRequestId: string;
 };
 
+export type TAiCapabilityImmediateResponse = {
+  message: string;
+  aiServiceRequestId: string;
+};
+
 export type TExecuteCapabilityConfig<TCapability extends TAiCapability> = {
   capability: TCapability;
-  pattern: "sync" | "async";
   callbackUrl: string;
   params: TAiCapabilityMap[TCapability]["params"];
 };

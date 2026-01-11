@@ -1,5 +1,4 @@
-import { NextFunction, Request, Response, Router } from "express";
-import { StatusCodes } from "http-status-codes";
+import { Router } from "express";
 
 import { tokenBucketRateLimiter } from "@middlewares/token-bucket-rate-limiter";
 import { healthRouter } from "@routers/health-router";
@@ -9,6 +8,7 @@ import { authentication } from "@shared/middlewares/authentication";
 import { requestId } from "@shared/middlewares/request-id";
 import { requestResponseMetadata } from "@shared/middlewares/request-response-metadata";
 import { metricsRouter } from "@shared/routers";
+import { webhooksRouter } from "./webhooks-router";
 
 export const routers = Router();
 
@@ -29,13 +29,6 @@ routers.use(
 
 routers.use(
   "/api/v1/webhooks",
-  (req: Request, res: Response, next: NextFunction) => {
-    try {
-      console.log(JSON.stringify(req.body, null, 2));
-
-      res.sendStatus(StatusCodes.OK);
-    } catch (error) {
-      next(error);
-    }
-  }
+  [authentication, requestResponseMetadata],
+  webhooksRouter
 );

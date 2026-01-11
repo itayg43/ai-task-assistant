@@ -1,4 +1,4 @@
-import { AI_ERROR_TYPE } from "@constants";
+import { AI_ERROR_TYPE, DEFAULT_PARSE_TASK_CONFIG } from "@constants";
 import type { Subtask } from "@repositories/subtasks-repository";
 import type {
   FindTasksResult,
@@ -7,9 +7,11 @@ import type {
 } from "@repositories/tasks-repository";
 import type {
   GetTasksInput,
+  TAiCapabilityImmediateResponse,
   TAiCapabilityResponse,
   TAiParseTaskVagueInputErrorData,
   TAiPromptInjectionDetectedErrorData,
+  TExecuteCapabilityConfig,
   TParsedTask,
 } from "@types";
 
@@ -28,6 +30,12 @@ export const mockParsedTask: TParsedTask = {
   },
   subtasks: null,
 };
+
+export const mockAiCapabilityImmediateResponse: TAiCapabilityImmediateResponse =
+  {
+    message: "The request has been received and will be executed shortly.",
+    aiServiceRequestId: "ai-service-request-id-123",
+  };
 
 export const mockAiCapabilityResponse: TAiCapabilityResponse<TParsedTask> = {
   openaiMetadata: {
@@ -128,3 +136,13 @@ export const mockFindTasksResult: FindTasksResult = {
   currentPage: 1,
   totalPages: 1,
 };
+
+export const mockParsedTaskExecuteCapabilityConfig: TExecuteCapabilityConfig<"parse-task"> =
+  {
+    capability: "parse-task",
+    callbackUrl: "http://tasks:3001/api/v1/webhooks/create-task",
+    params: {
+      naturalLanguage: mockNaturalLanguage,
+      config: DEFAULT_PARSE_TASK_CONFIG,
+    },
+  };

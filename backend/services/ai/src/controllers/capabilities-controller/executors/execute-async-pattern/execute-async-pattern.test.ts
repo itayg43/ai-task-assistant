@@ -48,9 +48,7 @@ describe("executeAsyncPattern", () => {
         callbackUrl: mockCallbackUrl,
       }
     );
-    expect(result).toEqual({
-      message: expect.any(String),
-    });
+    expect(result).toEqual(expect.any(String));
   });
 
   it("should throw InternalError when sendMessageToRabbitMQQueue fails", async () => {

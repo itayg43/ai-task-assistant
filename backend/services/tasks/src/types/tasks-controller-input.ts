@@ -1,5 +1,9 @@
-import { createTaskSchema, getTasksSchema } from "@schemas/tasks-schemas";
 import { z } from "zod";
 
-export type CreateTaskInput = z.infer<typeof createTaskSchema>;
-export type GetTasksInput = z.infer<typeof getTasksSchema>;
+import {
+  createTaskInputSchema,
+  getTasksInputSchema,
+} from "@schemas/tasks-schemas";
+
+export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
+export type GetTasksInput = z.infer<typeof getTasksInputSchema>;

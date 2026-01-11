@@ -5,7 +5,7 @@ type BaseTaskControllerResponse = {
 };
 
 export type CreateTaskResponse = BaseTaskControllerResponse & {
-  task: TaskResponse;
+  message: string;
 };
 
 export type GetTasksResponse = BaseTaskControllerResponse & {

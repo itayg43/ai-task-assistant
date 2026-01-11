@@ -1,5 +1,6 @@
 export type {
   TAiCapability,
+  TAiCapabilityImmediateResponse,
   TAiCapabilityResponse,
   TExecuteCapabilityConfig,
   TOpenaiMetadata,

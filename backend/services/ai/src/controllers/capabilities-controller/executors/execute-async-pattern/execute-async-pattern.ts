@@ -20,9 +20,7 @@ export const executeAsyncPattern = async <TInput, TOutput>(
       callbackUrl,
     });
 
-    return {
-      message: "The request has been received and will be executed shortly.",
-    } as TOutput;
+    return "The request has been received and will be executed shortly." as TOutput;
   } catch (error) {
     const errorMessage = `Failed to send ${config.name} message to ${RABBITMQ_QUEUE.CAPABILITIES} queue`;
 

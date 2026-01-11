@@ -1,71 +1,37 @@
-import { StatusCodes } from "http-status-codes";
-
 import { aiClient } from "@clients/ai";
-import { isHttpError } from "@shared/clients/http";
 import { createLogger } from "@shared/config/create-logger";
-import { BadRequestError, InternalError } from "@shared/errors";
-import { HttpErrorResponseData } from "@shared/types";
 import {
   TAiCapability,
-  TAiCapabilityResponse,
-  TAiErrorData,
+  TAiCapabilityImmediateResponse,
   TExecuteCapabilityConfig,
 } from "@types";
 
 const logger = createLogger("aiCapabilitiesService");
 
-export const executeCapability = async <
-  TCapability extends TAiCapability,
-  TCapabilityResult
->(
+export const executeCapability = async <TCapability extends TAiCapability>(
   requestId: string,
   config: TExecuteCapabilityConfig<TCapability>
-): Promise<TAiCapabilityResponse<TCapabilityResult>> => {
-  const baseLogContext = {
-    requestId,
-    config,
-  };
+): Promise<TAiCapabilityImmediateResponse> => {
+  const { capability, callbackUrl, params } = config;
 
   try {
-    logger.info("Execute capability - starting", baseLogContext);
-
-    const { data } = await aiClient.post<
-      TAiCapabilityResponse<TCapabilityResult>
-    >(
-      `/capabilities/${config.capability}?pattern=${config.pattern}&callbackUrl=${config.callbackUrl}`,
-      config.params
+    const { data } = await aiClient.post<TAiCapabilityImmediateResponse>(
+      `/capabilities/${capability}?callbackUrl=${callbackUrl}`,
+      params
     );
 
-    logger.info("Execute capability - succeeded", {
-      ...baseLogContext,
-      response: data,
+    logger.info(`Successfully called execute ${capability} capability`, {
+      requestId,
+      config,
+      data,
     });
 
     return data;
   } catch (error) {
-    if (isHttpError(error)) {
-      const responseStatus = error.response?.status;
-      const responseData = error.response?.data as HttpErrorResponseData;
-
-      if (!responseData?.message) {
-        logger.error("Execute capability - failed", error, baseLogContext);
-
-        throw new InternalError();
-      }
-
-      const data = responseData as TAiErrorData;
-
-      logger.error("Execute capability - failed", error, {
-        ...baseLogContext,
-        errorData: data,
-      });
-
-      if (responseStatus === StatusCodes.BAD_REQUEST) {
-        throw new BadRequestError(data.message, data);
-      }
-
-      throw new InternalError();
-    }
+    logger.error(`Failed to execute ${capability} capability`, {
+      requestId,
+      config,
+    });
 
     throw error;
   }

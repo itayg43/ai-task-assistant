@@ -11,13 +11,13 @@ import {
 import { TaskOrderByFields } from "@repositories/tasks-repository";
 import { Prisma } from "@shared/clients/prisma";
 
-export const createTaskSchema = z.object({
+export const createTaskInputSchema = z.object({
   body: z.object({
-    naturalLanguage: z.string().nonempty(),
+    naturalLanguage: z.string().trim().nonempty(),
   }),
 });
 
-export const getTasksSchema = z.object({
+export const getTasksInputSchema = z.object({
   query: z
     .object({
       skip: z.coerce.number().int().min(GET_TASKS_DEFAULT_SKIP).nullish(),

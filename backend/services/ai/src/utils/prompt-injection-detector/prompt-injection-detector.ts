@@ -55,7 +55,7 @@ export const detectInjection = (input: string, requestId: string): string => {
     if (pattern.test(trimmedInput)) {
       const patternType = PATTERN_TYPE_MAP.get(pattern)!;
 
-      logger.error("Prompt injection detected and blocked", {
+      logger.warn("Prompt injection detected and blocked", {
         requestId,
         patternType,
         input: trimmedInput,
