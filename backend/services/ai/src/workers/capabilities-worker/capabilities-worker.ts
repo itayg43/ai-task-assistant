@@ -77,7 +77,6 @@ const capabilitiesMessageHandler = async (
     const validatedInput = config.inputSchema.parse(input);
     const result = await executeSyncPattern(requestId, config, validatedInput);
 
-    // send success callback - handler will ack/nack
     await sendSuccessCallbackHandler(
       channel,
       message,
@@ -88,7 +87,6 @@ const capabilitiesMessageHandler = async (
   } catch (error) {
     const errorInfo = extractErrorInfo(error);
 
-    // send error callback - handler will ack/nack
     await sendErrorCallbackHandler(channel, message, reqId, errorInfo);
   }
 };
