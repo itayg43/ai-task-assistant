@@ -4,17 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   mockParseTaskCapabilityConfig,
-  mockParseTaskOutput,
   mockParseTaskValidatedInput,
 } from "@capabilities/parse-task/parse-task-mocks";
-import { CAPABILITY_PATTERN } from "@constants";
 import { executeCapability } from "@controllers/capabilities-controller/capabilities-controller";
-import { executeSyncPattern } from "@controllers/capabilities-controller/executors/execute-sync-pattern";
-import {
-  mockOpenaiDurationMs,
-  mockOpenaiResponseId,
-  mockOpenaiTokenUsage,
-} from "@mocks/openai-mocks";
+import { executeAsyncPattern } from "@controllers/capabilities-controller/executors/execute-async-pattern";
+import { mockCallbackUrl } from "@mocks/callbackUrl-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { Mocked } from "@shared/types";
 import { getCapabilityConfig } from "@utils/get-capability-config";
@@ -38,22 +32,13 @@ vi.mock("@utils/get-capability-validated-query", () => ({
 }));
 
 vi.mock(
-  "@controllers/capabilities-controller/executors/execute-sync-pattern",
+  "@controllers/capabilities-controller/executors/execute-async-pattern",
   () => ({
-    executeSyncPattern: vi.fn(),
+    executeAsyncPattern: vi.fn(),
   })
 );
 
 describe("capabilitiesController (unit)", () => {
-  const mockExecutorResult = {
-    openaiMetadata: {
-      responseId: mockOpenaiResponseId,
-      tokens: mockOpenaiTokenUsage,
-      durationMs: mockOpenaiDurationMs,
-    },
-    result: mockParseTaskOutput,
-  };
-
   let mockedGetCapabilityConfig: Mocked<typeof getCapabilityConfig>;
   let mockedGetCapabilityValidatedInput: Mocked<
     typeof getCapabilityValidatedInput
@@ -61,11 +46,12 @@ describe("capabilitiesController (unit)", () => {
   let mockedGetCapabilityValidatedQuery: Mocked<
     typeof getCapabilityValidatedQuery
   >;
-  let mockedExecuteSyncPattern: Mocked<typeof executeSyncPattern>;
+  let mockedExecuteAsyncPattern: Mocked<typeof executeAsyncPattern>;
 
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let mockNextFunction: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     mockedGetCapabilityConfig = vi.mocked(getCapabilityConfig);
     mockedGetCapabilityConfig.mockReturnValue(mockParseTaskCapabilityConfig);
@@ -77,11 +63,11 @@ describe("capabilitiesController (unit)", () => {
 
     mockedGetCapabilityValidatedQuery = vi.mocked(getCapabilityValidatedQuery);
     mockedGetCapabilityValidatedQuery.mockReturnValue({
-      pattern: CAPABILITY_PATTERN.SYNC,
+      callbackUrl: mockCallbackUrl,
     });
 
-    mockedExecuteSyncPattern = vi.mocked(executeSyncPattern);
-    mockedExecuteSyncPattern.mockResolvedValue(mockExecutorResult);
+    mockedExecuteAsyncPattern = vi.mocked(executeAsyncPattern);
+    mockedExecuteAsyncPattern.mockResolvedValue("");
 
     mockRequest = {};
     mockResponse = {
@@ -114,14 +100,15 @@ describe("capabilitiesController (unit)", () => {
     expect(mockedGetCapabilityValidatedQuery).toHaveBeenCalledWith(
       mockResponse as Response
     );
-    expect(mockedExecuteSyncPattern).toHaveBeenCalledWith(
+    expect(mockedExecuteAsyncPattern).toHaveBeenCalledWith(
       mockAiServiceRequestId,
       mockParseTaskCapabilityConfig,
-      mockParseTaskValidatedInput
+      mockParseTaskValidatedInput,
+      mockCallbackUrl
     );
-    expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.OK);
+    expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.ACCEPTED);
     expect(mockResponse.json).toHaveBeenCalledWith({
-      ...mockExecutorResult,
+      message: expect.any(String),
       aiServiceRequestId: mockAiServiceRequestId,
     });
     expect(mockNextFunction).not.toHaveBeenCalled();
@@ -129,7 +116,7 @@ describe("capabilitiesController (unit)", () => {
 
   it("should pass executor errors to next", async () => {
     const mockError = new Error("failure");
-    mockedExecuteSyncPattern.mockRejectedValue(mockError);
+    mockedExecuteAsyncPattern.mockRejectedValue(mockError);
 
     await executeCapability(
       mockRequest as Request,

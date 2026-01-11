@@ -24,11 +24,12 @@ export const executeAsyncPattern = async <TInput, TOutput>(
       message: "The request has been received and will be executed shortly.",
     } as TOutput;
   } catch (error) {
-    const errorMessage = "Failed to send message to queue";
+    const errorMessage = `Failed to send ${config.name} message to ${RABBITMQ_QUEUE.CAPABILITIES} queue`;
 
     logger.error(errorMessage, error, {
       requestId,
       capability: config.name,
+      callbackUrl,
     });
 
     throw new InternalError(errorMessage, {

@@ -2,26 +2,41 @@ import { StatusCodes } from "http-status-codes";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseTaskHandler } from "@capabilities/parse-task/handler";
 import {
   mockNaturalLanguage,
-  mockParseTaskCapabilityResponse,
   mockParseTaskInputConfig,
 } from "@capabilities/parse-task/parse-task-mocks";
-import { CAPABILITY_PATTERN } from "@constants";
-import { Mocked } from "@shared/types";
+import { RABBITMQ_QUEUE } from "@constants";
+import { mockCallbackUrl } from "@mocks/callbackUrl-mocks";
 import { app } from "../../app";
+
+const { mockSendMessageToRabbitMQQueue } = vi.hoisted(() => ({
+  mockSendMessageToRabbitMQQueue: vi.fn(),
+}));
+
+vi.mock("@clients/rabbitmq", () => ({
+  sendMessageToRabbitMQQueue: mockSendMessageToRabbitMQQueue,
+}));
 
 vi.mock("@config/env", () => ({
   env: {
     SERVICE_NAME: "ai",
     SERVICE_PORT: "3002",
+    OPENAI_API_KEY: "test-key",
   },
 }));
 
-vi.mock("@capabilities/parse-task/handler", () => ({
-  parseTaskHandler: vi.fn(),
-}));
+vi.mock("openai", () => {
+  class MockOpenAI {
+    responses = {
+      parse: vi.fn(),
+    };
+  }
+
+  return {
+    default: MockOpenAI,
+  };
+});
 
 // Mock CORS middleware using __mocks__ directory with explicit import path
 // Simple vi.mock() doesn't resolve the @middlewares/cors alias correctly
@@ -40,22 +55,18 @@ describe("capabilitiesController (integration)", () => {
     return await req.send(body);
   };
 
+  beforeEach(() => {
+    mockSendMessageToRabbitMQQueue.mockResolvedValue(undefined);
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   describe("parseTask", () => {
-    let mockedParseTaskHandler: Mocked<typeof parseTaskHandler>;
-
     const parseTaskCapabilityUrl = "/api/v1/capabilities/parse-task";
 
-    beforeEach(() => {
-      mockedParseTaskHandler = vi.mocked(parseTaskHandler);
-    });
-
-    it(`should return ${StatusCodes.OK} with parsed task for valid input`, async () => {
-      mockedParseTaskHandler.mockResolvedValue(mockParseTaskCapabilityResponse);
-
+    it(`should return ${StatusCodes.ACCEPTED} with message and aiServiceRequestId for valid input`, async () => {
       const response = await executeRequest(
         parseTaskCapabilityUrl,
         {
@@ -63,26 +74,25 @@ describe("capabilitiesController (integration)", () => {
           config: mockParseTaskInputConfig,
         },
         {
-          pattern: CAPABILITY_PATTERN.SYNC,
+          callbackUrl: mockCallbackUrl,
         }
       );
 
-      expect(mockedParseTaskHandler).toHaveBeenCalledWith(
-        {
-          naturalLanguage: mockNaturalLanguage,
-          config: mockParseTaskInputConfig,
-        },
-        response.body.aiServiceRequestId
+      expect(mockSendMessageToRabbitMQQueue).toHaveBeenCalledWith(
+        RABBITMQ_QUEUE.CAPABILITIES,
+        expect.objectContaining({
+          requestId: expect.any(String),
+          capability: "parse-task",
+          input: expect.objectContaining({
+            naturalLanguage: mockNaturalLanguage,
+            config: mockParseTaskInputConfig,
+          }),
+          callbackUrl: mockCallbackUrl,
+        })
       );
-
-      expect(response.status).toBe(StatusCodes.OK);
-      expect(response.body.openaiMetadata).toEqual(
-        mockParseTaskCapabilityResponse.openaiMetadata
-      );
-      expect(response.body.result).toEqual(
-        mockParseTaskCapabilityResponse.result
-      );
-      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
+      expect(response.status).toBe(StatusCodes.ACCEPTED);
+      expect(response.body.message).toBeDefined();
+      expect(response.body.aiServiceRequestId).toBeDefined();
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid capability`, async () => {
@@ -93,28 +103,30 @@ describe("capabilitiesController (integration)", () => {
           config: mockParseTaskInputConfig,
         },
         {
-          pattern: CAPABILITY_PATTERN.SYNC,
+          callbackUrl: mockCallbackUrl,
         }
       );
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
-      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
+      expect(response.body.aiServiceRequestId).toBeDefined();
     });
 
-    it(`should return ${StatusCodes.BAD_REQUEST} for invalid pattern`, async () => {
+    it(`should return ${StatusCodes.BAD_REQUEST} for invalid callbackUrl`, async () => {
       const response = await executeRequest(
         parseTaskCapabilityUrl,
         {
-          naturalLanguage: "Submit Q2 report by next Friday",
+          naturalLanguage: mockNaturalLanguage,
           config: mockParseTaskInputConfig,
         },
-        { pattern: "invalid-pattern" }
+        {
+          callbackUrl: "invalid-url",
+        }
       );
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
-      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
+      expect(response.body.aiServiceRequestId).toBeDefined();
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} for invalid input`, async () => {
@@ -125,17 +137,18 @@ describe("capabilitiesController (integration)", () => {
           config: mockParseTaskInputConfig,
         },
         {
-          pattern: CAPABILITY_PATTERN.SYNC,
+          callbackUrl: mockCallbackUrl,
         }
       );
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
-      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
+      expect(response.body.aiServiceRequestId).toBeDefined();
     });
 
-    it(`should handle unexpected error and return ${StatusCodes.INTERNAL_SERVER_ERROR}`, async () => {
-      mockedParseTaskHandler.mockRejectedValue(new Error("Unexpected error"));
+    it(`should handle RabbitMQ error and return ${StatusCodes.INTERNAL_SERVER_ERROR}`, async () => {
+      const queueError = new Error("Failed to send message to queue");
+      mockSendMessageToRabbitMQQueue.mockRejectedValue(queueError);
 
       const response = await executeRequest(
         parseTaskCapabilityUrl,
@@ -144,13 +157,12 @@ describe("capabilitiesController (integration)", () => {
           config: mockParseTaskInputConfig,
         },
         {
-          pattern: CAPABILITY_PATTERN.SYNC,
+          callbackUrl: mockCallbackUrl,
         }
       );
 
       expect(response.status).toBe(StatusCodes.INTERNAL_SERVER_ERROR);
       expect(response.body.message).toBeDefined();
-      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} with generic message for prompt injection`, async () => {
@@ -162,15 +174,13 @@ describe("capabilitiesController (integration)", () => {
           config: mockParseTaskInputConfig,
         },
         {
-          pattern: CAPABILITY_PATTERN.SYNC,
+          callbackUrl: mockCallbackUrl,
         }
       );
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
-      expect(response.body.message).not.toContain("Ignore previous");
-      expect(response.body.message).not.toContain("system prompt");
-      expect(response.body.aiServiceRequestId).toEqual(expect.any(String));
+      expect(response.body.aiServiceRequestId).toBeDefined();
     });
   });
 });

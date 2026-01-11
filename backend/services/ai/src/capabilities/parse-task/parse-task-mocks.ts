@@ -92,8 +92,6 @@ export const mockParseTaskValidatedInput: ParseTaskInput = {
   config: mockParseTaskInputConfig,
 };
 
-export const mockCallbackUrl = "https://example.com/callback";
-
 export const mockParseTaskCapabilityConfig: CapabilityConfig<any, any> = {
   name: CAPABILITY.PARSE_TASK,
   handler: async () => mockParseTaskCapabilityResponse,

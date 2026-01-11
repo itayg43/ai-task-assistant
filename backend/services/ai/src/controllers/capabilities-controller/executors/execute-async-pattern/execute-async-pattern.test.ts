@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  mockCallbackUrl,
   mockParseTaskCapabilityConfig,
   mockParseTaskValidatedInput,
 } from "@capabilities/parse-task/parse-task-mocks";
 import { AI_ERROR_TYPE, RABBITMQ_QUEUE } from "@constants";
 import { executeAsyncPattern } from "@controllers/capabilities-controller/executors/execute-async-pattern";
+import { mockCallbackUrl } from "@mocks/callbackUrl-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { CapabilityConfig } from "@types";
 
@@ -31,7 +31,7 @@ describe("executeAsyncPattern", () => {
     vi.clearAllMocks();
   });
 
-  it("should send message to queue and return message", async () => {
+  it("should send message to queue and return success message", async () => {
     const result = await executeAsyncPattern(
       mockAiServiceRequestId,
       mockConfig,
