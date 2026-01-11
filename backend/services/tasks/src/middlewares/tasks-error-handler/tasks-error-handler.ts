@@ -6,10 +6,13 @@ import {
   recordVagueInput,
 } from "@metrics/tasks-metrics";
 import { openaiUpdateTokenUsage } from "@middlewares/token-usage-rate-limiter";
+import { createLogger } from "@shared/config/create-logger";
 import { BadRequestError, ServiceUnavailableError } from "@shared/errors";
 import { extractErrorInfo } from "@shared/utils/extract-error-info";
 import { TAiErrorData, TAiParseTaskVagueInputErrorData } from "@types";
 import { extractOpenaiTokenUsage } from "@utils/extract-openai-token-usage";
+
+const logger = createLogger("tasksErrorHandler");
 
 export const tasksErrorHandler = (
   err: unknown,
@@ -18,6 +21,7 @@ export const tasksErrorHandler = (
   next: NextFunction
 ) => {
   const { context } = extractErrorInfo(err);
+  const { requestId } = res.locals;
 
   if (!context?.type) {
     next(err);
@@ -26,6 +30,12 @@ export const tasksErrorHandler = (
   }
 
   const errorData = context as TAiErrorData;
+
+  logger.error(`Handling AI error type: ${errorData.type}`, err, {
+    requestId,
+    errorData,
+  });
+
   switch (errorData.type) {
     case AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR: {
       parseTaskVagueInputErrorHandler(req, res, next, errorData);

@@ -234,7 +234,7 @@ describe("tasksErrorHandler", () => {
   });
 
   describe("Error passthrough", () => {
-    it("should pass through non-BaseError errors", () => {
+    it("should pass through non-BaseError errors without logging", () => {
       const genericError = new Error("Generic error");
 
       executeMiddleware(genericError);
@@ -242,7 +242,7 @@ describe("tasksErrorHandler", () => {
       expect(mockedRecordVagueInput).not.toHaveBeenCalled();
     });
 
-    it("should pass through BaseError without context.type", () => {
+    it("should pass through BaseError without context.type without logging", () => {
       const baseError = new BadRequestError("Some error", {
         someField: "value",
       });
@@ -252,7 +252,7 @@ describe("tasksErrorHandler", () => {
       expect(next).toHaveBeenCalledWith(baseError);
     });
 
-    it("should pass through BaseError with context.type that's not handled", () => {
+    it("should pass through BaseError with context.type that's not handled without logging", () => {
       const baseError = new BadRequestError("Some error", {
         type: "UNKNOWN_ERROR_TYPE",
       });

@@ -28,7 +28,7 @@ export const executeCapability = async <TCapability extends TAiCapability>(
 
     return data;
   } catch (error) {
-    logger.error(`Failed to execute ${capability} capability`, {
+    logger.error(`Failed to execute ${capability} capability`, error, {
       requestId,
       config,
     });
