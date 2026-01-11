@@ -14,7 +14,7 @@ import {
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { InternalError } from "@shared/errors";
-import { consumeCapabilitiesMessage } from "./capabilities-worker";
+import { consumeCapabilitiesMessage } from "@workers/capabilities-worker";
 
 const {
   mockGetRabbitMQChannel,
@@ -22,6 +22,7 @@ const {
   mockWithRetry,
   mockCapabilities,
   mockExtractErrorInfo,
+  mockTasksClient,
 } = vi.hoisted(() => ({
   mockGetRabbitMQChannel: vi.fn(),
   mockExecuteSyncPattern: vi.fn(),
@@ -35,6 +36,9 @@ const {
     },
   },
   mockExtractErrorInfo: vi.fn(),
+  mockTasksClient: {
+    post: vi.fn(),
+  },
 }));
 
 vi.mock("@clients/rabbitmq", () => ({
@@ -58,6 +62,10 @@ vi.mock("@shared/utils/extract-error-info", () => ({
 
 vi.mock("@capabilities", () => ({
   capabilities: mockCapabilities,
+}));
+
+vi.mock("@clients/tasks", () => ({
+  tasksClient: mockTasksClient,
 }));
 
 describe("capabilitiesWorker", () => {
@@ -134,17 +142,15 @@ describe("capabilitiesWorker", () => {
   });
 
   describe("capabilitiesMessageHandler", () => {
-    it("should parse message payload using schema", async () => {
+    it("should parse message payload, validate input, and execute capability", async () => {
       await consumeCapabilitiesMessage();
 
       // This test verifies that the worker correctly:
       // 1. Parses the raw message content (JSON.parse)
       // 2. Validates it against capabilitiesQueueMessageDataSchema
-      // 3. Validates the input using the capability's inputSchema.parse()
-      // 4. Passes the validated input to executeSyncPattern
-      //
-      // We check the exact validated input to ensure the validation step
-      // (config.inputSchema.parse(input)) was executed correctly.
+      // 3. Retrieves the capability config from the capabilities registry
+      // 4. Validates the input using the capability's inputSchema.parse()
+      // 5. Passes the validated input and config to executeSyncPattern
       expect(mockExecuteSyncPattern).toHaveBeenCalledWith(
         mockAiServiceRequestId,
         expect.objectContaining({
@@ -154,53 +160,154 @@ describe("capabilitiesWorker", () => {
       );
     });
 
-    it("should get capability config from registry", async () => {
+    it("should nack message when JSON parsing fails", async () => {
+      const invalidJsonMessage = {
+        content: Buffer.from("invalid json{"),
+      } as unknown as amqp.ConsumeMessage;
+
+      setupConsumeWithMessage(mockChannel, invalidJsonMessage);
+
       await consumeCapabilitiesMessage();
 
-      // This test verifies that the worker correctly:
-      // 1. Retrieves the capability config from the capabilities registry
-      //    (capabilities[capability] lookup)
-      // 2. Passes the complete config object to executeSyncPattern
-      //
-      // We use expect.any(Object) for input because this test focuses on
-      // config retrieval, not input validation (which is tested above).
-      // We verify the config has the correct capability name to ensure
-      // the registry lookup worked correctly.
-      expect(mockExecuteSyncPattern).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          name: CAPABILITY.PARSE_TASK,
-        }),
-        expect.any(Object)
+      expect(mockChannel.nack).toHaveBeenCalledTimes(1);
+      expect(mockChannel.nack).toHaveBeenCalledWith(
+        invalidJsonMessage,
+        false,
+        false
       );
+      expect(mockChannel.ack).not.toHaveBeenCalled();
+      expect(mockExecuteSyncPattern).not.toHaveBeenCalled();
     });
 
-    it("should handle capability execution errors", async () => {
-      const executionError = new InternalError("Execution failed");
-      mockExecuteSyncPattern.mockRejectedValue(executionError);
+    it("should nack message when schema validation fails", async () => {
+      const invalidSchemaMessage = createMockMessage({
+        requestId: mockAiServiceRequestId,
+        capability: "invalid-capability",
+        input: mockParseTaskValidatedInput,
+        callbackUrl: mockCallbackUrl,
+      });
+
+      setupConsumeWithMessage(mockChannel, invalidSchemaMessage);
 
       await consumeCapabilitiesMessage();
 
+      expect(mockChannel.nack).toHaveBeenCalledTimes(1);
+      expect(mockChannel.nack).toHaveBeenCalledWith(
+        invalidSchemaMessage,
+        false,
+        false
+      );
+      expect(mockChannel.ack).not.toHaveBeenCalled();
+      expect(mockExecuteSyncPattern).not.toHaveBeenCalled();
+    });
+
+    it("should handle capability not found error", async () => {
+      // Create a message with a valid capability enum value
+      // but the capability won't exist in the mock registry
+      const unknownCapabilityMessage = createMockMessage({
+        requestId: mockAiServiceRequestId,
+        capability: CAPABILITY.PARSE_TASK,
+        input: mockParseTaskValidatedInput,
+        callbackUrl: mockCallbackUrl,
+      });
+
+      // Temporarily replace the capabilities mock to simulate missing capability
+      const originalCapabilities = {
+        ...mockCapabilities,
+      };
+      // Clear the capabilities object to simulate capability not found
+      Object.keys(mockCapabilities).forEach((key) => {
+        delete (mockCapabilities as Record<string, unknown>)[key];
+      });
+
+      setupConsumeWithMessage(mockChannel, unknownCapabilityMessage);
+      mockExtractErrorInfo.mockReturnValue({
+        status: 400,
+        message: "Capability parse-task not found",
+      });
+
+      await consumeCapabilitiesMessage();
+
+      // Restore capabilities for other tests
+      Object.assign(mockCapabilities, originalCapabilities);
+
+      expect(mockExtractErrorInfo).toHaveBeenCalled();
       expect(mockWithRetry).toHaveBeenCalledWith(
         DEFAULT_RETRY_CONFIG,
         expect.any(Function),
         {
-          operation: "sendErrorCallback",
+          operation: "sendErrorCallbackHandler",
         }
       );
     });
   });
 
-  describe("callback handler acknowledgment behavior", () => {
-    it("should acknowledge message after successful callback retry operation", async () => {
+  describe("sendSuccessCallbackHandler", () => {
+    it("should send success callback with correct payload and acknowledge message", async () => {
+      const mockResult = {
+        message: "success",
+      };
+      mockExecuteSyncPattern.mockResolvedValue(mockResult);
+
       await consumeCapabilitiesMessage();
 
+      expect(mockTasksClient.post).toHaveBeenCalledWith(mockCallbackUrl, {
+        success: true,
+        result: mockResult,
+        aiServiceRequestId: mockAiServiceRequestId,
+      });
       expect(mockChannel.ack).toHaveBeenCalledTimes(1);
       expect(mockChannel.ack).toHaveBeenCalledWith(mockMessage);
       expect(mockChannel.nack).not.toHaveBeenCalled();
     });
 
-    it("should nack message without requeue when callback retry operation exhausts all retries", async () => {
+    it("should nack message when callback fails after retries", async () => {
+      mockWithRetry.mockRejectedValue(new InternalError("Callback failed"));
+
+      await consumeCapabilitiesMessage();
+
+      expect(mockChannel.nack).toHaveBeenCalledTimes(1);
+      expect(mockChannel.nack).toHaveBeenCalledWith(mockMessage, false, false);
+      expect(mockChannel.ack).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("sendErrorCallbackHandler", () => {
+    it("should send error callback with correct payload and acknowledge message when execution fails", async () => {
+      const executionError = new InternalError("Execution failed");
+      mockExecuteSyncPattern.mockRejectedValue(executionError);
+      const mockErrorInfo = {
+        status: 500,
+        message: "Execution failed",
+      };
+      mockExtractErrorInfo.mockReturnValue(mockErrorInfo);
+
+      await consumeCapabilitiesMessage();
+
+      expect(mockExtractErrorInfo).toHaveBeenCalledWith(executionError);
+      expect(mockWithRetry).toHaveBeenCalledWith(
+        DEFAULT_RETRY_CONFIG,
+        expect.any(Function),
+        {
+          operation: "sendErrorCallbackHandler",
+        }
+      );
+      expect(mockTasksClient.post).toHaveBeenCalledWith(mockCallbackUrl, {
+        success: false,
+        error: mockErrorInfo,
+        aiServiceRequestId: mockAiServiceRequestId,
+      });
+      expect(mockChannel.ack).toHaveBeenCalledTimes(1);
+      expect(mockChannel.ack).toHaveBeenCalledWith(mockMessage);
+    });
+
+    it("should nack message when error callback fails after retries", async () => {
+      const executionError = new InternalError("Execution failed");
+      mockExecuteSyncPattern.mockRejectedValue(executionError);
+      mockExtractErrorInfo.mockReturnValue({
+        status: 500,
+        message: "Execution failed",
+      });
       mockWithRetry.mockRejectedValue(new InternalError("Callback failed"));
 
       await consumeCapabilitiesMessage();

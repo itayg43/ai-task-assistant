@@ -2,6 +2,7 @@ import * as amqp from "amqplib";
 
 import { capabilities } from "@capabilities";
 import { getRabbitMQChannel } from "@clients/rabbitmq";
+import { tasksClient } from "@clients/tasks";
 import { AI_ERROR_TYPE, RABBITMQ_QUEUE } from "@constants";
 import { executeSyncPattern } from "@controllers/capabilities-controller/executors/execute-sync-pattern";
 import { capabilitiesQueueMessageDataSchema } from "@schemas";
@@ -18,18 +19,29 @@ const sendSuccessCallbackHandler = async (
   channel: amqp.Channel,
   message: amqp.ConsumeMessage,
   requestId: string,
-  _callbackUrl: string,
-  _result: unknown
+  callbackUrl: string,
+  result: unknown
 ) => {
   try {
-    await withRetry(DEFAULT_RETRY_CONFIG, async () => {}, {
-      operation: "sendSuccessCallback",
-    });
+    await withRetry(
+      DEFAULT_RETRY_CONFIG,
+      async () => {
+        await tasksClient.post(callbackUrl, {
+          success: true,
+          result,
+          aiServiceRequestId: requestId,
+        });
+      },
+      {
+        operation: "sendSuccessCallbackHandler",
+      }
+    );
 
     channel.ack(message);
   } catch (error) {
     logger.error("Failed to send success callback", error, {
       requestId,
+      callbackUrl,
     });
 
     channel.nack(message, false, false);
@@ -40,20 +52,42 @@ const sendErrorCallbackHandler = async (
   channel: amqp.Channel,
   message: amqp.ConsumeMessage,
   requestId: string | undefined,
-  _errorInfo: ExtractedErrorInfo
+  callbackUrl: string,
+  errorInfo: ExtractedErrorInfo
 ) => {
   try {
-    await withRetry(DEFAULT_RETRY_CONFIG, async () => {}, {
-      operation: "sendErrorCallback",
-    });
+    await withRetry(
+      DEFAULT_RETRY_CONFIG,
+      async () => {
+        await tasksClient.post(callbackUrl, {
+          success: false,
+          error: errorInfo,
+          aiServiceRequestId: requestId,
+        });
+      },
+      {
+        operation: "sendErrorCallbackHandler",
+      }
+    );
 
     channel.ack(message);
   } catch (error) {
     logger.error("Failed to send error callback", error, {
       requestId,
+      callbackUrl,
     });
 
     channel.nack(message, false, false);
+  }
+};
+
+const parseMessageData = (message: amqp.ConsumeMessage) => {
+  try {
+    const parsedMessage = JSON.parse(message.content.toString());
+    return capabilitiesQueueMessageDataSchema.parse(parsedMessage);
+  } catch (error) {
+    logger.error("Failed to parse message data", error);
+    return null;
   }
 };
 
@@ -62,12 +96,18 @@ const capabilitiesMessageHandler = async (
   message: amqp.ConsumeMessage
 ) => {
   let reqId: string | undefined;
+  let cbUrl: string | undefined;
 
   try {
-    const parsedMessage = JSON.parse(message.content.toString());
-    const { requestId, capability, input, callbackUrl } =
-      capabilitiesQueueMessageDataSchema.parse(parsedMessage);
+    const parsedMessageData = parseMessageData(message);
+    if (!parsedMessageData) {
+      channel.nack(message, false, false);
+      return;
+    }
+
+    const { requestId, capability, input, callbackUrl } = parsedMessageData;
     reqId = requestId;
+    cbUrl = callbackUrl;
 
     const config = capabilities[capability];
     if (!config) {
@@ -87,7 +127,9 @@ const capabilitiesMessageHandler = async (
   } catch (error) {
     const errorInfo = extractErrorInfo(error);
 
-    await sendErrorCallbackHandler(channel, message, reqId, errorInfo);
+    if (cbUrl) {
+      await sendErrorCallbackHandler(channel, message, reqId, cbUrl, errorInfo);
+    }
   }
 };
 
