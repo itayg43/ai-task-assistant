@@ -2,9 +2,9 @@ import { Request, Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { capabilities } from "@capabilities";
-import { mockCallbackUrl } from "@capabilities/parse-task/parse-task-mocks";
-import { CAPABILITY, CAPABILITY_PATTERN } from "@constants";
+import { CAPABILITY } from "@constants";
 import { validateExecutableCapability } from "@middlewares/validate-executable-capability";
+import { mockCallbackUrl } from "@mocks/callbackUrl-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 
 vi.mock("@capabilities");
@@ -28,7 +28,7 @@ describe("validateExecutableCapability", () => {
         capability: CAPABILITY.PARSE_TASK,
       },
       query: {
-        pattern: CAPABILITY_PATTERN.SYNC,
+        callbackUrl: mockCallbackUrl,
       },
     };
     mockResponse = {
@@ -43,34 +43,13 @@ describe("validateExecutableCapability", () => {
     vi.clearAllMocks();
   });
 
-  it("should validate successfully and call next() for capability with sync pattern", () => {
+  it("should validate successfully and call next() for capability with callbackUrl", () => {
     executeMiddleware();
 
     expect(mockResponse.locals!.capabilityConfig).toBe(
       capabilities["parse-task" as keyof typeof capabilities]
     );
     expect(mockResponse.locals!.capabilityValidatedQuery).toEqual({
-      pattern: CAPABILITY_PATTERN.SYNC,
-    });
-    expect(mockNext).toHaveBeenCalledWith();
-  });
-
-  it("should validate successfully and call next() for capability with async pattern", () => {
-    mockRequest = {
-      ...mockRequest,
-      query: {
-        pattern: CAPABILITY_PATTERN.ASYNC,
-        callbackUrl: mockCallbackUrl,
-      },
-    };
-
-    executeMiddleware();
-
-    expect(mockResponse.locals!.capabilityConfig).toBe(
-      capabilities["parse-task" as keyof typeof capabilities]
-    );
-    expect(mockResponse.locals!.capabilityValidatedQuery).toEqual({
-      pattern: CAPABILITY_PATTERN.ASYNC,
       callbackUrl: mockCallbackUrl,
     });
     expect(mockNext).toHaveBeenCalledWith();

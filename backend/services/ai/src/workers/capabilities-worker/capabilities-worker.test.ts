@@ -1,11 +1,9 @@
 import * as amqp from "amqplib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  mockCallbackUrl,
-  mockParseTaskValidatedInput,
-} from "@capabilities/parse-task/parse-task-mocks";
+import { mockParseTaskValidatedInput } from "@capabilities/parse-task/parse-task-mocks";
 import { AI_ERROR_TYPE, CAPABILITY, RABBITMQ_QUEUE } from "@constants";
+import { mockCallbackUrl } from "@mocks/callbackUrl-mocks";
 import {
   createMockChannel,
   createMockMessage,

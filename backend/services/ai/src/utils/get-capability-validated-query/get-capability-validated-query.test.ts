@@ -1,8 +1,7 @@
 import { Response } from "express";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { mockCallbackUrl } from "@capabilities/parse-task/parse-task-mocks";
-import { CAPABILITY_PATTERN } from "@constants";
+import { mockCallbackUrl } from "@mocks/callbackUrl-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { BadRequestError } from "@shared/errors";
 import { getCapabilityValidatedQuery } from "./get-capability-validated-query";
@@ -15,35 +14,16 @@ describe("getCapabilityValidatedQuery", () => {
       locals: {
         requestId: mockAiServiceRequestId,
         capabilityValidatedQuery: {
-          pattern: CAPABILITY_PATTERN.SYNC,
-        },
-      },
-    };
-  });
-
-  it("should return the capability validated query for SYNC pattern", () => {
-    const result = getCapabilityValidatedQuery(mockResponse as Response);
-
-    expect(result.pattern).toBe(CAPABILITY_PATTERN.SYNC);
-  });
-
-  it("should return the capability validated query for ASYNC pattern", () => {
-    mockResponse = {
-      locals: {
-        requestId: mockAiServiceRequestId,
-        capabilityValidatedQuery: {
-          pattern: CAPABILITY_PATTERN.ASYNC,
           callbackUrl: mockCallbackUrl,
         },
       },
     };
+  });
 
+  it("should return the capability validated query with callbackUrl", () => {
     const result = getCapabilityValidatedQuery(mockResponse as Response);
 
-    expect(result.pattern).toBe(CAPABILITY_PATTERN.ASYNC);
-    if (result.pattern === CAPABILITY_PATTERN.ASYNC) {
-      expect(result.callbackUrl).toBe(mockCallbackUrl);
-    }
+    expect(result.callbackUrl).toBe(mockCallbackUrl);
   });
 
   it("should throw BadRequestError when the capability validated query is not defined", () => {
