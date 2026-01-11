@@ -6,26 +6,26 @@ import {
   recordVagueInput,
 } from "@metrics/tasks-metrics";
 import { openaiUpdateTokenUsage } from "@middlewares/token-usage-rate-limiter";
-import { BadRequestError, BaseError } from "@shared/errors";
+import { BadRequestError, ServiceUnavailableError } from "@shared/errors";
+import { extractErrorInfo } from "@shared/utils/extract-error-info";
 import { TAiErrorData, TAiParseTaskVagueInputErrorData } from "@types";
 import { extractOpenaiTokenUsage } from "@utils/extract-openai-token-usage";
 
-// Note: Original error with full context is already logged in ai-capabilities-service.ts
 export const tasksErrorHandler = (
   err: unknown,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const isBaseError = err instanceof BaseError;
-  const isBaseErrorWithoutTypeInContext = isBaseError && !err.context?.type;
-  if (!isBaseError || isBaseErrorWithoutTypeInContext) {
+  const { context } = extractErrorInfo(err);
+
+  if (!context?.type) {
     next(err);
 
     return;
   }
 
-  const errorData = err.context as TAiErrorData;
+  const errorData = context as TAiErrorData;
   switch (errorData.type) {
     case AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR: {
       parseTaskVagueInputErrorHandler(req, res, next, errorData);
@@ -39,6 +39,12 @@ export const tasksErrorHandler = (
       // Sanitize error: remove all context to prevent information leakage
       // about detection mechanisms
       next(new BadRequestError(errorData.message));
+
+      break;
+    }
+
+    case AI_ERROR_TYPE.RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED: {
+      next(new ServiceUnavailableError(errorData.message));
 
       break;
     }

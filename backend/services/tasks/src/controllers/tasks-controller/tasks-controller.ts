@@ -16,46 +16,20 @@ import { taskToResponseDto } from "@utils/task-to-response-dto";
 const logger = createLogger("tasksController");
 
 export const createTask = async (
-  req: Request<{}, unknown, CreateTaskInput["body"]>,
+  req: Request<unknown, unknown, CreateTaskInput["body"]>,
   res: Response<CreateTaskResponse>,
   next: NextFunction
 ) => {
   const { requestId } = res.locals;
-  const { userId } = getAuthenticationContext(res);
   const { naturalLanguage } = req.body;
 
-  const baseLogContext = {
-    requestId,
-    userId,
-    naturalLanguage,
-  };
-
   try {
-    logger.info("Create task - starting", baseLogContext);
+    const message = await createTaskHandler(requestId, naturalLanguage);
 
-    const { task, tokensUsed } = await createTaskHandler(
-      requestId,
-      userId,
-      naturalLanguage
-    );
-
-    if (res.locals.tokenUsage) {
-      res.locals.tokenUsage.actualTokens = tokensUsed;
-    }
-
-    logger.info("Create task - succeeded", {
-      ...baseLogContext,
-      task,
-      tokensUsed,
-    });
-
-    res.status(StatusCodes.CREATED).json({
+    res.status(StatusCodes.ACCEPTED).json({
+      message,
       tasksServiceRequestId: requestId,
-      task: taskToResponseDto(task),
     });
-
-    // Continue to post-response middleware: "token usage update"
-    next();
   } catch (error) {
     next(error);
   }

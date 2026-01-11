@@ -1,7 +1,7 @@
 import { sendMessageToRabbitMQQueue } from "@clients/rabbitmq";
 import { AI_ERROR_TYPE, RABBITMQ_QUEUE } from "@constants";
 import { createLogger } from "@shared/config/create-logger";
-import { InternalError } from "@shared/errors";
+import { ServiceUnavailableError } from "@shared/errors";
 import { CapabilityConfig } from "@types";
 
 const logger = createLogger("executeAsyncPattern");
@@ -30,7 +30,7 @@ export const executeAsyncPattern = async <TInput, TOutput>(
       callbackUrl,
     });
 
-    throw new InternalError(errorMessage, {
+    throw new ServiceUnavailableError(errorMessage, {
       capability: config.name,
       type: AI_ERROR_TYPE.RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED,
     });

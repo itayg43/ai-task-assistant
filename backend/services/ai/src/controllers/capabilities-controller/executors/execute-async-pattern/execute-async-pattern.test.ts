@@ -51,7 +51,7 @@ describe("executeAsyncPattern", () => {
     expect(result).toEqual(expect.any(String));
   });
 
-  it("should throw InternalError when sendMessageToRabbitMQQueue fails", async () => {
+  it("should throw ServiceUnavailableError when sendMessageToRabbitMQQueue fails", async () => {
     const queueError = new Error("Failed to send message to queue");
     mockSendMessageToRabbitMQQueue.mockRejectedValue(queueError);
 

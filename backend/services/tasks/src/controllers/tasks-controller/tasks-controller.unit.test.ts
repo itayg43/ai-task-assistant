@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTask, getTasks } from "@controllers/tasks-controller";
 import {
+  mockAiCapabilityImmediateResponse,
   mockFindTasksResult,
   mockGetTasksInputQuery,
   mockNaturalLanguage,
@@ -62,13 +63,12 @@ describe("tasksController (unit)", () => {
       };
 
       mockedCreateTaskHandler = vi.mocked(createTaskHandler);
-      mockedCreateTaskHandler.mockResolvedValue({
-        task: mockTaskWithSubtasks,
-        tokensUsed: 150,
-      });
+      mockedCreateTaskHandler.mockResolvedValue(
+        mockAiCapabilityImmediateResponse.message
+      );
     });
 
-    it("should successfully create task and return 201 with correct response structure", async () => {
+    it(`should successfully call createTaskHandler and return ${StatusCodes.ACCEPTED} with message`, async () => {
       await createTask(
         mockRequest as Request,
         mockResponse as Response,
@@ -77,19 +77,17 @@ describe("tasksController (unit)", () => {
 
       expect(mockedCreateTaskHandler).toHaveBeenCalledWith(
         mockRequestId,
-        mockUserId,
         mockNaturalLanguage
       );
-      expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.CREATED);
-      expect(mockResponse.locals?.tokenUsage?.actualTokens).toBe(150);
+      expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.ACCEPTED);
 
       const response: CreateTaskResponse = {
         tasksServiceRequestId: mockRequestId,
-        task: taskToResponseDto(mockTaskWithSubtasks),
+        message: mockAiCapabilityImmediateResponse.message,
       };
       expect(mockResponse.json).toHaveBeenCalledWith(response);
 
-      expect(mockNext).toHaveBeenCalled();
+      expect(mockNext).not.toHaveBeenCalled();
     });
 
     it("should handle errors from createTaskHandler and pass to next", async () => {
