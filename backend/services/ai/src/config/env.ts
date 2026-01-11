@@ -12,8 +12,6 @@ export const env = cleanEnv(process.env, {
   SERVICE_NAME: str(),
   SERVICE_PORT: port(),
 
-  TASKS_SERVICE_URL: url(),
-
   OPENAI_API_KEY: str(),
 
   RABBITMQ_URL: url(),

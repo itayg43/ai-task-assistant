@@ -859,32 +859,7 @@ A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualizati
 
 ## Near-Term Enhancements
 
-### Phase 1: Async Architecture & Job Tracking
-
-1. **Async AI Processing with RabbitMQ**
-
-   - **Architecture**: Convert synchronous AI requests to async job queue processing
-   - **Flow**:
-     - Client submits task → Tasks service returns `202 Accepted` with `jobId` immediately
-     - Job published to RabbitMQ queue
-     - Worker pool processes jobs independently (scale workers separately from API)
-     - Results stored in Redis with 24-hour TTL
-     - Client notified via webhook or polls `/api/v1/jobs/:jobId` for status
-   - **Implementation Details**:
-     - Reuse existing `requestId` from AI service as `jobId` for unified tracking
-     - Store job state in Redis (not database) with TTL for automatic cleanup
-     - Job states: `pending` → `processing` → `completed` | `failed`
-   - **Benefits**:
-     - API response time drops from O(3-5s) to O(100ms)
-     - Workers scale independently from API tier
-     - Rate limiting prevents queue overflow
-     - Better handles traffic spikes
-   - **Configuration**:
-     - RabbitMQ service in docker-compose
-     - Queue configuration: max retries, DLQ for failed jobs
-     - Worker pool size configurable via environment variables
-
-### Phase 2: Enterprise Features
+1. **Async AI Processing with RabbitMQ** 🔄 **IN-PROGRESS**
 
 2. **Multi-Tenant Architecture**
 
@@ -899,8 +874,6 @@ A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualizati
      - Query filtering: All queries automatically filtered by `accountId` for data isolation
    - **Security**:
      - Data isolation at query level (can't access other accounts' data)
-
-### Phase 3: Infrastructure & Scaling
 
 3. **Load Balancing & Horizontal Scaling**
 
