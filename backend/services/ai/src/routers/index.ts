@@ -11,8 +11,7 @@ import { metricsRouter } from "@shared/routers";
 export const routers = Router();
 
 routers.use(METRICS_ROUTE, metricsRouter);
-
-routers.use(HEALTH_ROUTE, [requestId, requestResponseMetadata], healthRouter);
+routers.use(HEALTH_ROUTE, healthRouter);
 
 routers.use(
   "/api/v1/capabilities",
