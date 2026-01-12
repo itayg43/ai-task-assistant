@@ -17,6 +17,10 @@ describe("withLock", () => {
 
   const mockLockKey = "mockLockKey";
   const mockLockDuration = 500;
+  const mockContext = {
+    requestId: "test-request-id",
+    operation: "test-operation",
+  };
 
   const mockFnResult = "mockResult";
   const mockFn = vi.fn().mockResolvedValue(mockFnResult);
@@ -83,7 +87,13 @@ describe("withLock", () => {
     setupAcquireMock(mockRedlockClient, mockFailAcquireLockError, false);
 
     await expect(
-      withLock(mockRedlockClient, mockLockKey, mockLockDuration, mockFn)
+      withLock(
+        mockRedlockClient,
+        mockLockKey,
+        mockLockDuration,
+        mockFn,
+        mockContext
+      )
     ).rejects.toThrow(mockFailAcquireLockError);
     expect(mockRedlockClient.acquire).toHaveBeenCalledWith(
       [mockLockKey],
@@ -103,14 +113,21 @@ describe("withLock", () => {
 
       if (expectedError) {
         await expect(
-          withLock(mockRedlockClient, mockLockKey, mockLockDuration, _mockFn)
+          withLock(
+            mockRedlockClient,
+            mockLockKey,
+            mockLockDuration,
+            _mockFn,
+            mockContext
+          )
         ).rejects.toThrow(expectedError);
       } else {
         result = await withLock(
           mockRedlockClient,
           mockLockKey,
           mockLockDuration,
-          _mockFn
+          _mockFn,
+          mockContext
         );
       }
 

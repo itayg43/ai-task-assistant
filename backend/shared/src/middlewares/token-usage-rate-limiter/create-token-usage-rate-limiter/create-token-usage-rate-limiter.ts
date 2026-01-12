@@ -46,6 +46,10 @@ export const createTokenUsageRateLimiter =
           config.lockTtlMs,
           async () => {
             return await processTokenUsage(redisClient, config, userId);
+          },
+          {
+            requestId: res.locals.requestId,
+            operation: "processTokenUsage - tokenUsage",
           }
         );
 

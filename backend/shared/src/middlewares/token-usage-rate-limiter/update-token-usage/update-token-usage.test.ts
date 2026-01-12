@@ -73,7 +73,8 @@ describe("createUpdateTokenUsageMiddleware", () => {
         _redlockClient: Redlock,
         _lockKey: string,
         _lockTtl: number,
-        callback: () => Promise<T>
+        callback: () => Promise<T>,
+        _context: { requestId?: string; operation: string }
       ): Promise<T> => {
         return await callback();
       }
@@ -118,7 +119,8 @@ describe("createUpdateTokenUsageMiddleware", () => {
       mockRedlockClient,
       mockLockKey,
       mockTokenUsageConfig.lockTtlMs,
-      expect.any(Function)
+      expect.any(Function),
+      { requestId: mockRequestId, operation: "updateTokenUsage" }
     );
     expect(mockedUpdateTokenUsage).toHaveBeenCalledWith(
       mockRedisClient,

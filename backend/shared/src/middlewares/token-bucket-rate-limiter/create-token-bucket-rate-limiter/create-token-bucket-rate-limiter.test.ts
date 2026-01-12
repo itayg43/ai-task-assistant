@@ -71,7 +71,13 @@ describe("createTokenBucketRateLimiter", () => {
     mockedProcessTokenBucket = vi.mocked(processTokenBucket);
     mockedWithLock = vi.mocked(withLock);
     mockedWithLock.mockImplementation(
-      async (_redlockClient, _lockKey, _lockTtl, callback) => {
+      async (
+        _redlockClient,
+        _lockKey,
+        _lockTtl,
+        callback,
+        _context: { requestId?: string; operation: string }
+      ) => {
         return await callback();
       }
     );

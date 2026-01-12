@@ -40,17 +40,26 @@ export const createUpdateTokenUsageMiddleware =
       // Update token usage asynchronously to not block the response
       setImmediate(async () => {
         try {
-          await withLock(redlockClient, lockKey, lockTtlMs, async () => {
-            return await updateTokenUsageUtil(
-              redisClient,
-              serviceName,
-              rateLimiterName,
-              userId,
-              actualTokens,
-              tokensReserved,
-              windowStartTimestamp
-            );
-          });
+          await withLock(
+            redlockClient,
+            lockKey,
+            lockTtlMs,
+            async () => {
+              return await updateTokenUsageUtil(
+                redisClient,
+                serviceName,
+                rateLimiterName,
+                userId,
+                actualTokens,
+                tokensReserved,
+                windowStartTimestamp
+              );
+            },
+            {
+              requestId: res.locals.requestId,
+              operation: "updateTokenUsage",
+            }
+          );
         } catch (error) {
           // Log error but don't fail the request
           logger.error(`Token usage update failed for user ${userId}`, error, {
