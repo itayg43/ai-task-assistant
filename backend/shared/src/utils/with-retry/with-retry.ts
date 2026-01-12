@@ -7,10 +7,15 @@ import {
 
 const logger = createLogger("withRetry");
 
+export type TWithRetryContext = {
+  requestId: string;
+  operation: string;
+};
+
 export const withRetry = async <T>(
   config: RetryConfig,
   fn: () => Promise<T>,
-  context?: Record<string, unknown>
+  context: TWithRetryContext
 ) => {
   const { maxAttempts, baseDelayMs, backoffMultiplier } = config;
 
