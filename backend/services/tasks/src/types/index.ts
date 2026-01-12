@@ -10,6 +10,7 @@ export type {
   TAiPromptInjectionDetectedErrorData,
   TAiRabbitMQSendMessageToQueueFailedErrorData,
 } from "./ai-error-data";
+export type { CreateTaskWebhookInput } from "./create-task-webhook-input";
 export type { TOpenaiMetadata, TOpenaiMetadataRecord } from "./openai-metadata";
 export type {
   TParseTaskConfig,

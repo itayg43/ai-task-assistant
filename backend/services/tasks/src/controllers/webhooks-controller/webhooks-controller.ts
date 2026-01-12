@@ -1,20 +1,15 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import z from "zod";
 
-import { createTaskWebhookInputSchema } from "@schemas";
 import { createTaskHandler } from "@services/webhooks-service";
 import { createLogger } from "@shared/config/create-logger";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
+import { CreateTaskWebhookInput } from "@types";
 
 const logger = createLogger("webhooksController");
 
 export const createTask = async (
-  req: Request<
-    unknown,
-    unknown,
-    z.infer<typeof createTaskWebhookInputSchema>["body"]
-  >,
+  req: Request<unknown, unknown, CreateTaskWebhookInput["body"]>,
   res: Response,
   _next: NextFunction
 ) => {
