@@ -45,7 +45,12 @@ export const createTokenBucketRateLimiter =
           lockKey,
           config.lockTtlMs,
           async () => {
-            return await processTokenBucket(redisClient, config, userId);
+            return await processTokenBucket(
+              redisClient,
+              config,
+              userId,
+              res.locals.requestId
+            );
           },
           {
             requestId: res.locals.requestId,

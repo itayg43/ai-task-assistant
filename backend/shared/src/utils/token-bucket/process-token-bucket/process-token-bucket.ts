@@ -20,7 +20,8 @@ const logger = createLogger("processTokenBucket");
 export const processTokenBucket = async (
   redisClient: Redis,
   config: TokenBucketRateLimiterConfig,
-  userId: number
+  userId: number,
+  requestId?: string
 ): Promise<TokenBucketState> => {
   const key = getTokenBucketKey(
     config.serviceName,
@@ -54,6 +55,7 @@ export const processTokenBucket = async (
       : tokens;
 
   logger.info(`Token bucket state before processing for user ${userId}`, {
+    requestId,
     prevTokens: tokens,
     tokensToAdd,
     tokensAfterRefill: currentTokens,
@@ -62,7 +64,10 @@ export const processTokenBucket = async (
 
   if (currentTokens < 1) {
     logger.warn(
-      `Token bucket denied request for user ${userId}: not enough tokens`
+      `Token bucket denied request for user ${userId}: not enough tokens`,
+      {
+        requestId,
+      }
     );
 
     await updateTokenBucketTimestamp(
@@ -92,6 +97,7 @@ export const processTokenBucket = async (
   );
 
   logger.info(`Token bucket allowed request for user ${userId}`, {
+    requestId,
     tokensLeft,
   });
 
