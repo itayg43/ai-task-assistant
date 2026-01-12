@@ -236,13 +236,13 @@ describe("capabilitiesWorker", () => {
         DEFAULT_RETRY_CONFIG,
         expect.any(Function),
         {
-          operation: "sendErrorCallbackHandler",
+          operation: "sendCallbackHandler",
         }
       );
     });
   });
 
-  describe("sendSuccessCallbackHandler", () => {
+  describe("sendCallbackHandler", () => {
     it("should send success callback with correct payload and acknowledge message", async () => {
       const mockResult = {
         message: "success",
@@ -264,7 +264,7 @@ describe("capabilitiesWorker", () => {
       expect(mockChannel.nack).not.toHaveBeenCalled();
     });
 
-    it("should nack message when callback fails after retries", async () => {
+    it("should nack message when success callback fails after retries", async () => {
       mockWithRetry.mockRejectedValue(new InternalError("Callback failed"));
 
       await consumeCapabilitiesMessage();
@@ -273,9 +273,7 @@ describe("capabilitiesWorker", () => {
       expect(mockChannel.nack).toHaveBeenCalledWith(mockMessage, false, false);
       expect(mockChannel.ack).not.toHaveBeenCalled();
     });
-  });
 
-  describe("sendErrorCallbackHandler", () => {
     it("should send error callback with correct payload and acknowledge message when execution fails", async () => {
       const executionError = new InternalError("Execution failed");
       mockCapabilities["parse-task"].handler.mockRejectedValue(executionError);
@@ -292,7 +290,7 @@ describe("capabilitiesWorker", () => {
         DEFAULT_RETRY_CONFIG,
         expect.any(Function),
         {
-          operation: "sendErrorCallbackHandler",
+          operation: "sendCallbackHandler",
         }
       );
       expect(mockTasksClient.post).toHaveBeenCalledWith(mockCallbackUrl, {

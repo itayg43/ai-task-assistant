@@ -120,7 +120,7 @@ Updated schema to require `callbackUrl` query parameter (validated as URL format
 
 **File**: `backend/services/ai/src/utils/get-capability-validated-query/get-capability-validated-query.ts`
 
-New utility for type-safe retrieval of validated query parameters from `res.locals.capabilityValidatedQuery` (set by `validateExecutableCapability` middleware).
+Type-safe utility to retrieve validated query parameters from `res.locals.capabilityValidatedQuery`.
 
 ### 3. Capabilities Worker
 
@@ -144,22 +144,25 @@ Background worker that consumes messages from RabbitMQ and executes capabilities
    - Parses message data using schema validation
    - Validates capability configuration exists
    - Validates input using capability's input schema
-   - Executes capability using `executeSyncPattern`
+   - Executes capability using `executeCapabilityHandler`
    - Sends success callback or error callback
 
-3. **`sendSuccessCallbackHandler(channel, message, requestId, callbackUrl, result)`**: Sends success callback
+3. **`executeCapabilityHandler(requestId, config, input)`**: Executes capability handler and validates output
 
+   - Calls the capability's handler function with validated input
+   - **Note**: Capability handlers (e.g., `executeParse`) include built-in retry logic using `withRetry(DEFAULT_RETRY_CONFIG)` for OpenAI API calls
+   - Validates handler result against capability's output schema
+   - Converts ZodError to InternalError with generic message to prevent leaking validation details
+   - Returns validated output or rethrows errors
+
+4. **`sendCallbackHandler(channel, message, requestId, callbackUrl, payload)`**: Unified callback handler
+
+   - Accepts discriminated union payload: `{ success: true; result: unknown } | { success: false; error: ExtractedErrorInfo }`
    - Uses `withRetry` for HTTP callback resilience
-   - Sends POST request to callback URL with success payload
+   - Sends POST request to callback URL with payload (includes `aiServiceRequestId`)
    - Acknowledges message on success
    - Nacks message on failure (no requeue)
-
-4. **`sendErrorCallbackHandler(channel, message, requestId, callbackUrl, errorInfo)`**: Sends error callback
-
-   - Uses `withRetry` for HTTP callback resilience
-   - Sends POST request to callback URL with error payload
-   - Acknowledges message on success
-   - Nacks message on failure (no requeue)
+   - Logs appropriate error message based on payload type
 
 5. **`parseMessageData(message)`**: Validates and parses message content
    - Parses JSON from message buffer
@@ -168,8 +171,10 @@ Background worker that consumes messages from RabbitMQ and executes capabilities
 
 **Message Acknowledgment Strategy**:
 
-- **Success/Error**: Message acknowledged after callback sent (success or error)
-- **Parse/Callback Failure**: Message nacked without requeue (prevents infinite retries)
+See Section 9 (Error Handling) for detailed acknowledgment and requeue policies. Summary:
+
+- **Success/Error callbacks**: Message acknowledged after callback sent
+- **Parse/Callback failures**: Message nacked without requeue
 
 #### 3.2 Queue Message Schema
 
@@ -211,7 +216,7 @@ await initializeServer(env.SERVICE_NAME, env.SERVICE_PORT, app, {
 });
 ```
 
-**Lifecycle**: Connects to RabbitMQ and starts consuming messages on service startup; closes connection on graceful shutdown or failure
+**Lifecycle**: Connects on startup, closes on shutdown or failure
 
 ### 4. Tasks Client
 
@@ -228,7 +233,7 @@ export const tasksClient = createHttpClient(
 
 **Usage**: Used by capabilities worker to send callbacks to Tasks service webhook endpoints
 
-**Note**: Currently uses AI service's own `SERVICE_NAME` and `SERVICE_PORT` environment variables to construct the Tasks service URL.
+**Note**: Uses AI service's `SERVICE_NAME` and `SERVICE_PORT` to set the origin header when constructing the Tasks service URL.
 
 ### 5. Webhooks Controller
 
@@ -236,7 +241,7 @@ export const tasksClient = createHttpClient(
 
 **File**: `backend/services/tasks/src/controllers/webhooks-controller/webhooks-controller.ts`
 
-Handles callback URLs from AI service. Currently receives POST requests with success/error payloads, validates input, logs error details, and returns `200 OK` to acknowledge receipt.
+Handles callback URLs from AI service. Receives POST requests with success/error payloads, validates input, logs error details, and returns `200 OK` to acknowledge receipt.
 
 **TODO Items** (noted in code): Sanitize error responses, handle token usage reconciliation, process successful task creation.
 
@@ -244,7 +249,7 @@ Handles callback URLs from AI service. Currently receives POST requests with suc
 
 **File**: `backend/services/tasks/src/schemas/webhooks-schemas.ts`
 
-Discriminated union schema for webhook payloads. Success payload includes `openaiMetadata`, `result` (ParsedTask), and `aiServiceRequestId`. Error payload includes `error` (with status, message, context) and `aiServiceRequestId`.
+Discriminated union schema: Success payload (`success: true`, `result: { openaiMetadata, result: ParsedTask }`, `aiServiceRequestId`) or Error payload (`success: false`, `error: { status, message, context }`, `aiServiceRequestId`).
 
 #### 5.3 Webhook Router
 
@@ -253,8 +258,6 @@ Discriminated union schema for webhook payloads. Success payload includes `opena
 Route: `POST /api/v1/webhooks/create-task` with schema validation, controller handler, and domain error handler.
 
 ### 6. Type System Changes
-
-#### 6.1 Type System Changes
 
 **Files**:
 
@@ -283,6 +286,29 @@ Route: `POST /api/v1/webhooks/create-task` with schema validation, controller ha
 
 **Rationale**: Metrics middleware was removed (metrics are now recorded directly in OpenAI client)
 
+#### 7.3 Execution Pattern Refactoring
+
+**Removed Files**:
+
+- `backend/services/ai/src/controllers/capabilities-controller/executors/execute-sync-pattern/`
+
+**Rationale**: The `executeSyncPattern` function was inlined into the capabilities worker as `executeCapabilityHandler` to:
+
+- Remove misleading abstraction (no longer using pattern-based execution)
+- Simplify codebase by eliminating unnecessary indirection
+- Keep execution logic co-located with message handling logic
+
+#### 7.4 Callback Handler Refactoring
+
+**Refactoring**: Merged `sendSuccessCallbackHandler` and `sendErrorCallbackHandler` into a unified `sendCallbackHandler` function (see Section 3.1 for implementation details).
+
+**Benefits**:
+
+- Uses discriminated union type for payload: `{ success: true; result: unknown } | { success: false; error: ExtractedErrorInfo }`
+- Reduces code duplication (~60 lines to ~35 lines)
+- Single source of truth for callback logic
+- Easier to maintain and extend
+
 ### 8. Configuration Changes
 
 **Environment Variables** (`backend/services/ai/src/config/env.ts`): Added `RABBITMQ_URL` configuration.
@@ -302,10 +328,41 @@ Route: `POST /api/v1/webhooks/create-task` with schema validation, controller ha
 **Worker Error Handling**:
 
 - Parse/validation failures: Message nacked without requeue
-- Execution errors: Error callback sent, message acknowledged
+- Execution errors: Error callback sent (if `callbackUrl` present), message acknowledged
+- Execution errors (no `callbackUrl`): Message acknowledged, no callback sent
 - Callback failures: Message nacked without requeue (after retries exhausted)
 
-**Retry Strategy**: HTTP callbacks use `withRetry` with `DEFAULT_RETRY_CONFIG`. No automatic message requeue on processing errors (prevents infinite loops).
+**Retry Strategy**:
+
+The system implements **selective retries** at two levels to handle transient failures efficiently:
+
+1. **OpenAI API Retries**: Capability handlers use `withRetry(DEFAULT_RETRY_CONFIG)` around OpenAI API calls (see `executeParse` in `openai.ts`). This handles transient API failures, rate limits, and network issues during capability execution.
+
+2. **Callback HTTP Retries**: The `sendCallbackHandler` uses `withRetry(DEFAULT_RETRY_CONFIG)` around HTTP POST requests to the Tasks service callback URL. This handles transient network failures when delivering results.
+
+**Retry Configuration**: Both retry layers use `DEFAULT_RETRY_CONFIG` with:
+
+- Maximum attempts: 3
+- Base delay: 1000ms
+- Exponential backoff multiplier: 2 (delays: 1s, 2s, 4s)
+
+**Why Selective Retries Over Message Requeue**:
+
+Selective retries are superior to requeuing entire messages because:
+
+- **Cost Efficiency**: If OpenAI succeeds but callback fails, requeuing would re-execute the expensive OpenAI call unnecessarily, wasting tokens and money
+- **Performance**: Only the failed operation is retried, not the entire message processing flow
+- **Idempotency**: Prevents duplicate work and potential side effects from re-executing successful operations
+- **Clear Failure Boundaries**: Each layer (OpenAI, callback) handles its own retries independently
+
+**No Message Requeue Policy**:
+
+Messages are **never requeued** (nacked with `requeue: false`) because:
+
+- Retries are already built into both the OpenAI API layer and callback HTTP layer
+- Requeuing would restart the entire message processing flow, potentially re-executing successful operations (e.g., successful OpenAI calls)
+- This would create inefficient loops: requeue → re-execute successful operations → retry → requeue again
+- Failed messages after all retries are exhausted represent persistent failures (bugs, invalid data, or downstream service outages) that require manual intervention, not automatic retries
 
 ### 10. Testing
 
@@ -345,8 +402,8 @@ Route: `POST /api/v1/webhooks/create-task` with schema validation, controller ha
 4. **Worker Processing**: Background worker consumes message
 
    - Validates message data
-   - Executes capability using `executeSyncPattern`
-   - Sends callback to Tasks service
+   - Executes capability using `executeCapabilityHandler` (validates handler output)
+   - Sends callback to Tasks service using `sendCallbackHandler`
 
 5. **Callback**: Tasks service receives webhook
    ```
@@ -362,25 +419,28 @@ Route: `POST /api/v1/webhooks/create-task` with schema validation, controller ha
 
 1. **Execution Error**: Capability execution fails
 
+   - OpenAI API retries exhausted (if applicable)
    - Worker catches error
    - Extracts error info using `extractErrorInfo`
-   - Sends error callback to Tasks service
-   - Acknowledges message
+   - If `callbackUrl` is present: Sends error callback to Tasks service, then acknowledges message
+   - If `callbackUrl` is missing: Message acknowledged without callback (edge case)
 
 2. **Callback Failure**: HTTP callback fails
 
-   - Retry logic attempts callback multiple times
-   - If all retries fail, message is nacked (no requeue)
+   - Retry logic attempts callback multiple times (see Section 9 for retry configuration)
+   - If all retries fail, message is nacked (see Section 9 for no requeue policy)
    - Error logged for monitoring
 
 3. **Parse Error**: Message cannot be parsed
-   - Message nacked without requeue
+   - Message nacked without requeue (see Section 9 for policy details)
    - Error logged
+   - No callback sent (message is malformed)
 
 ## Benefits
 
 - **Scalability**: Async processing enables horizontal scaling and queue buffering for traffic spikes
-- **Reliability**: Message durability, retry logic for callbacks, and comprehensive error handling
+- **Reliability**: Message durability, selective retry logic at both OpenAI API and callback HTTP layers, and comprehensive error handling
+- **Cost Efficiency**: Selective retries prevent re-executing expensive operations (e.g., successful OpenAI calls)
 - **Separation of Concerns**: HTTP layer handles requests/responses, worker handles execution, callbacks handle notifications
 - **Observability**: Request IDs tracked through entire flow with comprehensive logging
 

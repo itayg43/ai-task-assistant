@@ -20,67 +20,39 @@ import { ZodError } from "zod";
 
 const logger = createLogger("capabilitiesWorker");
 
-const sendSuccessCallbackHandler = async (
-  channel: amqp.Channel,
-  message: amqp.ConsumeMessage,
-  requestId: string,
-  callbackUrl: string,
-  result: unknown
-) => {
-  try {
-    await withRetry(
-      DEFAULT_RETRY_CONFIG,
-      async () => {
-        await tasksClient.post(callbackUrl, {
-          success: true,
-          result,
-          aiServiceRequestId: requestId,
-        });
-      },
-      {
-        operation: "sendSuccessCallbackHandler",
-      }
-    );
-
-    channel.ack(message);
-  } catch (error) {
-    logger.error("Failed to send success callback", error, {
-      requestId,
-      callbackUrl,
-    });
-
-    channel.nack(message, false, false);
-  }
-};
-
-const sendErrorCallbackHandler = async (
+const sendCallbackHandler = async (
   channel: amqp.Channel,
   message: amqp.ConsumeMessage,
   requestId: string | undefined,
   callbackUrl: string,
-  errorInfo: ExtractedErrorInfo
+  payload:
+    | { success: true; result: unknown }
+    | { success: false; error: ExtractedErrorInfo }
 ) => {
   try {
     await withRetry(
       DEFAULT_RETRY_CONFIG,
       async () => {
         await tasksClient.post(callbackUrl, {
-          success: false,
-          error: errorInfo,
+          ...payload,
           aiServiceRequestId: requestId,
         });
       },
       {
-        operation: "sendErrorCallbackHandler",
+        operation: "sendCallbackHandler",
       }
     );
 
     channel.ack(message);
   } catch (error) {
-    logger.error("Failed to send error callback", error, {
-      requestId,
-      callbackUrl,
-    });
+    logger.error(
+      `Failed to send ${payload.success ? "success" : "error"} callback`,
+      error,
+      {
+        requestId,
+        callbackUrl,
+      }
+    );
 
     channel.nack(message, false, false);
   }
@@ -156,18 +128,18 @@ const capabilitiesMessageHandler = async (
       validatedInput
     );
 
-    await sendSuccessCallbackHandler(
-      channel,
-      message,
-      requestId,
-      callbackUrl,
-      result
-    );
+    await sendCallbackHandler(channel, message, requestId, callbackUrl, {
+      success: true,
+      result,
+    });
   } catch (error) {
     const errorInfo = extractErrorInfo(error);
 
     if (cbUrl) {
-      await sendErrorCallbackHandler(channel, message, reqId, cbUrl, errorInfo);
+      await sendCallbackHandler(channel, message, reqId, cbUrl, {
+        success: false,
+        error: errorInfo,
+      });
     }
   }
 };
