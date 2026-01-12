@@ -52,6 +52,7 @@ describe("rabbitmq", () => {
         DEFAULT_RETRY_CONFIG,
         expect.any(Function),
         {
+          requestId: "undefined",
           operation: "createRabbitMQConnection",
         }
       );

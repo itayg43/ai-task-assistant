@@ -130,8 +130,7 @@ describe("executeParse", () => {
       expect.any(Function),
       expect.objectContaining({
         requestId: mockAiServiceRequestId,
-        capability: PARSE_TASK_CAPABILITY,
-        operation: PARSE_TASK_CORE_OPERATION,
+        operation: `executeParse - ${PARSE_TASK_CORE_OPERATION}`,
       })
     );
     expect(mockedOpenaiParse).toHaveBeenCalledWith(mockPrompt);

@@ -25,6 +25,7 @@ export const createRabbitMQConnection = async (
       return connection;
     },
     {
+      requestId: "undefined",
       operation: "createRabbitMQConnection",
     }
   );

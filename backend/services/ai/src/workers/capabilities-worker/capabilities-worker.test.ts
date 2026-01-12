@@ -236,6 +236,7 @@ describe("capabilitiesWorker", () => {
         DEFAULT_RETRY_CONFIG,
         expect.any(Function),
         {
+          requestId: mockAiServiceRequestId,
           operation: "sendCallbackHandler",
         }
       );
@@ -290,6 +291,7 @@ describe("capabilitiesWorker", () => {
         DEFAULT_RETRY_CONFIG,
         expect.any(Function),
         {
+          requestId: mockAiServiceRequestId,
           operation: "sendCallbackHandler",
         }
       );
