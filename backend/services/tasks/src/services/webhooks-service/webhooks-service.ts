@@ -6,7 +6,6 @@ import { extractOpenaiTokenUsage } from "@utils/extract-openai-token-usage";
 
 export const createTaskHandler = async (
   userId: number,
-  naturalLanguage: string,
   parsedTask: TParsedTask,
   openaiMetadata: TOpenaiMetadataRecord
 ) => {
@@ -14,7 +13,6 @@ export const createTaskHandler = async (
     const createdTask = await createTask(
       tx,
       userId,
-      naturalLanguage,
       parsedTask
     );
 

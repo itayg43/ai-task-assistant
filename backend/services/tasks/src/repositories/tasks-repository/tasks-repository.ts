@@ -40,7 +40,6 @@ export type FindTasksResult = {
 export const createTask = async (
   client: PrismaClient | PrismaTransactionClient,
   userId: number,
-  naturalLanguage: string,
   parsedTask: TParsedTask
 ): Promise<Task> => {
   const { title, dueDate, category, priority } = parsedTask;
@@ -48,7 +47,6 @@ export const createTask = async (
   return await client.task.create({
     data: {
       userId,
-      naturalLanguage,
       title,
       dueDate: dueDate ? new Date(dueDate) : null,
       category,

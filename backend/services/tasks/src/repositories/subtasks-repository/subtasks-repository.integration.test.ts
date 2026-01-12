@@ -1,10 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  mockNaturalLanguage,
-  mockParsedTask,
-  mockUserId,
-} from "@mocks/tasks-mocks";
+import { mockParsedTask, mockUserId } from "@mocks/tasks-mocks";
 import { createManySubtasks } from "@repositories/subtasks-repository";
 import { createTask } from "@repositories/tasks-repository";
 import { createPrismaClient } from "@shared/clients/prisma";
@@ -37,7 +33,6 @@ describe("subtasksRepository (integration)", () => {
       const createdTask = await createTask(
         prismaClient,
         mockUserId,
-        mockNaturalLanguage,
         mockParsedTask
       );
 
@@ -80,7 +75,6 @@ describe("subtasksRepository (integration)", () => {
       const createdTask = await createTask(
         prismaClient,
         mockUserId,
-        mockNaturalLanguage,
         mockParsedTask
       );
 

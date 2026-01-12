@@ -75,7 +75,6 @@ export const mockUserId = 1;
 export const mockTask: Task = {
   id: 1,
   userId: mockUserId,
-  naturalLanguage: mockNaturalLanguage,
   title: mockParsedTask.title,
   dueDate: mockParsedTask.dueDate ? new Date(mockParsedTask.dueDate) : null,
   category: mockParsedTask.category,

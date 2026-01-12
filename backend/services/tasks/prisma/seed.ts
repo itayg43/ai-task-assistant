@@ -22,8 +22,6 @@ const userId = 1;
 
 const tasksData = [
   {
-    naturalLanguage:
-      "Review and approve the quarterly budget report by end of week, high priority work task",
     title: "Review And Approve Quarterly Budget Report",
     category: "work",
     priorityLevel: "high",
@@ -40,8 +38,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Prepare presentation for client meeting next Monday, urgent work task with high priority",
     title: "Prepare Client Meeting Presentation",
     category: "work",
     priorityLevel: "high",
@@ -58,8 +54,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Update project documentation and share with team, medium priority work task",
     title: "Update Project Documentation And Share With Team",
     category: "work",
     priorityLevel: "medium",
@@ -76,8 +70,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Schedule team standup meeting for tomorrow morning, low priority work task",
     title: "Schedule Team Standup Meeting",
     category: "work",
     priorityLevel: "low",
@@ -93,8 +85,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Complete code review for pull request #123, high priority work task due this Friday",
     title: "Complete Code Review For Pull Request 123",
     category: "work",
     priorityLevel: "high",
@@ -113,8 +103,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Book dentist appointment for next month, high priority personal task",
     title: "Book Dentist Appointment",
     category: "personal",
     priorityLevel: "high",
@@ -131,8 +119,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Buy groceries for the week, medium priority personal task",
     title: "Buy Groceries For The Week",
     category: "personal",
     priorityLevel: "medium",
@@ -149,8 +135,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Plan weekend trip with family, low priority personal task",
     title: "Plan Weekend Family Trip",
     category: "personal",
     priorityLevel: "low",
@@ -167,8 +151,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Renew car insurance before it expires next week, high priority personal task",
     title: "Renew Car Insurance",
     category: "personal",
     priorityLevel: "high",
@@ -185,8 +167,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Organize home office space, medium priority personal task",
     title: "Organize Home Office Space",
     category: "personal",
     priorityLevel: "medium",
@@ -205,8 +185,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Submit expense reports for reimbursement, work task due in 3 days",
     title: "Submit Expense Reports",
     category: "work",
     priorityLevel: "high",
@@ -223,8 +201,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Attend product launch meeting next week, high priority work task",
     title: "Attend Product Launch Meeting",
     category: "work",
     priorityLevel: "high",
@@ -241,8 +217,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Write monthly team newsletter, medium priority work task due in 2 weeks",
     title: "Write Monthly Team Newsletter",
     category: "work",
     priorityLevel: "medium",
@@ -259,8 +233,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Update employee handbook with new policies, low priority work task",
     title: "Update Employee Handbook With New Policies",
     category: "work",
     priorityLevel: "low",
@@ -277,8 +249,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Conduct performance review with team member, high priority work task due tomorrow",
     title: "Conduct Team Member Performance Review",
     category: "work",
     priorityLevel: "critical",
@@ -296,8 +266,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Call mom for her birthday this weekend, high priority personal task",
     title: "Call Mom For Birthday",
     category: "personal",
     priorityLevel: "high",
@@ -314,8 +282,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Research vacation destinations for summer, medium priority personal task",
     title: "Research Summer Vacation Destinations",
     category: "personal",
     priorityLevel: "medium",
@@ -332,7 +298,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage: "Fix leaky faucet in kitchen, low priority personal task",
     title: "Fix Leaky Kitchen Faucet",
     category: "personal",
     priorityLevel: "low",
@@ -351,8 +316,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Schedule annual health checkup, high priority personal task due next month",
     title: "Schedule Annual Health Checkup",
     category: "personal",
     priorityLevel: "high",
@@ -369,8 +332,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Learn new programming language, medium priority personal task",
     title: "Learn New Programming Language",
     category: "personal",
     priorityLevel: "medium",
@@ -387,8 +348,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Deploy new feature to production, urgent high priority work task due today",
     title: "Deploy New Feature To Production",
     category: "work",
     priorityLevel: "critical",
@@ -407,8 +366,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Review and sign contract documents, high priority work task",
     title: "Review And Sign Contract Documents",
     category: "work",
     priorityLevel: "high",
@@ -425,8 +382,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Organize team building event, medium priority work task due in 2 weeks",
     title: "Organize Team Building Event",
     category: "work",
     priorityLevel: "medium",
@@ -445,8 +400,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Pay monthly bills, high priority personal task due this week",
     title: "Pay Monthly Bills",
     category: "personal",
     priorityLevel: "high",
@@ -463,8 +416,6 @@ const tasksData = [
     ],
   },
   {
-    naturalLanguage:
-      "Clean garage and organize storage, low priority personal task",
     title: "Clean Garage And Organize Storage",
     category: "personal",
     priorityLevel: "low",

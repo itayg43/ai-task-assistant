@@ -5,7 +5,6 @@ import {
   type MockPrismaClient,
 } from "@mocks/prisma-mock";
 import {
-  mockNaturalLanguage,
   mockParsedTask,
   mockTask,
   mockTaskWithSubtasks,
@@ -37,14 +36,12 @@ describe("tasksRepository (unit)", () => {
       const result = await createTask(
         mockPrismaClient as unknown as PrismaClient,
         mockUserId,
-        mockNaturalLanguage,
         mockParsedTask
       );
 
       expect(mockPrismaClient.task.create).toHaveBeenCalledWith({
         data: {
           userId: mockUserId,
-          naturalLanguage: mockNaturalLanguage,
           title: mockParsedTask.title,
           dueDate: mockParsedTask.dueDate
             ? new Date(mockParsedTask.dueDate)

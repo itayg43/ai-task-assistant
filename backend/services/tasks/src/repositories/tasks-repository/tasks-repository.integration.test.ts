@@ -1,10 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  mockNaturalLanguage,
-  mockParsedTask,
-  mockUserId,
-} from "@mocks/tasks-mocks";
+import { mockParsedTask, mockUserId } from "@mocks/tasks-mocks";
 import {
   createTask,
   findTaskById,
@@ -41,7 +37,6 @@ describe("tasksRepository (integration)", () => {
       const createdTask = await createTask(
         prismaClient,
         mockUserId,
-        mockNaturalLanguage,
         mockParsedTask
       );
 
@@ -53,7 +48,6 @@ describe("tasksRepository (integration)", () => {
       expect(createdTask.priorityLevel).toBe(mockParsedTask.priority.level);
       expect(createdTask.priorityScore).toBe(mockParsedTask.priority.score);
       expect(createdTask.priorityReason).toBe(mockParsedTask.priority.reason);
-      expect(createdTask.naturalLanguage).toBe(mockNaturalLanguage);
 
       const foundTask = await findTaskById(
         prismaClient,
@@ -84,22 +78,17 @@ describe("tasksRepository (integration)", () => {
       priorityScore: number,
       dueDate: Date | null = null
     ) => {
-      return await createTask(
-        prismaClient,
-        userId,
-        `Natural language for ${title}`,
-        {
-          title,
-          dueDate: dueDate ? dueDate.toISOString() : null,
-          category,
-          priority: {
-            level: priorityLevel,
-            score: priorityScore,
-            reason: `Reason for ${title}`,
-          },
-          subtasks: null,
-        }
-      );
+      return await createTask(prismaClient, userId, {
+        title,
+        dueDate: dueDate ? dueDate.toISOString() : null,
+        category,
+        priority: {
+          level: priorityLevel,
+          score: priorityScore,
+          reason: `Reason for ${title}`,
+        },
+        subtasks: null,
+      });
     };
 
     it("should handle pagination with skip and take", async () => {

@@ -23,7 +23,7 @@ export const createTask = async (
 
     const { result, openaiMetadata } = req.body;
 
-    await createTaskHandler(userId, "", result, openaiMetadata);
+    await createTaskHandler(userId, result, openaiMetadata);
   } catch (error) {
     logger.error("Failed to create task", error, {
       aiServiceRequestId,
