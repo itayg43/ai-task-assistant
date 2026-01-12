@@ -10,10 +10,8 @@ export const createCors =
   (allowedOrigins: string[]) =>
   (req: Request, _res: Response, next: NextFunction) => {
     const origin = req.headers.origin;
-
     if (!origin) {
       handleNoOrigin(req, next);
-
       return;
     }
 
@@ -21,25 +19,23 @@ export const createCors =
   };
 
 function handleNoOrigin(req: Request, next: NextFunction) {
-  if (isHealthEndpoint(req.path) || isMetricsEndpoint(req.path)) {
-    logger.info("Allowing no-origin request to health/metrics endpoint:", {
-      path: req.path,
-      method: req.method,
-    });
+  const { path, method } = req;
 
+  if (path.includes(HEALTH_ROUTE) || path.includes(METRICS_ROUTE)) {
     next();
-
     return;
   }
 
   logger.warn("Blocking no-origin request to non-health/metrics endpoint:", {
-    path: req.path,
-    method: req.method,
+    path,
+    method,
   });
 
-  const errorMessage =
-    "No-origin requests only allowed to health/metrics endpoints";
-  next(new ForbiddenError(errorMessage));
+  next(
+    new ForbiddenError(
+      "No-origin requests only allowed to health/metrics endpoints"
+    )
+  );
 }
 
 function handleWithOrigin(
@@ -48,15 +44,8 @@ function handleWithOrigin(
   req: Request,
   next: NextFunction
 ) {
-  if (isAllowedOrigin(origin, allowedOrigins)) {
-    logger.info("Allowing request from allowed origin:", {
-      origin,
-      path: req.path,
-      method: req.method,
-    });
-
+  if (allowedOrigins.includes(origin)) {
     next();
-
     return;
   }
 
@@ -66,18 +55,5 @@ function handleWithOrigin(
     method: req.method,
   });
 
-  const errorMessage = `Origin ${origin} not allowed by CORS policy`;
-  next(new ForbiddenError(errorMessage));
-}
-
-function isHealthEndpoint(path: string) {
-  return path.includes(HEALTH_ROUTE);
-}
-
-function isMetricsEndpoint(path: string) {
-  return path.includes(METRICS_ROUTE);
-}
-
-function isAllowedOrigin(origin: string, allowedOrigins: string[]) {
-  return allowedOrigins.includes(origin);
+  next(new ForbiddenError(`Origin ${origin} not allowed by CORS policy`));
 }
