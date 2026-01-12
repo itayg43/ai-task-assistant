@@ -1,11 +1,5 @@
-export type TParsedTask = {
-  title: string;
-  dueDate: string | null;
-  category: string;
-  priority: {
-    level: string;
-    score: number;
-    reason: string;
-  };
-  subtasks: string[] | null;
-};
+import z from "zod";
+
+import { parsedTaskSchema } from "@schemas";
+
+export type TParsedTask = z.infer<typeof parsedTaskSchema>;

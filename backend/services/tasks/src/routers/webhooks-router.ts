@@ -2,14 +2,14 @@ import { Router } from "express";
 
 import { createTask } from "@controllers/webhooks-controller";
 import { tasksErrorHandler } from "@middlewares/tasks-error-handler";
-import { createTaskInputSchema } from "@schemas/webhooks-schemas";
+import { createTaskWebhookInputSchema } from "@schemas";
 import { validateSchema } from "@shared/middlewares/validate-schema";
 
 export const webhooksRouter = Router();
 
 webhooksRouter.post(
   "/create-task",
-  validateSchema(createTaskInputSchema),
+  validateSchema(createTaskWebhookInputSchema),
   createTask
 );
 

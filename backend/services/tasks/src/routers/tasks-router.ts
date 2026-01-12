@@ -2,10 +2,7 @@ import { Router } from "express";
 
 import { createTask, getTasks } from "@controllers/tasks-controller";
 import { tasksErrorHandler } from "@middlewares/tasks-error-handler";
-import {
-  createTaskInputSchema,
-  getTasksInputSchema,
-} from "@schemas/tasks-schemas";
+import { createTaskRequestInputSchema, getTasksInputSchema } from "@schemas";
 import { validateSchema } from "@shared/middlewares/validate-schema";
 
 export const tasksRouter = Router();
@@ -14,7 +11,7 @@ export const tasksRouter = Router();
 
 tasksRouter.post(
   "/",
-  [validateSchema(createTaskInputSchema)], // openaiTokenUsageRateLimiter.createTask
+  [validateSchema(createTaskRequestInputSchema)], // openaiTokenUsageRateLimiter.createTask
   createTask
   // openaiUpdateTokenUsage
 );

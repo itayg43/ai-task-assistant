@@ -6,7 +6,7 @@ import { createLogger } from "@shared/config/create-logger";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
 import { getValidatedQuery } from "@shared/utils/validated-query";
 import {
-  CreateTaskInput,
+  CreateTaskRequestInput,
   CreateTaskResponse,
   GetTasksInput,
   GetTasksResponse,
@@ -16,7 +16,7 @@ import { taskToResponseDto } from "@utils/task-to-response-dto";
 const logger = createLogger("tasksController");
 
 export const createTask = async (
-  req: Request<unknown, unknown, CreateTaskInput["body"]>,
+  req: Request<unknown, unknown, CreateTaskRequestInput["body"]>,
   res: Response<CreateTaskResponse>,
   next: NextFunction
 ) => {

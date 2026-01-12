@@ -13,6 +13,5 @@ export const GET_TASKS_ALLOWED_ORDER_DIRECTIONS: [
 
 export const GET_TASKS_DEFAULT_SKIP = 0;
 export const GET_TASKS_DEFAULT_TAKE = 10;
-
 export const GET_TASKS_MIN_TAKE = 1;
 export const GET_TASKS_MAX_TAKE = 100;

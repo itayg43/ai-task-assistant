@@ -1,4 +1,4 @@
-import { TParseTaskConfig } from "@types";
+import { TOpenaiMetadata, TParseTaskConfig } from "@types";
 
 type TAiCapabilityMap = {
   "parse-task": {
@@ -10,15 +10,6 @@ type TAiCapabilityMap = {
 };
 
 export type TAiCapability = keyof TAiCapabilityMap;
-
-export type TOpenaiMetadata = {
-  responseId: string;
-  tokens: {
-    input: number;
-    output: number;
-  };
-  durationMs: number;
-};
 
 export type TAiCapabilityResponse<TResult> = {
   openaiMetadata: Record<string, TOpenaiMetadata>;

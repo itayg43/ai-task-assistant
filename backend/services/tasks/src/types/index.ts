@@ -3,7 +3,6 @@ export type {
   TAiCapabilityImmediateResponse,
   TAiCapabilityResponse,
   TExecuteCapabilityConfig,
-  TOpenaiMetadata,
 } from "./ai-capability";
 export type {
   TAiErrorData,
@@ -11,13 +10,17 @@ export type {
   TAiPromptInjectionDetectedErrorData,
   TAiRabbitMQSendMessageToQueueFailedErrorData,
 } from "./ai-error-data";
+export type { TOpenaiMetadata, TOpenaiMetadataRecord } from "./openai-metadata";
 export type {
   TParseTaskConfig,
   TParseTaskConfigScoreRange,
 } from "./parse-task-config";
 export type { TParsedTask } from "./parsed-task";
 export type { TaskResponse } from "./task-response";
-export type { CreateTaskInput, GetTasksInput } from "./tasks-controller-input";
+export type {
+  CreateTaskRequestInput,
+  GetTasksInput,
+} from "./tasks-controller-input";
 export type {
   CreateTaskResponse,
   GetTasksResponse,

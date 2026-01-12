@@ -11,7 +11,7 @@ import {
 import { TaskOrderByFields } from "@repositories/tasks-repository";
 import { Prisma } from "@shared/clients/prisma";
 
-export const createTaskInputSchema = z.object({
+export const createTaskRequestInputSchema = z.object({
   body: z.object({
     naturalLanguage: z.string().trim().nonempty(),
   }),
@@ -51,4 +51,56 @@ export const getTasksInputSchema = z.object({
         priorityLevel: z.string().optional(),
       })
     ),
+});
+
+const extractedErrorInfoSchema = z.object({
+  status: z.number(),
+  message: z.string(),
+  context: z.record(z.string(), z.unknown()),
+});
+
+const createTaskErrorInputSchema = z.object({
+  success: z.literal(false),
+  error: extractedErrorInfoSchema,
+  aiServiceRequestId: z.string(),
+});
+
+export const openaiMetadataSchema = z.object({
+  responseId: z.string(),
+  tokens: z.object({
+    input: z.number(),
+    output: z.number(),
+  }),
+  durationMs: z.number(),
+});
+
+export const openaiMetadataRecordSchema = z.record(
+  z.string(),
+  openaiMetadataSchema
+);
+
+export const parsedTaskSchema = z.object({
+  title: z.string(),
+  dueDate: z.string().nullable(),
+  category: z.string(),
+  priority: z.object({
+    level: z.string(),
+    score: z.number(),
+    reason: z.string(),
+  }),
+  subtasks: z.array(z.string()).nullable(),
+});
+
+const createTaskSuccessInputSchema = z.object({
+  success: z.literal(true),
+  openaiMetadata: openaiMetadataRecordSchema,
+  result: parsedTaskSchema,
+  aiServiceRequestId: z.string(),
+});
+
+export const createTaskWebhookInputSchema = z.object({
+  body: z.discriminatedUnion("success", [
+    createTaskErrorInputSchema,
+    createTaskSuccessInputSchema,
+  ]),
 });

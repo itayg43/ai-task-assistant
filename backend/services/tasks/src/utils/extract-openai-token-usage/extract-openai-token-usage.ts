@@ -1,7 +1,7 @@
-import { TAiCapabilityResponse } from "@types";
+import { TOpenaiMetadataRecord } from "@types";
 
-export const extractOpenaiTokenUsage = <TResult>(
-  openaiMetadata: TAiCapabilityResponse<TResult>["openaiMetadata"]
+export const extractOpenaiTokenUsage = (
+  openaiMetadata: TOpenaiMetadataRecord
 ) => {
   let totalTokens = 0;
 
