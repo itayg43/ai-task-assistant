@@ -8,7 +8,7 @@ import {
 const logger = createLogger("withRetry");
 
 export type TWithRetryContext = {
-  requestId: string;
+  requestId?: string;
   operation: string;
 };
 

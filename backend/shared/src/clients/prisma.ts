@@ -29,7 +29,6 @@ export const connectPrismaClient = async (prisma: PrismaClient) => {
       logger.info("Prisma client connected");
     },
     {
-      requestId: "undefined",
       operation: "connectPrismaClient",
     }
   );

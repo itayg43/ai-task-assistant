@@ -39,7 +39,7 @@ const sendCallbackHandler = async (
         });
       },
       {
-        requestId: requestId || "undefined",
+        requestId: requestId,
         operation: "sendCallbackHandler",
       }
     );
