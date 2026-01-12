@@ -1,9 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 
 import { createLogger } from "../../config/create-logger";
-import { HEALTH_ROUTE } from "../../constants";
 import { getAuthenticationContext } from "../../utils/authentication-context";
 import { getElapsedDuration, getStartTimestamp } from "../../utils/performance";
+
+const logger = createLogger("requestResponseMetadata");
 
 export const requestResponseMetadata = (
   req: Request,
@@ -11,8 +12,6 @@ export const requestResponseMetadata = (
   next: NextFunction
 ) => {
   try {
-    const logger = createLogger("requestResponseMetadata");
-
     const start = getStartTimestamp();
 
     const requestMetadata = {
@@ -20,9 +19,7 @@ export const requestResponseMetadata = (
       method: req.method,
       originalUrl: req.originalUrl,
       userAgent: req.get("User-Agent"),
-      authenticationContext: !req.originalUrl.includes(HEALTH_ROUTE)
-        ? getAuthenticationContext(res)
-        : undefined,
+      authenticationContext: getAuthenticationContext(res),
     };
 
     logger.info("Incoming request", requestMetadata);
