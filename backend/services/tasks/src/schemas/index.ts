@@ -93,8 +93,10 @@ export const parsedTaskSchema = z.object({
 
 const createTaskSuccessInputSchema = z.object({
   success: z.literal(true),
-  openaiMetadata: openaiMetadataRecordSchema,
-  result: parsedTaskSchema,
+  result: z.object({
+    openaiMetadata: openaiMetadataRecordSchema,
+    result: parsedTaskSchema,
+  }),
   aiServiceRequestId: z.string(),
 });
 

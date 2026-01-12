@@ -10,11 +10,7 @@ export const createTaskHandler = async (
   openaiMetadata: TOpenaiMetadataRecord
 ) => {
   const task = await prisma.$transaction(async (tx) => {
-    const createdTask = await createTask(
-      tx,
-      userId,
-      parsedTask
-    );
+    const createdTask = await createTask(tx, userId, parsedTask);
 
     if (parsedTask.subtasks && parsedTask.subtasks.length > 0) {
       await createManySubtasks(tx, createdTask.id, userId, parsedTask.subtasks);

@@ -47,7 +47,10 @@ export const executeParse = async <TOutput>(
         async () => {
           return await openai.responses.parse<any, TOutput>(prompt);
         },
-        baseLogContext
+        {
+          requestId,
+          operation: `executeParse - ${operation}`,
+        }
       );
     });
 
@@ -73,6 +76,11 @@ export const executeParse = async <TOutput>(
       durationMs: response.durationMs,
     };
 
+    logger.info("executeParse - succeeded", {
+      ...baseLogContext,
+      result,
+    });
+
     recordOpenAiApiSuccessMetrics(
       capability,
       operation,
@@ -82,11 +90,6 @@ export const executeParse = async <TOutput>(
       result.usage.tokens.output,
       requestId
     );
-
-    logger.info("executeParse - succeeded", {
-      ...baseLogContext,
-      result,
-    });
 
     return result;
   } catch (error) {
