@@ -19,11 +19,17 @@ export const createTask = async (
 
   try {
     if (!success) {
+      // Domain-specific error handlers (after routes, before global error handler)
+      // Order matters: tasksErrorHandler must run before tokenUsageErrorHandler
+      // because tasksErrorHandler handles specific error types and may reconcile
+      // token usage, while tokenUsageErrorHandler handles ALL remaining errors
+      // and releases full reservation for unexpected failures
+      // webhooksRouter.use(tasksErrorHandler);
+
       return;
     }
 
     const { result } = req.body;
-
     const createdTask = await createTaskHandler(userId, result.result);
     const tokenUsage = extractOpenaiTokenUsage(result.openaiMetadata);
   } catch (error) {
