@@ -5,6 +5,7 @@ import { createTaskHandler } from "@services/webhooks-service";
 import { createLogger } from "@shared/config/create-logger";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
 import { CreateTaskWebhookInput } from "@types";
+import { extractOpenaiTokenUsage } from "@utils/extract-openai-token-usage";
 
 const logger = createLogger("webhooksController");
 
@@ -21,10 +22,10 @@ export const createTask = async (
       return;
     }
 
-    const {
-      result: { result, openaiMetadata },
-    } = req.body;
-    await createTaskHandler(userId, result, openaiMetadata);
+    const { result } = req.body;
+
+    const createdTask = await createTaskHandler(userId, result.result);
+    const tokenUsage = extractOpenaiTokenUsage(result.openaiMetadata);
   } catch (error) {
     logger.error("Failed to create task", error, {
       aiServiceRequestId,

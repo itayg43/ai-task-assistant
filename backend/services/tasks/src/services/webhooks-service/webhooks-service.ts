@@ -1,15 +1,13 @@
 import { prisma } from "@clients/prisma";
 import { createManySubtasks } from "@repositories/subtasks-repository";
 import { createTask, findTaskById } from "@repositories/tasks-repository";
-import { TOpenaiMetadataRecord, TParsedTask } from "@types";
-import { extractOpenaiTokenUsage } from "@utils/extract-openai-token-usage";
+import { TParsedTask } from "@types";
 
 export const createTaskHandler = async (
   userId: number,
-  parsedTask: TParsedTask,
-  openaiMetadata: TOpenaiMetadataRecord
+  parsedTask: TParsedTask
 ) => {
-  const task = await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx) => {
     const createdTask = await createTask(tx, userId, parsedTask);
 
     if (parsedTask.subtasks && parsedTask.subtasks.length > 0) {
@@ -19,6 +17,4 @@ export const createTaskHandler = async (
     const taskWithSubtasks = await findTaskById(tx, createdTask.id, userId);
     return taskWithSubtasks!;
   });
-
-  const tokensUsed = extractOpenaiTokenUsage(openaiMetadata);
 };
