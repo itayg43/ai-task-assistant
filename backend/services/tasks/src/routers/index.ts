@@ -28,6 +28,6 @@ routers.use(
 
 routers.use(
   "/api/v1/webhooks",
-  [authentication, requestResponseMetadata],
+  [requestId, authentication, requestResponseMetadata],
   webhooksRouter
 );
