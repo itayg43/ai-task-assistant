@@ -7,10 +7,12 @@
 **Dependencies**: None (can be executed first)
 
 **Problem**: Metrics middleware records on `res.finish`, which doesn't work for async operations:
+
 - Sync operations (GET): Complete immediately → middleware works
 - Async operations (POST → 202): Response finishes immediately, but operation completes later → middleware records false "success"
 
 **Solution**: Fully manual metrics recording
+
 - **Sync operations**: Use `withMetrics` helper function
 - **Async operations**: Manual recording in callback/worker with `startTime` passed through
 
@@ -19,6 +21,7 @@
 ### 1. Remove Metrics Middleware
 
 **Tasks:**
+
 - [ ] Remove `tasksMetricsMiddleware` from `backend/services/tasks/src/routers/index.ts`
 - [ ] Remove `aiMetricsMiddleware` from `backend/services/ai/src/routers/index.ts` (if exists)
 - [ ] Delete `backend/services/tasks/src/middlewares/metrics-middleware/` directory
@@ -28,58 +31,327 @@
 
 ### 2. Create Metrics Utilities
 
-#### 2.1 Create `withMetrics` Helper
+#### 2.1 Update Metrics Functions to Handle Errors Internally
+
+**Principle**: Metrics functions should wrap error handling internally so business logic stays clean. Metrics failures should never break business flow.
+
+**File**: `backend/services/ai/src/metrics/ai-service-metrics/ai-service-metrics.ts`
+
+```typescript
+export const recordAiApiSuccess = (
+  capability: Capability,
+  durationMs: number,
+  requestId: string
+): void => {
+  try {
+    const status = "success";
+
+    aiApiRequestsTotal.inc({
+      capability,
+      status,
+    });
+    aiApiRequestDurationMs.observe(
+      {
+        capability,
+        status,
+      },
+      durationMs
+    );
+
+    logger.debug("Recorded AI API success metrics", {
+      requestId,
+      capability,
+      status,
+      durationMs,
+    });
+  } catch (error) {
+    logger.error("Failed to record AI API success metrics", error, {
+      requestId,
+      capability,
+      durationMs,
+    });
+    // Don't throw - metrics failures shouldn't break business logic
+  }
+};
+
+export const recordAiApiFailure = (
+  capability: Capability,
+  requestId: string
+): void => {
+  try {
+    const status = "failure";
+
+    aiApiRequestsTotal.inc({
+      capability,
+      status,
+    });
+
+    logger.debug("Recorded AI API failure metrics", {
+      requestId,
+      capability,
+      status,
+    });
+  } catch (error) {
+    logger.error("Failed to record AI API failure metrics", error, {
+      requestId,
+      capability,
+    });
+    // Don't throw - metrics failures shouldn't break business logic
+  }
+};
+```
+
+**File**: `backend/services/ai/src/metrics/openai-metrics.ts`
+
+```typescript
+export const recordOpenAiApiSuccessMetrics = (
+  capability: string,
+  operation: string,
+  model: ResponseCreateParamsNonStreaming["model"],
+  durationMs: number,
+  inputTokens: number,
+  outputTokens: number,
+  requestId: string
+): void => {
+  try {
+    const status = "success";
+
+    openaiApiRequestsTotal.inc({
+      capability,
+      operation,
+      status,
+    });
+    openaiApiRequestDurationMs.observe(
+      {
+        capability,
+        operation,
+        status,
+      },
+      durationMs
+    );
+    openaiApiTokensTotal.inc(
+      {
+        capability,
+        operation,
+        type: "input",
+        model,
+      },
+      inputTokens
+    );
+    openaiApiTokensTotal.inc(
+      {
+        capability,
+        operation,
+        type: "output",
+        model,
+      },
+      outputTokens
+    );
+
+    logger.debug("Recorded OpenAI API success metrics", {
+      requestId,
+      capability,
+      operation,
+      model,
+      status,
+      durationMs,
+      inputTokens,
+      outputTokens,
+      totalTokens: inputTokens + outputTokens,
+    });
+  } catch (error) {
+    logger.error("Failed to record OpenAI API success metrics", error, {
+      requestId,
+      capability,
+      operation,
+      model,
+      durationMs,
+      inputTokens,
+      outputTokens,
+    });
+    // Don't throw - metrics failures shouldn't break business logic
+  }
+};
+
+export const recordOpenAiApiFailureMetrics = (
+  capability: string,
+  operation: string,
+  requestId: string
+): void => {
+  try {
+    const status = "failure";
+
+    openaiApiRequestsTotal.inc({
+      capability,
+      operation,
+      status,
+    });
+
+    logger.debug("Recorded OpenAI API failure metrics", {
+      requestId,
+      capability,
+      operation,
+      status,
+    });
+  } catch (error) {
+    logger.error("Failed to record OpenAI API failure metrics", error, {
+      requestId,
+      capability,
+      operation,
+    });
+    // Don't throw - metrics failures shouldn't break business logic
+  }
+};
+```
+
+**File**: `backend/services/tasks/src/metrics/tasks-metrics/tasks-metrics.ts`
+
+```typescript
+export const recordTasksApiSuccess = (
+  operation: TasksOperation,
+  durationMs: number,
+  requestId: string
+): void => {
+  try {
+    const status = "success";
+
+    tasksApiRequestsTotal.inc({
+      operation,
+      status,
+    });
+    tasksApiRequestDurationMs.observe(
+      {
+        operation,
+        status,
+      },
+      durationMs
+    );
+
+    logger.debug("Recorded tasks API success metrics", {
+      requestId,
+      operation,
+      status,
+      durationMs,
+    });
+  } catch (error) {
+    logger.error("Failed to record tasks API success metrics", error, {
+      requestId,
+      operation,
+      durationMs,
+    });
+    // Don't throw - metrics failures shouldn't break business logic
+  }
+};
+
+export const recordTasksApiFailure = (
+  operation: TasksOperation,
+  requestId: string
+): void => {
+  try {
+    const status = "failure";
+
+    tasksApiRequestsTotal.inc({
+      operation,
+      status,
+    });
+
+    logger.debug("Recorded tasks API failure metrics", {
+      requestId,
+      operation,
+      status,
+    });
+  } catch (error) {
+    logger.error("Failed to record tasks API failure metrics", error, {
+      requestId,
+      operation,
+    });
+    // Don't throw - metrics failures shouldn't break business logic
+  }
+};
+
+export const recordVagueInput = (requestId: string): void => {
+  try {
+    tasksVagueInputTotal.inc();
+
+    logger.debug("Recorded vague input metric", {
+      requestId,
+    });
+  } catch (error) {
+    logger.error("Failed to record vague input metric", error, {
+      requestId,
+    });
+    // Don't throw - metrics failures shouldn't break business logic
+  }
+};
+
+export const recordPromptInjection = (
+  operation: TasksOperation,
+  requestId: string
+): void => {
+  try {
+    tasksPromptInjectionTotal.inc({
+      operation,
+    });
+
+    logger.debug("Recorded prompt injection metric", {
+      requestId,
+      operation,
+    });
+  } catch (error) {
+    logger.error("Failed to record prompt injection metric", error, {
+      requestId,
+      operation,
+    });
+    // Don't throw - metrics failures shouldn't break business logic
+  }
+};
+```
+
+**Benefits**:
+
+- ✅ Cleaner business logic (no try-catch clutter)
+- ✅ DRY principle (error handling in one place)
+- ✅ Impossible to forget error handling
+- ✅ Consistent behavior across all metrics functions
+
+#### 2.2 Create `withMetrics` Helper
 
 **File**: `backend/shared/src/utils/with-metrics/with-metrics.ts`
 
 ```typescript
-import {
-  getStartTimestamp,
-  getElapsedDuration,
-} from "@shared/utils/performance";
-import { createLogger } from "@shared/config/create-logger";
-
-const logger = createLogger("withMetrics");
-
-export type MetricsRecorder<T> = {
-  recordSuccess: (operation: T, durationMs: number, requestId: string) => void;
-  recordFailure: (operation: T, requestId: string) => void;
-};
+import { withDurationAsync } from "../with-duration";
 
 export const withMetrics = async <TOperation, TReturn>(
   operation: TOperation,
   requestId: string,
-  recorder: MetricsRecorder<TOperation>,
-  fn: (startTime: number) => Promise<TReturn>
+  onRecordSuccess: (
+    operation: TOperation,
+    durationMs: number,
+    requestId: string
+  ) => void,
+  onRecordFailure: (operation: TOperation, requestId: string) => void,
+  fn: () => Promise<TReturn>
 ): Promise<TReturn> => {
-  const startTime = getStartTimestamp();
-
   try {
-    const result = await fn(startTime);
-    const duration = getElapsedDuration(startTime);
-    recorder.recordSuccess(operation, duration, requestId);
-
-    logger.debug("Recorded success metrics", {
-      operation,
-      requestId,
-      duration,
-    });
-
+    const { result, durationMs } = await withDurationAsync(fn);
+    onRecordSuccess(operation, durationMs, requestId);
     return result;
   } catch (error) {
-    recorder.recordFailure(operation, requestId);
-
-    logger.debug("Recorded failure metrics", {
-      operation,
-      requestId,
-    });
-
+    onRecordFailure(operation, requestId);
     throw error;
   }
 };
 ```
 
-#### 2.2 Create Error Metrics Service
+**Benefits**:
+
+- ✅ Uses existing `withDurationAsync` utility
+- ✅ No redundant logging (metrics functions handle logging)
+- ✅ Type-safe with enforced signatures for consistency
+- ✅ Reduces boilerplate (timing + metrics in one call)
+- ✅ Harder to forget metrics recording
+
+#### 2.3 Create Error Metrics Service
 
 **File**: `backend/services/tasks/src/services/metrics-service/record-error-metrics.ts`
 
@@ -141,26 +413,27 @@ export const getTasks = async (
   const { userId } = getAuthenticationContext(res);
   const query = getValidatedQuery<GetTasksInput["query"]>(res);
 
-  // ✅ Use withMetrics helper for sync operations
-  await withMetrics(
-    TASKS_OPERATION.GET_TASKS,
-    requestId,
-    {
-      recordSuccess: recordTasksApiSuccess,
-      recordFailure: recordTasksApiFailure,
-    },
-    async (startTime) => {
-      const result = await getTasksHandler(userId, query);
-      const response: GetTasksResponse = {
-        tasksServiceRequestId: requestId,
-        tasks: result.tasks.map(taskToResponseDto),
-        pagination: { ... },
-      };
+  try {
+    // ✅ Use withMetrics helper for sync operations
+    await withMetrics(
+      TASKS_OPERATION.GET_TASKS,
+      requestId,
+      recordTasksApiSuccess,
+      recordTasksApiFailure,
+      async () => {
+        const result = await getTasksHandler(userId, query);
+        const response: GetTasksResponse = {
+          tasksServiceRequestId: requestId,
+          tasks: result.tasks.map(taskToResponseDto),
+          pagination: { ... },
+        };
 
-      res.status(StatusCodes.OK).json(response);
-      return response;
-    }
-  ).catch(next);
+        res.status(StatusCodes.OK).json(response);
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 ```
 
@@ -345,19 +618,13 @@ const capabilitiesMessageHandler = async (channel, message) => {
 
     // ✅ Record success AFTER capability execution, BEFORE callback
     // This measures AI service performance, not callback delivery
-    try {
-      if (startTime && !isNaN(startTime)) {
-        const totalDuration = getElapsedDuration(startTime);
-        recordAiApiSuccess(capability, totalDuration, requestId);
-      } else {
-        // Record success without duration
-        recordAiApiSuccess(capability, 0, requestId);
-      }
-    } catch (metricsError) {
-      logger.error("Failed to record success metrics", metricsError, {
-        requestId,
-        capability,
-      });
+    // Note: Error handling is done inside recordAiApiSuccess
+    if (startTime && !isNaN(startTime)) {
+      const totalDuration = getElapsedDuration(startTime);
+      recordAiApiSuccess(capability, totalDuration, requestId);
+    } else {
+      // Record success without duration
+      recordAiApiSuccess(capability, 0, requestId);
     }
 
     // Send callback (sendCallbackHandler handles ack on success, nack on failure)
@@ -371,15 +638,9 @@ const capabilitiesMessageHandler = async (channel, message) => {
     const errorInfo = extractErrorInfo(error);
 
     // ✅ Record failure for capability execution errors (before callback)
-    try {
-      if (capability && reqId) {
-        recordAiApiFailure(capability, reqId);
-      }
-    } catch (metricsError) {
-      logger.error("Failed to record failure metrics", metricsError, {
-        requestId: reqId,
-        capability,
-      });
+    // Note: Error handling is done inside recordAiApiFailure
+    if (capability && reqId) {
+      recordAiApiFailure(capability, reqId);
     }
 
     // Send error callback (sendCallbackHandler handles ack on success, nack on failure)
@@ -440,13 +701,8 @@ export const createTask = async (req: Request, res: Response, _next) => {
       const { error } = req.body;
 
       // ✅ Record actual failure (no duration)
-      try {
-        recordTasksApiFailure(TASKS_OPERATION.CREATE_TASK, requestId);
-      } catch (metricsError) {
-        logger.error("Failed to record failure metrics", metricsError, {
-          requestId,
-        });
-      }
+      // Note: Error handling is done inside recordTasksApiFailure
+      recordTasksApiFailure(TASKS_OPERATION.CREATE_TASK, requestId);
 
       // Note: Token reconciliation and error metrics will be added in Plans 2 & 3
       return;
@@ -459,13 +715,8 @@ export const createTask = async (req: Request, res: Response, _next) => {
     // ✅ Record actual success with total duration
     // Note: startTime will be retrieved from Redis in Plan 2
     // For now, record without duration (will be updated in Plan 2)
-    try {
-      recordTasksApiSuccess(TASKS_OPERATION.CREATE_TASK, 0, requestId);
-    } catch (metricsError) {
-      logger.error("Failed to record success metrics", metricsError, {
-        requestId,
-      });
-    }
+    // Note: Error handling is done inside recordTasksApiSuccess
+    recordTasksApiSuccess(TASKS_OPERATION.CREATE_TASK, 0, requestId);
   } catch (error) {
     logger.error("Failed to process webhook callback", error, {
       aiServiceRequestId,
@@ -474,14 +725,9 @@ export const createTask = async (req: Request, res: Response, _next) => {
 
     // ✅ Record failure for webhook processing errors
     // Note: This is different from callback errors - this is a system error
+    // Note: Error handling is done inside recordTasksApiFailure
     if (requestId) {
-      try {
-        recordTasksApiFailure(TASKS_OPERATION.CREATE_TASK, requestId);
-      } catch (metricsError) {
-        logger.error("Failed to record failure metrics", metricsError, {
-          requestId,
-        });
-      }
+      recordTasksApiFailure(TASKS_OPERATION.CREATE_TASK, requestId);
     }
   } finally {
     res.sendStatus(StatusCodes.OK);
@@ -496,28 +742,64 @@ export const createTask = async (req: Request, res: Response, _next) => {
 #### 1. `shared/utils/with-metrics/with-metrics.test.ts` (Unit test)
 
 **Test Structure:**
+
 - Use `describe`, `it`, `expect`, `beforeEach`, `afterEach` from Vitest
-- Declare mock variables at top: `let mockRecorder: Mocked<MetricsRecorder<...>>`
+- Declare mock variables at top: `let mockOnRecordSuccess: MockedFunction<...>`, `let mockOnRecordFailure: MockedFunction<...>`
 - Initialize mocks in `beforeEach` with default values
 - Use `vi.clearAllMocks()` in `afterEach` (mocks are used)
 - Follow Arrange-Act-Assert pattern
 
 **Test Cases:**
+
 - ✅ Records success on successful execution with correct duration
 - ✅ Records failure on error (no duration)
-- ✅ Passes startTime to the function
-- ✅ Handles metrics recording failures gracefully (doesn't break flow)
+- ✅ Uses `withDurationAsync` internally for timing
 - ✅ Re-throws original error after recording failure metrics
-- ✅ Uses `getStartTimestamp` and `getElapsedDuration` correctly
+- ✅ Calls onRecordSuccess with correct parameters (operation, durationMs, requestId)
+- ✅ Calls onRecordFailure with correct parameters (operation, requestId)
+- ✅ Metrics recording failures are handled inside metrics functions (not in withMetrics)
 
 **Mock Patterns:**
-- Mock `getStartTimestamp` and `getElapsedDuration` using `vi.mock()`
-- Use `Mocked<T>` for `MetricsRecorder` type
+
+- Mock `withDurationAsync` using `vi.mock()` to return controlled duration
+- Use `MockedFunction<T>` for onRecordSuccess and onRecordFailure functions
 - Use `vi.mocked()` for properly typed mock functions
 
-#### 2. `services/metrics-service/record-error-metrics.test.ts` (Unit test)
+#### 2. Update Metrics Function Tests
+
+**Files to Update:**
+
+- `backend/services/ai/src/metrics/ai-service-metrics/ai-service-metrics.test.ts`
+- `backend/services/ai/src/metrics/openai-metrics.test.ts` (if exists)
+- `backend/services/tasks/src/metrics/tasks-metrics/tasks-metrics.test.ts`
 
 **Test Structure:**
+
+- Follow existing test structure patterns
+- Use `vi.clearAllMocks()` in `afterEach` (mocks are used)
+- Add new test cases for error handling
+
+**New Test Cases to Add:**
+
+- ✅ `recordAiApiSuccess` handles Prometheus errors gracefully (logs error, doesn't throw)
+- ✅ `recordAiApiFailure` handles Prometheus errors gracefully (logs error, doesn't throw)
+- ✅ `recordOpenAiApiSuccessMetrics` handles Prometheus errors gracefully (logs error, doesn't throw)
+- ✅ `recordOpenAiApiFailureMetrics` handles Prometheus errors gracefully (logs error, doesn't throw)
+- ✅ `recordTasksApiSuccess` handles Prometheus errors gracefully (logs error, doesn't throw)
+- ✅ `recordTasksApiFailure` handles Prometheus errors gracefully (logs error, doesn't throw)
+- ✅ `recordVagueInput` handles Prometheus errors gracefully (logs error, doesn't throw)
+- ✅ `recordPromptInjection` handles Prometheus errors gracefully (logs error, doesn't throw)
+
+**Mock Patterns:**
+
+- Mock Prometheus metrics to throw errors (e.g., `mockCounterInc.mockImplementation(() => { throw new Error("Prometheus error"); })`)
+- Verify logger.error is called with correct error and context
+- Verify function doesn't throw (returns normally)
+
+#### 3. `services/metrics-service/record-error-metrics.test.ts` (Unit test)
+
+**Test Structure:**
+
 - Use `describe`, `it`, `expect`, `beforeEach`, `afterEach` from Vitest
 - Mock metrics functions using `vi.mock()` at module level
 - Use `Mocked<T>` for metrics function types
@@ -525,12 +807,14 @@ export const createTask = async (req: Request, res: Response, _next) => {
 - Use `it.each()` for multiple error types
 
 **Test Cases:**
+
 - ✅ Records vague input error via `recordVagueInput`
 - ✅ Records prompt injection error with operation via `recordPromptInjection`
 - ✅ Doesn't record prompt injection if operation not provided
 - ✅ Handles unknown error types gracefully (no-op)
 
 **Mock Patterns:**
+
 - Mock `recordVagueInput` and `recordPromptInjection` using `vi.mock()`
 - Use `Mocked<T>` for metrics function types
 - Verify correct metrics function called with correct parameters
@@ -541,6 +825,7 @@ export const createTask = async (req: Request, res: Response, _next) => {
 #### 1. `controllers/tasks-controller/tasks-controller.unit.test.ts` (Unit test)
 
 **Test Structure:**
+
 - Follow existing test structure patterns
 - Use `Mocked<T>` for service dependencies
 - Use `ReturnType<typeof vi.fn>` for Express `NextFunction`
@@ -548,25 +833,31 @@ export const createTask = async (req: Request, res: Response, _next) => {
 - Use nested `describe` blocks for `createTask` and `getTasks`
 
 **createTask**: Add/update tests for:
+
 - ✅ Captures startTime using `getStartTimestamp`
 - ✅ Records failure metrics for immediate errors (before 202)
 - ✅ Mock `getStartTimestamp` and verify it's called
 
 **getTasks**: Update to use `withMetrics`:
+
 - ✅ Mock `withMetrics` and verify it's called with correct parameters
-- ✅ Verify success metrics recorded via recorder.recordSuccess
-- ✅ Verify failure metrics recorded via recorder.recordFailure on error
-- ✅ Verify `withMetrics` passes startTime to handler function
+- ✅ Verify success metrics recorded via onRecordSuccess callback
+- ✅ Verify failure metrics recorded via onRecordFailure callback on error
+- ✅ Verify `withMetrics` wraps the handler function correctly
+- ✅ Verify try-catch pattern is used (not .catch())
 - ✅ Remove any direct metrics recording (now handled by `withMetrics`)
 
 **Mock Patterns:**
-- Mock `getStartTimestamp`, `withMetrics` using `vi.mock()`
+
+- Mock `withMetrics` using `vi.mock()`
 - Use `Mocked<T>` for all service dependencies
 - Verify mocks called with correct parameters using `.toHaveBeenCalledWith()`
+- Verify onRecordSuccess and onRecordFailure are passed as function references
 
 #### 2. `controllers/tasks-controller/tasks-controller.integration.test.ts` (Integration test)
 
 **Test Structure:**
+
 - Use `beforeAll` for setup (database connections, external services)
 - Use `afterEach` for cleanup (delete test data)
 - Use `afterAll` for teardown (disconnect services)
@@ -575,11 +866,13 @@ export const createTask = async (req: Request, res: Response, _next) => {
 - Validate required environment variables with clear error messages
 
 **Test Cases:**
+
 - ✅ Remove any expectations for metrics middleware (if any)
 - ✅ Verify no automatic metrics recording on res.finish
 - ✅ All metrics should be manual (verify via mocks/spies)
 
 **Mock Patterns:**
+
 - Mock external services (AI service, Redis) at module level using `vi.mock()`
 - Use `supertest` for HTTP endpoint testing
 - Verify metrics recorded manually (not via middleware)
@@ -587,12 +880,14 @@ export const createTask = async (req: Request, res: Response, _next) => {
 #### 3. `controllers/capabilities-controller/capabilities-controller.unit.test.ts` (Unit test)
 
 **Test Structure:**
+
 - Follow existing test structure patterns
 - Use `Mocked<T>` for service dependencies
 - Use `ReturnType<typeof vi.fn>` for Express `NextFunction`
 - Use `vi.clearAllMocks()` in `afterEach` (mocks are used)
 
 **Test Cases:**
+
 - ✅ Add test for startTime in queue message:
   - Verifies `getStartTimestamp` is called
   - Verifies startTime included in queue message payload
@@ -602,6 +897,7 @@ export const createTask = async (req: Request, res: Response, _next) => {
   - Verifies correct capability name and requestId passed
 
 **Mock Patterns:**
+
 - Mock `getStartTimestamp` and `recordAiApiFailure` using `vi.mock()`
 - Use `Mocked<T>` for service dependencies
 - Verify `getStartTimestamp` called and result included in queue message
@@ -610,18 +906,21 @@ export const createTask = async (req: Request, res: Response, _next) => {
 #### 4. `workers/capabilities-worker/capabilities-worker.test.ts` (Unit test)
 
 **Test Structure:**
+
 - Follow existing test structure patterns
 - Use `Mocked<T>` for service dependencies
 - Use `vi.clearAllMocks()` in `afterEach` (mocks are used)
 - Use nested `describe` blocks for metrics recording and startTime handling
 
 **Test Cases:**
+
 - ✅ Add tests for metrics recording:
   - Records success metrics AFTER capability execution, BEFORE callback
   - Records failure metrics BEFORE error callback
   - Verifies metrics recorded with correct duration from startTime
   - Records metrics without duration (0) if startTime missing/invalid
   - Verifies order: execute → record metrics → send callback
+  - Metrics functions handle errors internally (no try-catch in business logic)
 - ✅ Add tests for startTime handling:
   - Extracts startTime from queue message
   - Validates startTime (logs warning if invalid/missing)
@@ -629,6 +928,7 @@ export const createTask = async (req: Request, res: Response, _next) => {
 - ✅ Update existing tests to include startTime in mock messages
 
 **Mock Patterns:**
+
 - Mock `recordAiApiSuccess`, `recordAiApiFailure`, and `getElapsedDuration` using `vi.mock()`
 - Use `Mocked<T>` for service dependencies
 - Update existing mock message creation to include `startTime` field
@@ -638,23 +938,31 @@ export const createTask = async (req: Request, res: Response, _next) => {
 ## Key Implementation Points
 
 - **Remove all metrics middleware**: No automatic metrics recording on `res.finish`
-- **Sync operations use `withMetrics`**: Wraps handler function, records success/failure automatically
+- **Sync operations use `withMetrics`**:
+  - Uses existing `withDurationAsync` utility internally
+  - Wraps handler function, records success/failure automatically
+  - Uses try-catch pattern in controllers (not `.catch()`)
+  - Accepts metrics functions directly (no interface coupling)
 - **Async operations capture `startTime`**: Store in queue message (AI service) or Redis (Tasks service - Plan 2)
-- **Metrics recorded at completion**: 
+- **Metrics recorded at completion**:
   - AI worker: After capability execution, before callback
   - Tasks webhook: After processing (startTime from Redis in Plan 2)
 - **Handle missing `startTime` gracefully**: Record metrics without duration (0 for success)
-- **Metrics failures don't break flow**: Wrap all metrics calls in try-catch, log errors
+- **Metrics failures don't break flow**: All metrics functions wrap error handling internally (try-catch inside metrics functions, not in business logic)
+- **Clean business logic**: No try-catch blocks around metrics calls - error handling is centralized in metrics functions
+- **No redundant logging**: Metrics functions handle logging, `withMetrics` doesn't log
 - **Queue message schema**: Include `startTime` field (AI service only, internal use)
 
 ## Success Criteria
 
 - [ ] All metrics middleware removed
+- [ ] Metrics functions updated to handle errors internally (try-catch inside functions)
 - [ ] `withMetrics` helper created and tested
 - [ ] `recordAiErrorMetrics` service created and tested
 - [ ] Sync operations (GET) use `withMetrics`
 - [ ] Async operations (POST) capture `startTime`
-- [ ] AI service worker records metrics with correct timing
-- [ ] Tasks service webhook records metrics (partial - full implementation in Plan 2)
-- [ ] All tests pass
+- [ ] AI service worker records metrics with correct timing (no try-catch in business logic)
+- [ ] Tasks service webhook records metrics (partial - full implementation in Plan 2, no try-catch in business logic)
+- [ ] All tests pass (including tests for metrics function error handling)
 - [ ] No automatic metrics recording on `res.finish`
+- [ ] Business logic is clean (no try-catch blocks around metrics calls)
