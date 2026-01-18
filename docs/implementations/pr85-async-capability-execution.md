@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the implementation of **Async Capability Execution with RabbitMQ**. This feature refactors the AI service to process capability execution requests asynchronously using RabbitMQ message queues, enabling better scalability, reliability, and separation of concerns. The implementation includes a background worker for processing messages, callback URL support for notifying the Tasks service of completion, and comprehensive error handling.
+This document summarizes the implementation of **Async Capability Execution with RabbitMQ**. This feature refactors the AI service to process capability execution requests asynchronously using RabbitMQ message queues, enabling better scalability, reliability, and separation of concerns. The implementation includes a separate consumer service for processing messages, callback URL support for notifying the Tasks service of completion, and comprehensive error handling.
 
 ## Architecture Changes
 
@@ -12,17 +12,18 @@ The async capability execution system implements a **message queue pattern** tha
 
 1. **Accepts Requests**: AI service receives capability execution requests and immediately returns `202 Accepted`
 2. **Queues Messages**: Requests are sent to RabbitMQ queue for background processing
-3. **Processes Asynchronously**: Background worker consumes messages and executes capabilities
-4. **Sends Callbacks**: Worker sends success/error callbacks to Tasks service via HTTP webhooks
+3. **Processes Asynchronously**: Separate consumer service consumes messages and executes capabilities
+4. **Sends Callbacks**: Consumer sends success/error callbacks to Tasks service via HTTP webhooks
 5. **Handles Errors**: Comprehensive error handling with retry logic and proper message acknowledgment
 
 ### Key Components
 
 1. **RabbitMQ Client**: Shared and service-specific clients for connection management and message operations
 2. **Capabilities Controller**: Refactored to queue messages instead of executing synchronously
-3. **Capabilities Worker**: Background worker that consumes messages and executes capabilities
-4. **Webhooks Controller**: Handles callback URLs from AI service in Tasks service
-5. **Tasks Client**: HTTP client in AI service for sending callbacks to Tasks service
+3. **Capabilities Consumer**: Separate consumer service that consumes messages and executes capabilities
+4. **Consumer Utility**: Shared utility for initializing consumer processes with proper lifecycle management
+5. **Webhooks Controller**: Handles callback URLs from AI service in Tasks service
+6. **Tasks Client**: HTTP client in AI service for sending callbacks to Tasks service
 
 ## Implementation Details
 
@@ -122,13 +123,13 @@ Updated schema to require `callbackUrl` query parameter (validated as URL format
 
 Type-safe utility to retrieve validated query parameters from `res.locals.capabilityValidatedQuery`.
 
-### 3. Capabilities Worker
+### 3. Capabilities Consumer
 
-#### 3.1 Worker Implementation
+#### 3.1 Consumer Implementation
 
-**File**: `backend/services/ai/src/workers/capabilities-worker/capabilities-worker.ts`
+**File**: `backend/services/ai/src/consumers/capabilities-consumer/capabilities-consumer.ts`
 
-Background worker that consumes messages from RabbitMQ and executes capabilities:
+Separate consumer service that consumes messages from RabbitMQ and executes capabilities:
 
 **Key Functions**:
 
@@ -193,17 +194,59 @@ export const capabilitiesQueueMessageDataSchema = z.object({
 
 **Type Export**: `backend/services/ai/src/types/capabilities-queue-message-data.ts`
 
-#### 3.3 Worker Startup
+#### 3.3 Consumer Entry Point
+
+**File**: `backend/services/ai/src/consumer.ts`
+
+Separate entry point for running the consumer as an independent process:
+
+```typescript
+import { closeRabbitMQClient, connectRabbitMQClient } from "@clients/rabbitmq";
+import { env } from "@config/env";
+import { consumeCapabilitiesMessage } from "@consumers/capabilities-consumer";
+import { initializeConsumer } from "@shared/utils/consumer";
+
+(async () => {
+  await initializeConsumer(`${env.SERVICE_NAME} - consumer`, {
+    startCallback: async () => {
+      await connectRabbitMQClient();
+      await consumeCapabilitiesMessage();
+    },
+    cleanupCallbacks: {
+      afterSuccess: async () => {
+        await closeRabbitMQClient();
+      },
+      afterFailure: async () => {
+        await closeRabbitMQClient();
+      },
+    },
+  });
+})();
+```
+
+**Lifecycle**: Consumer runs as a separate process, connects on startup, closes on shutdown or failure
+
+#### 3.4 Shared Consumer Utility
+
+**File**: `backend/shared/src/utils/consumer/consumer.ts`
+
+Shared utility for initializing consumer processes with proper lifecycle management:
+
+- **`initializeConsumer(serviceName, servicesCallbacks)`**: Initializes consumer with start callbacks and cleanup handlers
+- Registers process event handlers for graceful shutdown
+- Handles initialization failures with proper cleanup
+- Uses the same process event handling infrastructure as server initialization
+
+#### 3.5 Server Changes
 
 **File**: `backend/services/ai/src/server.ts`
 
-Worker is started during service initialization:
+The HTTP server no longer starts the consumer. It only connects to RabbitMQ for sending messages:
 
 ```typescript
 await initializeServer(env.SERVICE_NAME, env.SERVICE_PORT, app, {
   startCallback: async () => {
     await connectRabbitMQClient();
-    await consumeCapabilitiesMessage();
   },
   cleanupCallbacks: {
     afterSuccess: async () => {
@@ -216,7 +259,7 @@ await initializeServer(env.SERVICE_NAME, env.SERVICE_PORT, app, {
 });
 ```
 
-**Lifecycle**: Connects on startup, closes on shutdown or failure
+**Separation of Concerns**: HTTP server handles API requests and message queuing, while the consumer handles message processing independently
 
 ### 4. Tasks Client
 
@@ -231,7 +274,7 @@ export const tasksClient = createHttpClient(
 );
 ```
 
-**Usage**: Used by capabilities worker to send callbacks to Tasks service webhook endpoints
+**Usage**: Used by capabilities consumer to send callbacks to Tasks service webhook endpoints
 
 **Note**: Uses AI service's `SERVICE_NAME` and `SERVICE_PORT` to set the origin header when constructing the Tasks service URL.
 
@@ -292,7 +335,7 @@ Route: `POST /api/v1/webhooks/create-task` with schema validation, controller ha
 
 - `backend/services/ai/src/controllers/capabilities-controller/executors/execute-sync-pattern/`
 
-**Rationale**: The `executeSyncPattern` function was inlined into the capabilities worker as `executeCapabilityHandler` to:
+**Rationale**: The `executeSyncPattern` function was inlined into the capabilities consumer as `executeCapabilityHandler` to:
 
 - Remove misleading abstraction (no longer using pattern-based execution)
 - Simplify codebase by eliminating unnecessary indirection
@@ -309,6 +352,26 @@ Route: `POST /api/v1/webhooks/create-task` with schema validation, controller ha
 - Single source of truth for callback logic
 - Easier to maintain and extend
 
+#### 7.5 Worker to Consumer Refactoring
+
+**Refactoring**: Renamed and restructured capabilities worker to capabilities consumer, and separated it into an independent deployment.
+
+**Changes**:
+
+- **Renamed**: `workers/capabilities-worker/` → `consumers/capabilities-consumer/`
+- **New Entry Point**: Created `consumer.ts` as separate entry point for consumer process
+- **Shared Utility**: Created `initializeConsumer` utility in `backend/shared/src/utils/consumer/` for consumer lifecycle management
+- **Server Separation**: Removed consumer startup from `server.ts` - server now only handles HTTP requests and message queuing
+- **Deployment**: Consumer runs as separate service (`ai-consumer` in docker-compose.dev.yml)
+
+**Benefits**:
+
+- Clear separation between HTTP server and message processing
+- Independent scaling and deployment of consumer and server
+- Better resource allocation (different CPU/memory profiles)
+- Improved fault isolation
+- Easier development and debugging (can run consumer separately)
+
 ### 8. Configuration Changes
 
 **Environment Variables** (`backend/services/ai/src/config/env.ts`): Added `RABBITMQ_URL` configuration.
@@ -318,18 +381,29 @@ Route: `POST /api/v1/webhooks/create-task` with schema validation, controller ha
 - `backend/services/ai/src/constants/rabbitmq-queue.ts`: Added `RABBITMQ_QUEUE.CAPABILITIES` constant
 - `backend/services/ai/src/constants/error-types.ts`: Added `RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED` and `RABBITMQ_CONSUME_MESSAGE_FAILED` error types
 
+**Package Scripts** (`backend/services/ai/package.json`):
+
+- `start:consumer`: Production command to run consumer (`node dist/consumer.js`)
+- `start:consumer:dev`: Development command to run consumer with hot reload (`ts-node-dev src/consumer.ts`)
+
+**Docker Compose** (`docker-compose.dev.yml`):
+
+- Added `ai-consumer` service that runs the consumer as a separate container
+- Consumer service uses the same Docker image as the AI service but runs a different command
+- Allows independent scaling and deployment of HTTP server and consumer processes
+
 ### 9. Error Handling
 
 **RabbitMQ Errors**:
 
 - Send failures: `ServiceUnavailableError` with `RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED` type
-- Consumption failures: `InternalError` with `RABBITMQ_CONSUME_MESSAGE_FAILED` type (stops worker)
+- Consumption failures: `InternalError` with `RABBITMQ_CONSUME_MESSAGE_FAILED` type (stops consumer)
 
-**Worker Error Handling**:
+**Consumer Error Handling**:
 
 - Parse/validation failures: Message nacked without requeue
 - Execution errors: Error callback sent (if `callbackUrl` present), message acknowledged
-- Execution errors (no `callbackUrl`): Message acknowledged, no callback sent
+- Execution errors (no `callbackUrl`): Message nacked without requeue
 - Callback failures: Message nacked without requeue (after retries exhausted)
 
 **Retry Strategy**:
@@ -371,7 +445,7 @@ Messages are **never requeued** (nacked with `requeue: false`) because:
 - `backend/shared/src/clients/rabbitmq/rabbitmq.test.ts`: Connection creation, error handling, closing
 - `backend/services/ai/src/clients/rabbitmq/rabbitmq.test.ts`: Connection management, channel creation, message sending, error handling
 
-**Capabilities Worker Tests** (`backend/services/ai/src/workers/capabilities-worker/capabilities-worker.test.ts`): Message consumption, parsing, validation, execution, callbacks, acknowledgment strategies, retry logic
+**Capabilities Consumer Tests** (`backend/services/ai/src/consumers/capabilities-consumer/capabilities-consumer.test.ts`): Message consumption, parsing, validation, execution, callbacks, acknowledgment strategies, retry logic
 
 **Mocks**:
 
@@ -399,7 +473,7 @@ Messages are **never requeued** (nacked with `requeue: false`) because:
 
 3. **Message Queue**: Message stored in RabbitMQ `capabilities` queue
 
-4. **Worker Processing**: Background worker consumes message
+4. **Consumer Processing**: Consumer service consumes message
 
    - Validates message data
    - Executes capability using `executeCapabilityHandler` (validates handler output)
@@ -420,10 +494,10 @@ Messages are **never requeued** (nacked with `requeue: false`) because:
 1. **Execution Error**: Capability execution fails
 
    - OpenAI API retries exhausted (if applicable)
-   - Worker catches error
+   - Consumer catches error
    - Extracts error info using `extractErrorInfo`
    - If `callbackUrl` is present: Sends error callback to Tasks service, then acknowledges message
-   - If `callbackUrl` is missing: Message acknowledged without callback (edge case)
+   - If `callbackUrl` is missing: Message nacked without requeue (edge case)
 
 2. **Callback Failure**: HTTP callback fails
 
@@ -436,18 +510,47 @@ Messages are **never requeued** (nacked with `requeue: false`) because:
    - Error logged
    - No callback sent (message is malformed)
 
+## Deployment Architecture
+
+### Separate Consumer Deployment
+
+The consumer runs as a **separate process/service** from the HTTP server, enabling:
+
+1. **Independent Scaling**: Scale HTTP servers and consumers independently based on workload
+2. **Resource Isolation**: Allocate different resources to HTTP servers (lower CPU/memory) vs consumers (higher CPU/memory for OpenAI processing)
+3. **Fault Isolation**: Consumer failures don't affect HTTP server availability
+4. **Development Flexibility**: Run consumer separately during development for easier debugging
+
+### Deployment Structure
+
+**Development** (`docker-compose.dev.yml`):
+- `ai`: HTTP server service (handles API requests, queues messages)
+- `ai-consumer`: Consumer service (processes messages from queue)
+
+**Production**:
+- HTTP server: Runs `npm run start` (or `node dist/server.js`)
+- Consumer: Runs `npm run start:consumer` (or `node dist/consumer.js`)
+- Both services can be deployed as separate containers/pods with independent scaling
+
+### Process Lifecycle
+
+- **HTTP Server**: Initializes Express app, connects to RabbitMQ for sending messages, handles HTTP requests
+- **Consumer**: Initializes consumer process, connects to RabbitMQ for consuming messages, processes capabilities
+- Both use shared `initializeServer`/`initializeConsumer` utilities for consistent lifecycle management
+
 ## Benefits
 
 - **Scalability**: Async processing enables horizontal scaling and queue buffering for traffic spikes
 - **Reliability**: Message durability, selective retry logic at both OpenAI API and callback HTTP layers, and comprehensive error handling
 - **Cost Efficiency**: Selective retries prevent re-executing expensive operations (e.g., successful OpenAI calls)
-- **Separation of Concerns**: HTTP layer handles requests/responses, worker handles execution, callbacks handle notifications
+- **Separation of Concerns**: HTTP layer handles requests/responses, consumer handles execution, callbacks handle notifications
+- **Independent Deployment**: Consumer runs as a separate process/service, enabling independent scaling and deployment
 - **Observability**: Request IDs tracked through entire flow with comprehensive logging
 
 ## Future Enhancements
 
 - **Webhook Controller**: Complete task creation from callbacks, token usage reconciliation, error sanitization
-- **Monitoring**: RabbitMQ metrics (queue depth, message rates), worker metrics (processing time, error rates), callback metrics
+- **Monitoring**: RabbitMQ metrics (queue depth, message rates), consumer metrics (processing time, error rates), callback metrics
 - **Resilience**: Dead letter queue, message TTL, circuit breaker for callbacks
 
 ## Related PRs

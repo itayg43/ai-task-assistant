@@ -90,9 +90,9 @@ describe("server", () => {
 
         expect(http.createServer).toHaveBeenCalledWith(mockApp);
         expect(mockedRegisterProcessEventHandlers).toHaveBeenCalledWith(
-          mockServer,
           process.exit,
-          testCallbacks?.cleanupCallbacks
+          testCallbacks?.cleanupCallbacks,
+          mockServer
         );
 
         if (shouldCallStartCallback && testCallbacks) {

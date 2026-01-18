@@ -12,7 +12,8 @@ import {
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { InternalError } from "@shared/errors";
-import { consumeCapabilitiesMessage } from "@workers/capabilities-worker";
+import { consumeCapabilitiesMessage } from "@consumers/capabilities-consumer";
+import * as schemasModule from "@schemas";
 
 const {
   mockGetRabbitMQChannel,
@@ -62,7 +63,7 @@ vi.mock("@clients/tasks", () => ({
   tasksClient: mockTasksClient,
 }));
 
-describe("capabilitiesWorker", () => {
+describe("capabilitiesConsumer", () => {
   let mockChannel: amqp.Channel;
   let mockMessage: amqp.ConsumeMessage;
 
@@ -143,7 +144,7 @@ describe("capabilitiesWorker", () => {
     it("should parse message payload, validate input, and execute capability", async () => {
       await consumeCapabilitiesMessage();
 
-      // This test verifies that the worker correctly:
+      // This test verifies that the consumer correctly:
       // 1. Parses the raw message content (JSON.parse)
       // 2. Validates it against capabilitiesQueueMessageDataSchema
       // 3. Retrieves the capability config from the capabilities registry
@@ -163,6 +164,9 @@ describe("capabilitiesWorker", () => {
     it("should nack message when JSON parsing fails", async () => {
       const invalidJsonMessage = {
         content: Buffer.from("invalid json{"),
+        properties: {
+          messageId: "test-message-id",
+        },
       } as unknown as amqp.ConsumeMessage;
 
       setupConsumeWithMessage(mockChannel, invalidJsonMessage);

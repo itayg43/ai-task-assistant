@@ -77,5 +77,8 @@ export const createMockMessage = (
 ): amqp.ConsumeMessage => {
   return {
     content: Buffer.from(JSON.stringify(payload)),
+    properties: {
+      messageId: "test-message-id",
+    },
   } as unknown as amqp.ConsumeMessage;
 };

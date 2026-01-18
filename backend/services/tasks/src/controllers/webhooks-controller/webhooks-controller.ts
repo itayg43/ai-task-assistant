@@ -17,23 +17,33 @@ export const createTask = async (
   const { userId } = getAuthenticationContext(res);
   const { aiServiceRequestId, success } = req.body;
 
+  logger.info("Received callback from AI service", {
+    aiServiceRequestId,
+    success,
+  });
+
   try {
     if (!success) {
-      // Domain-specific error handlers (after routes, before global error handler)
-      // Order matters: tasksErrorHandler must run before tokenUsageErrorHandler
-      // because tasksErrorHandler handles specific error types and may reconcile
-      // token usage, while tokenUsageErrorHandler handles ALL remaining errors
-      // and releases full reservation for unexpected failures
-      // webhooksRouter.use(tasksErrorHandler);
-
+      logger.warn("Callback indicates failure, skipping task creation", {
+        requestId: aiServiceRequestId,
+        error: req.body.error,
+      });
       return;
     }
 
     const { result } = req.body;
+    logger.info("Starting task creation from callback", {
+      aiServiceRequestId,
+    });
+
     const createdTask = await createTaskHandler(userId, result.result);
     const tokenUsage = extractOpenaiTokenUsage(result.openaiMetadata);
+
+    logger.info("Task created successfully from callback", {
+      aiServiceRequestId,
+    });
   } catch (error) {
-    logger.error("Failed to create task", error, {
+    logger.error("Failed to create task from callback", error, {
       aiServiceRequestId,
     });
   } finally {

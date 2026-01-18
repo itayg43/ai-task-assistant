@@ -116,12 +116,6 @@ graph TB
 # Type checking (runs in watch mode)
 npm run type-check
 
-# Access Redis CLI
-docker exec -it <redis_container_id> redis-cli
-
-# Access PostgreSQL CLI
-docker exec -it <postgres_container_id> psql -U <POSTGRES_USER> -d <POSTGRES_DB>
-
 # Prisma commands (from backend/services/tasks directory)
 cd backend/services/tasks
 npm run prisma:generate  # Generate Prisma client
@@ -129,8 +123,9 @@ npm run prisma:migrate:dev  # Run database migrations
 npm run prisma:seed  # Seed database with sample data
 
 # View logs
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f ai
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f tasks
+docker compose logs -f ai
+docker compose -f docker-compose.dev.yml logs -f ai-consumer
+docker compose logs -f tasks
 ```
 
 ### Running Tests

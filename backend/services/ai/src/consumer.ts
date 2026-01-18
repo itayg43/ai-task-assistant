@@ -1,12 +1,13 @@
 import { closeRabbitMQClient, connectRabbitMQClient } from "@clients/rabbitmq";
 import { env } from "@config/env";
-import { initializeServer } from "@shared/utils/server";
-import { app } from "./app";
+import { consumeCapabilitiesMessage } from "@consumers/capabilities-consumer";
+import { initializeConsumer } from "@shared/utils/consumer";
 
 (async () => {
-  await initializeServer(env.SERVICE_NAME, env.SERVICE_PORT, app, {
+  await initializeConsumer(`${env.SERVICE_NAME} - consumer`, {
     startCallback: async () => {
       await connectRabbitMQClient();
+      await consumeCapabilitiesMessage();
     },
     cleanupCallbacks: {
       afterSuccess: async () => {

@@ -10,6 +10,9 @@ import { shutdownHandler } from "../handlers/shutdown-handler";
 import { registerProcessEventHandlers } from "./register-process-event-handlers";
 
 vi.mock("../handlers/shutdown-handler");
+vi.mock("../../server", () => ({
+  performFailureCleanup: vi.fn(),
+}));
 
 describe("registerProcessEventHandlers", () => {
   let mockedShutdownHandler: Mocked<typeof shutdownHandler>;
@@ -67,12 +70,12 @@ describe("registerProcessEventHandlers", () => {
   });
 
   it.each(events)(
-    "should register handler for $name event that calls $expectedHandler",
+    "should register handler for $name event that calls $expectedHandler with server",
     ({ name, errorOrReason, expectedHandler }) => {
       registerProcessEventHandlers(
-        mockServer as http.Server,
         mockProcessExitCallback,
-        mockCleanupCallbacks
+        mockCleanupCallbacks,
+        mockServer as http.Server
       );
 
       expect(processOnSpy).toHaveBeenCalledWith(name, expect.any(Function));
@@ -96,4 +99,57 @@ describe("registerProcessEventHandlers", () => {
       }
     }
   );
+
+  it.each(events)(
+    "should register handler for $name event that calls $expectedHandler without server",
+    ({ name, errorOrReason, expectedHandler }) => {
+      registerProcessEventHandlers(
+        mockProcessExitCallback,
+        mockCleanupCallbacks
+      );
+
+      expect(processOnSpy).toHaveBeenCalledWith(name, expect.any(Function));
+
+      const eventCall = processOnSpy.mock.calls.find(
+        (call: any) => call[0] === name
+      );
+      const eventHandler = eventCall![1] as Function;
+
+      eventHandler(errorOrReason);
+
+      if (expectedHandler === "shutdownHandler") {
+        expect(mockedShutdownHandler).toHaveBeenCalledWith(
+          undefined,
+          name,
+          errorOrReason,
+          expect.any(Uint8Array),
+          mockProcessExitCallback,
+          mockCleanupCallbacks
+        );
+      }
+    }
+  );
+
+  it("should register handler without cleanup callbacks", () => {
+    registerProcessEventHandlers(mockProcessExitCallback);
+
+    expect(processOnSpy).toHaveBeenCalledWith("SIGINT", expect.any(Function));
+
+    const eventCall = processOnSpy.mock.calls.find(
+      (call: any) => call[0] === "SIGINT"
+    );
+    const eventHandler = eventCall![1] as Function;
+
+    eventHandler(undefined);
+
+    expect(mockedShutdownHandler).toHaveBeenCalledWith(
+      undefined,
+      "SIGINT",
+      undefined,
+      expect.any(Uint8Array),
+      mockProcessExitCallback,
+      undefined
+    );
+  });
 });
+

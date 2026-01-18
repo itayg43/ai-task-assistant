@@ -52,9 +52,9 @@ export async function initializeServer(
     const server = http.createServer(app);
 
     registerProcessEventHandlers(
-      server,
       process.exit,
-      servicesCleanupCallbacks
+      servicesCleanupCallbacks,
+      server
     );
 
     if (servicesStartCallback) {

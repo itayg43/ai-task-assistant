@@ -18,7 +18,7 @@ import { withRetry } from "@shared/utils/with-retry";
 import { CapabilityConfig } from "@types";
 import { ZodError } from "zod";
 
-const logger = createLogger("capabilitiesWorker");
+const logger = createLogger("capabilitiesConsumer");
 
 const sendCallbackHandler = async (
   channel: amqp.Channel,
@@ -30,6 +30,12 @@ const sendCallbackHandler = async (
     | { success: false; error: ExtractedErrorInfo }
 ) => {
   try {
+    logger.info("Sending callback to service", {
+      requestId,
+      callbackUrl,
+      success: payload.success,
+    });
+
     await withRetry(
       DEFAULT_RETRY_CONFIG,
       async () => {
@@ -43,6 +49,12 @@ const sendCallbackHandler = async (
         operation: "sendCallbackHandler",
       }
     );
+
+    logger.info("Callback sent successfully to service", {
+      requestId,
+      callbackUrl,
+      success: payload.success,
+    });
 
     channel.ack(message);
   } catch (error) {
@@ -107,8 +119,15 @@ const capabilitiesMessageHandler = async (
   let cbUrl: string | undefined;
 
   try {
+    logger.info("Received capability execution message from queue", {
+      messageId: message.properties.messageId,
+    });
+
     const parsedMessageData = parseMessageData(message);
     if (!parsedMessageData) {
+      logger.error("Failed to parse message data, nacking message", {
+        messageId: message.properties.messageId,
+      });
       channel.nack(message, false, false);
       return;
     }
@@ -116,6 +135,12 @@ const capabilitiesMessageHandler = async (
     const { requestId, capability, input, callbackUrl } = parsedMessageData;
     reqId = requestId;
     cbUrl = callbackUrl;
+
+    logger.info("Starting capability execution", {
+      requestId,
+      capability,
+      callbackUrl,
+    });
 
     const config = capabilities[capability];
     if (!config) {
@@ -129,6 +154,11 @@ const capabilitiesMessageHandler = async (
       validatedInput
     );
 
+    logger.info("Capability execution completed successfully", {
+      requestId,
+      capability,
+    });
+
     await sendCallbackHandler(channel, message, requestId, callbackUrl, {
       success: true,
       result,
@@ -136,11 +166,21 @@ const capabilitiesMessageHandler = async (
   } catch (error) {
     const errorInfo = extractErrorInfo(error);
 
+    logger.error("Capability execution failed", error, {
+      requestId: reqId,
+      callbackUrl: cbUrl,
+    });
+
     if (cbUrl) {
       await sendCallbackHandler(channel, message, reqId, cbUrl, {
         success: false,
         error: errorInfo,
       });
+    } else {
+      logger.warn("No callback URL available, nacking message", {
+        requestId: reqId,
+      });
+      channel.nack(message, false, false);
     }
   }
 };

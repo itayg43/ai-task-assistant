@@ -1,20 +1,18 @@
 import http from "http";
 
 import { createLogger } from "../../../../config/create-logger";
-import {
-  PROCESS_EXIT_CODE,
-  SERVER_SHUTDOWN_STATE,
-} from "../../../../constants";
+import { PROCESS_EXIT_CODE } from "../../../../constants";
 import {
   ProcessExitCallback,
   ServicesCleanupCallbacks,
 } from "../../../../types";
 import { closeServer, performFailureCleanup } from "../../../server";
+import { checkIfShutdownAlreadyInProgress } from "../../shutdown-state";
 
 const logger = createLogger("shutdownHandler");
 
 export const shutdownHandler = async (
-  server: http.Server,
+  server: http.Server | undefined,
   event: string,
   errorOrReason: unknown,
   shutdownView: Uint8Array,
@@ -43,25 +41,17 @@ export const shutdownHandler = async (
   );
 };
 
-function checkIfShutdownAlreadyInProgress(shutdownView: Uint8Array) {
-  const expected = SERVER_SHUTDOWN_STATE.NOT_SHUTTING_DOWN;
-  const replacement = SERVER_SHUTDOWN_STATE.SHUTTING_DOWN;
-
-  return (
-    Atomics.compareExchange(shutdownView, 0, expected, replacement) !== expected
-  );
-}
-
 async function processShutdown(
-  server: http.Server,
+  server: http.Server | undefined,
   errorOrReason: unknown,
   processExitCallback: ProcessExitCallback,
   servicesCleanupCallbacks?: ServicesCleanupCallbacks
 ) {
-  logger.info("Closing HTTP server...");
-
   try {
-    await closeServer(server);
+    if (server) {
+      logger.info("Closing HTTP server...");
+      await closeServer(server);
+    }
 
     if (servicesCleanupCallbacks) {
       await servicesCleanupCallbacks.afterSuccess();
@@ -71,11 +61,16 @@ async function processShutdown(
       ? PROCESS_EXIT_CODE.ERROR
       : PROCESS_EXIT_CODE.REGULAR;
 
-    logger.info(`HTTP server closed. Exiting process. Exit code: ${exitCode}`);
+    logger.info(
+      `${server ? "HTTP server closed. " : ""}Exiting process. Exit code: ${exitCode}`
+    );
 
     processExitCallback(exitCode);
   } catch (error) {
-    logger.error(`Error while closing the server:`, error);
+    logger.error(
+      `${server ? "Error while closing the server" : "Error during shutdown"}:`,
+      error
+    );
 
     await performFailureCleanup(servicesCleanupCallbacks?.afterFailure);
 

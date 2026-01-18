@@ -10,9 +10,9 @@ const shutdownBuffer = new SharedArrayBuffer(1);
 const shutdownView = new Uint8Array(shutdownBuffer);
 
 export const registerProcessEventHandlers = (
-  server: http.Server,
   processExitCallback: ProcessExitCallback,
-  servicesCleanupCallbacks?: ServicesCleanupCallbacks
+  servicesCleanupCallbacks?: ServicesCleanupCallbacks,
+  server?: http.Server
 ) => {
   process.on("SIGINT", () =>
     shutdownHandler(

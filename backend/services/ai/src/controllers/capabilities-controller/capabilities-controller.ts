@@ -3,9 +3,12 @@ import { StatusCodes } from "http-status-codes";
 
 import { sendMessageToRabbitMQQueue } from "@clients/rabbitmq";
 import { RABBITMQ_QUEUE } from "@constants";
+import { createLogger } from "@shared/config/create-logger";
 import { getCapabilityConfig } from "@utils/get-capability-config";
 import { getCapabilityValidatedInput } from "@utils/get-capability-validated-input";
 import { getCapabilityValidatedQuery } from "@utils/get-capability-validated-query";
+
+const logger = createLogger("capabilitiesController");
 
 export const executeCapability = async (
   _req: Request,
@@ -18,10 +21,22 @@ export const executeCapability = async (
     const input = getCapabilityValidatedInput(res);
     const { callbackUrl } = getCapabilityValidatedQuery(res);
 
+    logger.info("Queuing capability execution request", {
+      requestId,
+      capability: config.name,
+      callbackUrl,
+    });
+
     await sendMessageToRabbitMQQueue(RABBITMQ_QUEUE.CAPABILITIES, {
       requestId,
       capability: config.name,
       input,
+      callbackUrl,
+    });
+
+    logger.info("Capability execution request queued successfully", {
+      requestId,
+      capability: config.name,
       callbackUrl,
     });
 

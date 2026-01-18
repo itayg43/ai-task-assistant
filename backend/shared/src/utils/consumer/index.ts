@@ -1,0 +1,1 @@
+export { initializeConsumer } from "./consumer";

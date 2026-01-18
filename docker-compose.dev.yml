@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: backend/services/ai/Dockerfile.dev
+    command: ["npm", "run", "start:dev", "-w", "backend/services/ai"]
     ports:
       - "3002:3002"
       - "51205:51204"
@@ -12,11 +13,42 @@ services:
       - ./backend/services/ai:/app/backend/services/ai
       - ./backend/shared:/app/backend/shared
       - /app/node_modules
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:3002/health/healthz"]
-    #   interval: 5m
-    #   timeout: 1m
-    #   retries: 3
+    # Resource allocation strategy:
+    # - Minimum: 0.5 CPU / 256MB (intended baseline)
+    # - Maximum: 1 CPU / 512MB (burst capacity)
+    # Note: Docker Compose sets maximum limits only
+    cpus: 1.0
+    mem_limit: 512m
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend/services/ai/package.json
+        - action: rebuild
+          path: ./backend/services/ai/Dockerfile.dev
+        - action: rebuild
+          path: ./backend/shared/package.json
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./package-lock.json
+
+  ai-consumer:
+    build:
+      context: .
+      dockerfile: backend/services/ai/Dockerfile.dev
+    command: ["npm", "run", "start:consumer:dev", "-w", "backend/services/ai"]
+    env_file:
+      - ./backend/services/ai/.env.dev
+    volumes:
+      - ./backend/services/ai:/app/backend/services/ai
+      - ./backend/shared:/app/backend/shared
+      - /app/node_modules
+    # Resource allocation strategy:
+    # - Minimum: 0.5 CPU / 512MB (intended baseline)
+    # - Maximum: 1 CPU / 1GB (burst capacity)
+    # Note: Docker Compose sets maximum limits only
+    cpus: 1.0
+    mem_limit: 1g
     develop:
       watch:
         - action: rebuild
@@ -43,11 +75,12 @@ services:
       - ./backend/services/tasks:/app/backend/services/tasks
       - ./backend/shared:/app/backend/shared
       - /app/node_modules
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:3001/health/readyz"]
-    #   interval: 5m
-    #   timeout: 1m
-    #   retries: 3
+    # Resource allocation strategy:
+    # - Minimum: 0.5 CPU / 256MB (intended baseline)
+    # - Maximum: 1 CPU / 512MB (burst capacity)
+    # Note: Docker Compose sets maximum limits only
+    cpus: 1.0
+    mem_limit: 512m
     develop:
       watch:
         - action: rebuild
