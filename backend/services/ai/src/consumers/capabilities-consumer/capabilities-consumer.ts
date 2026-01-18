@@ -1,4 +1,5 @@
 import * as amqp from "amqplib";
+import { ZodError } from "zod";
 
 import { capabilities } from "@capabilities";
 import { getRabbitMQChannel } from "@clients/rabbitmq";
@@ -16,7 +17,6 @@ import { ExtractedErrorInfo } from "@shared/types";
 import { extractErrorInfo } from "@shared/utils/extract-error-info";
 import { withRetry } from "@shared/utils/with-retry";
 import { CapabilityConfig } from "@types";
-import { ZodError } from "zod";
 
 const logger = createLogger("capabilitiesConsumer");
 
@@ -119,15 +119,11 @@ const capabilitiesMessageHandler = async (
   let cbUrl: string | undefined;
 
   try {
-    logger.info("Received capability execution message from queue", {
-      messageId: message.properties.messageId,
-    });
+    logger.info("Received capability execution message from queue");
 
     const parsedMessageData = parseMessageData(message);
     if (!parsedMessageData) {
-      logger.error("Failed to parse message data, nacking message", {
-        messageId: message.properties.messageId,
-      });
+      logger.warn("Failed to parse message data, nacking message");
       channel.nack(message, false, false);
       return;
     }
