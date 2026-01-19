@@ -66,7 +66,7 @@ describe("rabbitmq", () => {
       await connectRabbitMQClient();
 
       expect(mockCreateRabbitMQConnection).toHaveBeenCalledWith(
-        mockEnv.RABBITMQ_URL
+        mockEnv.RABBITMQ_URL,
       );
     });
 
@@ -127,11 +127,23 @@ describe("rabbitmq", () => {
       const channel = await getRabbitMQChannel(RABBITMQ_QUEUE.CAPABILITIES);
 
       expect(mockConnection.createChannel).toHaveBeenCalledTimes(1);
+
+      // Verify DLQ assertion
+      expect(mockChannel.assertQueue).toHaveBeenCalledWith(
+        `${RABBITMQ_QUEUE.CAPABILITIES}.dlq`,
+        {
+          durable: true,
+        },
+      );
+
+      // Verify main queue assertion with dead-letter config
       expect(mockChannel.assertQueue).toHaveBeenCalledWith(
         RABBITMQ_QUEUE.CAPABILITIES,
         {
           durable: true,
-        }
+          deadLetterExchange: "",
+          deadLetterRoutingKey: `${RABBITMQ_QUEUE.CAPABILITIES}.dlq`,
+        },
       );
       expect(channel).toBe(mockChannel);
     });
@@ -143,11 +155,11 @@ describe("rabbitmq", () => {
 
       expect(mockChannel.on).toHaveBeenCalledWith(
         "error",
-        expect.any(Function)
+        expect.any(Function),
       );
       expect(mockChannel.on).toHaveBeenCalledWith(
         "close",
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -158,25 +170,34 @@ describe("rabbitmq", () => {
       await getRabbitMQChannel(RABBITMQ_QUEUE.CAPABILITIES);
 
       expect(mockConnection.createChannel).toHaveBeenCalledTimes(1);
-      expect(mockChannel.assertQueue).toHaveBeenCalledTimes(2);
+      expect(mockChannel.assertQueue).toHaveBeenCalledTimes(4);
     });
 
-    it("should assert queue with durable option", async () => {
+    it("should assert queue with durable option and DLQ config", async () => {
       await connectRabbitMQClient();
 
       await getRabbitMQChannel(RABBITMQ_QUEUE.CAPABILITIES);
 
       expect(mockChannel.assertQueue).toHaveBeenCalledWith(
+        `${RABBITMQ_QUEUE.CAPABILITIES}.dlq`,
+        {
+          durable: true,
+        },
+      );
+
+      expect(mockChannel.assertQueue).toHaveBeenCalledWith(
         RABBITMQ_QUEUE.CAPABILITIES,
         {
           durable: true,
-        }
+          deadLetterExchange: "",
+          deadLetterRoutingKey: `${RABBITMQ_QUEUE.CAPABILITIES}.dlq`,
+        },
       );
     });
 
     it("should throw error when connection is not initialized", async () => {
       await expect(
-        getRabbitMQChannel(RABBITMQ_QUEUE.CAPABILITIES)
+        getRabbitMQChannel(RABBITMQ_QUEUE.CAPABILITIES),
       ).rejects.toThrow(expect.any(Error));
     });
   });
@@ -196,7 +217,7 @@ describe("rabbitmq", () => {
 
       await sendMessageToRabbitMQQueue(
         RABBITMQ_QUEUE.CAPABILITIES,
-        mockMessageData
+        mockMessageData,
       );
 
       expect(mockChannel.sendToQueue).toHaveBeenCalledWith(
@@ -204,7 +225,7 @@ describe("rabbitmq", () => {
         Buffer.from(JSON.stringify(mockMessageData)),
         {
           persistent: true,
-        }
+        },
       );
     });
 
@@ -213,7 +234,7 @@ describe("rabbitmq", () => {
 
       await sendMessageToRabbitMQQueue(
         RABBITMQ_QUEUE.CAPABILITIES,
-        mockMessageData
+        mockMessageData,
       );
 
       expect(mockChannel.sendToQueue).toHaveBeenCalledWith(
@@ -221,7 +242,7 @@ describe("rabbitmq", () => {
         expect.any(Buffer),
         {
           persistent: true,
-        }
+        },
       );
     });
 
@@ -230,7 +251,7 @@ describe("rabbitmq", () => {
 
       await sendMessageToRabbitMQQueue(
         RABBITMQ_QUEUE.CAPABILITIES,
-        mockMessageData
+        mockMessageData,
       );
 
       const callArgs = (mockChannel.sendToQueue as Mock).mock.calls[0];
@@ -242,7 +263,10 @@ describe("rabbitmq", () => {
 
     it("should throw error when connection is not initialized", async () => {
       await expect(
-        sendMessageToRabbitMQQueue(RABBITMQ_QUEUE.CAPABILITIES, mockMessageData)
+        sendMessageToRabbitMQQueue(
+          RABBITMQ_QUEUE.CAPABILITIES,
+          mockMessageData,
+        ),
       ).rejects.toThrow(expect.any(Error));
     });
 
@@ -251,7 +275,10 @@ describe("rabbitmq", () => {
       (mockChannel.sendToQueue as Mock).mockReturnValue(false);
 
       await expect(
-        sendMessageToRabbitMQQueue(RABBITMQ_QUEUE.CAPABILITIES, mockMessageData)
+        sendMessageToRabbitMQQueue(
+          RABBITMQ_QUEUE.CAPABILITIES,
+          mockMessageData,
+        ),
       ).rejects.toThrow(ServiceUnavailableError);
     });
   });

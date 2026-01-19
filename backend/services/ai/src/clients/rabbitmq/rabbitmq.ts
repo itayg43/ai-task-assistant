@@ -40,7 +40,7 @@ export const getRabbitMQConnection = (): amqp.ChannelModel => {
 };
 
 export const getRabbitMQChannel = async (
-  queue: RabbitMQQueue
+  queue: RabbitMQQueue,
 ): Promise<amqp.Channel> => {
   const connection = getRabbitMQConnection();
 
@@ -58,8 +58,16 @@ export const getRabbitMQChannel = async (
     });
   }
 
+  const dlq = `${queue}.dlq`;
+
+  await globalChannel.assertQueue(dlq, {
+    durable: true,
+  });
+
   await globalChannel.assertQueue(queue, {
     durable: true,
+    deadLetterExchange: "",
+    deadLetterRoutingKey: dlq,
   });
 
   return globalChannel;
@@ -67,7 +75,7 @@ export const getRabbitMQChannel = async (
 
 export const sendMessageToRabbitMQQueue = async <TQueue extends RabbitMQQueue>(
   queue: TQueue,
-  messageData: QueueToMessageDataMap[TQueue]
+  messageData: QueueToMessageDataMap[TQueue],
 ) => {
   try {
     const channel = await getRabbitMQChannel(queue);
@@ -77,7 +85,7 @@ export const sendMessageToRabbitMQQueue = async <TQueue extends RabbitMQQueue>(
       Buffer.from(JSON.stringify(messageData)),
       {
         persistent: true,
-      }
+      },
     );
 
     if (!sent) {
@@ -86,7 +94,7 @@ export const sendMessageToRabbitMQQueue = async <TQueue extends RabbitMQQueue>(
         {
           queue,
           type: AI_ERROR_TYPE.RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED,
-        }
+        },
       );
     }
   } catch (error) {
@@ -99,7 +107,7 @@ export const sendMessageToRabbitMQQueue = async <TQueue extends RabbitMQQueue>(
       {
         queue,
         type: AI_ERROR_TYPE.RABBITMQ_SEND_MESSAGE_TO_QUEUE_FAILED,
-      }
+      },
     );
   }
 };
