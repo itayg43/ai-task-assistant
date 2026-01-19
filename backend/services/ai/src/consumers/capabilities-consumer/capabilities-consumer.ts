@@ -16,7 +16,7 @@ import { BadRequestError, InternalError } from "@shared/errors";
 import { ExtractedErrorInfo } from "@shared/types";
 import { extractErrorInfo } from "@shared/utils/extract-error-info";
 import { withRetry } from "@shared/utils/with-retry";
-import { CapabilityConfig } from "@types";
+import { CapabilitiesQueueMessageData, CapabilityConfig } from "@types";
 
 const logger = createLogger("capabilitiesConsumer");
 
@@ -27,7 +27,7 @@ const sendCallbackHandler = async (
   callbackUrl: string,
   payload:
     | { success: true; result: unknown }
-    | { success: false; error: ExtractedErrorInfo }
+    | { success: false; error: ExtractedErrorInfo },
 ) => {
   try {
     logger.info("Sending callback to service", {
@@ -47,7 +47,7 @@ const sendCallbackHandler = async (
       {
         requestId: requestId,
         operation: "sendCallbackHandler",
-      }
+      },
     );
 
     logger.info("Callback sent successfully to service", {
@@ -64,7 +64,7 @@ const sendCallbackHandler = async (
       {
         requestId,
         callbackUrl,
-      }
+      },
     );
 
     channel.nack(message, false, false);
@@ -74,7 +74,7 @@ const sendCallbackHandler = async (
 const executeCapabilityHandler = async <TInput, TOutput>(
   requestId: string,
   config: CapabilityConfig<TInput, TOutput>,
-  input: TInput
+  input: TInput,
 ) => {
   try {
     const handlerResult = await config.handler(input, requestId);
@@ -89,7 +89,7 @@ const executeCapabilityHandler = async <TInput, TOutput>(
           requestId,
           capability: config.name,
           validationErrorMessage: error.message,
-        }
+        },
       );
 
       // Rethrow with generic message to prevent leaking internal validation details.
@@ -101,43 +101,19 @@ const executeCapabilityHandler = async <TInput, TOutput>(
   }
 };
 
-const parseMessageData = (message: amqp.ConsumeMessage) => {
-  try {
-    const parsedMessage = JSON.parse(message.content.toString());
-    return capabilitiesQueueMessageDataSchema.parse(parsedMessage);
-  } catch (error) {
-    logger.error("Failed to parse message data", error);
-    return null;
-  }
-};
-
 const capabilitiesMessageHandler = async (
   channel: amqp.Channel,
-  message: amqp.ConsumeMessage
+  message: amqp.ConsumeMessage,
+  messageData: CapabilitiesQueueMessageData,
 ) => {
-  let reqId: string | undefined;
-  let cbUrl: string | undefined;
+  const { requestId, capability, input, callbackUrl } = messageData;
+
+  logger.info(
+    `Received ${capability} capability execution message from queue`,
+    { requestId },
+  );
 
   try {
-    logger.info("Received capability execution message from queue");
-
-    const parsedMessageData = parseMessageData(message);
-    if (!parsedMessageData) {
-      logger.warn("Failed to parse message data, nacking message");
-      channel.nack(message, false, false);
-      return;
-    }
-
-    const { requestId, capability, input, callbackUrl } = parsedMessageData;
-    reqId = requestId;
-    cbUrl = callbackUrl;
-
-    logger.info("Starting capability execution", {
-      requestId,
-      capability,
-      callbackUrl,
-    });
-
     const config = capabilities[capability];
     if (!config) {
       throw new BadRequestError(`Capability ${capability} not found`);
@@ -147,37 +123,27 @@ const capabilitiesMessageHandler = async (
     const result = await executeCapabilityHandler(
       requestId,
       config,
-      validatedInput
+      validatedInput,
     );
 
-    logger.info("Capability execution completed successfully", {
-      requestId,
-      capability,
-    });
+    logger.info(
+      `Capability execution completed successfully for ${capability}`,
+      { requestId },
+    );
 
     await sendCallbackHandler(channel, message, requestId, callbackUrl, {
       success: true,
       result,
     });
   } catch (error) {
-    const errorInfo = extractErrorInfo(error);
-
-    logger.error("Capability execution failed", error, {
-      requestId: reqId,
-      callbackUrl: cbUrl,
+    logger.error(`Capability execution failed for ${capability}`, error, {
+      requestId,
     });
 
-    if (cbUrl) {
-      await sendCallbackHandler(channel, message, reqId, cbUrl, {
-        success: false,
-        error: errorInfo,
-      });
-    } else {
-      logger.warn("No callback URL available, nacking message", {
-        requestId: reqId,
-      });
-      channel.nack(message, false, false);
-    }
+    await sendCallbackHandler(channel, message, requestId, callbackUrl, {
+      success: false,
+      error: extractErrorInfo(error),
+    });
   }
 };
 
@@ -192,11 +158,23 @@ export const consumeCapabilitiesMessage = async () => {
           return;
         }
 
-        await capabilitiesMessageHandler(channel, message);
+        try {
+          const parsedMessage = JSON.parse(message.content.toString());
+          const validatedMessageData =
+            capabilitiesQueueMessageDataSchema.parse(parsedMessage);
+          await capabilitiesMessageHandler(
+            channel,
+            message,
+            validatedMessageData,
+          );
+        } catch (error) {
+          logger.warn("Failed to parse message data, nacking message");
+          channel.nack(message, false, false);
+        }
       },
       {
         noAck: false,
-      }
+      },
     );
   } catch (error) {
     const errorMessage = "Failed to consume message";
