@@ -60,14 +60,16 @@ export const getRabbitMQChannel = async (
 
   const dlq = `${queue}.dlq`;
 
+  // Ensure Dead Letter Queue (DLQ) exists for handling failed/rejected messages
   await globalChannel.assertQueue(dlq, {
     durable: true,
   });
 
+  // Configure main queue with automatic dead-lettering routing to the DLQ
   await globalChannel.assertQueue(queue, {
     durable: true,
-    deadLetterExchange: "",
-    deadLetterRoutingKey: dlq,
+    deadLetterExchange: "", // Use default nameless exchange
+    deadLetterRoutingKey: dlq, // Route directly to the corresponding .dlq queue
   });
 
   return globalChannel;
