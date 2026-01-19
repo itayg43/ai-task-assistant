@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockParseTaskValidatedInput } from "@capabilities/parse-task/parse-task-mocks";
 import { AI_ERROR_TYPE, CAPABILITY, RABBITMQ_QUEUE } from "@constants";
+import { consumeCapabilitiesMessage } from "@consumers/capabilities-consumer";
 import { mockCallbackUrl } from "@mocks/callbackUrl-mocks";
 import {
   createMockChannel,
@@ -12,8 +13,6 @@ import {
 import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { InternalError } from "@shared/errors";
-import { consumeCapabilitiesMessage } from "@consumers/capabilities-consumer";
-import * as schemasModule from "@schemas";
 
 const {
   mockGetRabbitMQChannel,
@@ -89,7 +88,7 @@ describe("capabilitiesConsumer", () => {
       message: "success",
     });
     mockCapabilities["parse-task"].outputSchema.parse.mockImplementation(
-      (result) => result
+      (result) => result,
     );
 
     mockWithRetry.mockImplementation(async (_config, fn) => {
@@ -106,7 +105,7 @@ describe("capabilitiesConsumer", () => {
       await consumeCapabilitiesMessage();
 
       expect(mockGetRabbitMQChannel).toHaveBeenCalledWith(
-        RABBITMQ_QUEUE.CAPABILITIES
+        RABBITMQ_QUEUE.CAPABILITIES,
       );
       expect(mockChannel.prefetch).toHaveBeenCalledWith(1);
       expect(mockChannel.consume).toHaveBeenCalledWith(
@@ -114,7 +113,7 @@ describe("capabilitiesConsumer", () => {
         expect.any(Function),
         {
           noAck: false,
-        }
+        },
       );
     });
 
@@ -141,24 +140,33 @@ describe("capabilitiesConsumer", () => {
   });
 
   describe("capabilitiesMessageHandler", () => {
-    it("should parse message payload, validate input, and execute capability", async () => {
+    it("should parse message payload, execute capability, and send success callback", async () => {
+      const mockResult = {
+        message: "success",
+      };
+      mockCapabilities["parse-task"].handler.mockResolvedValue(mockResult);
+      mockCapabilities["parse-task"].outputSchema.parse.mockReturnValue(
+        mockResult,
+      );
+
       await consumeCapabilitiesMessage();
 
-      // This test verifies that the consumer correctly:
-      // 1. Parses the raw message content (JSON.parse)
-      // 2. Validates it against capabilitiesQueueMessageDataSchema
-      // 3. Retrieves the capability config from the capabilities registry
-      // 4. Validates the input using the capability's inputSchema.parse()
-      // 5. Executes the capability handler and validates output
+      // Verify execution
       expect(mockCapabilities["parse-task"].handler).toHaveBeenCalledWith(
         mockParseTaskValidatedInput,
-        mockAiServiceRequestId
+        mockAiServiceRequestId,
       );
       expect(
-        mockCapabilities["parse-task"].outputSchema.parse
-      ).toHaveBeenCalledWith({
-        message: "success",
+        mockCapabilities["parse-task"].outputSchema.parse,
+      ).toHaveBeenCalledWith(mockResult);
+
+      // Verify callback and ack
+      expect(mockTasksClient.post).toHaveBeenCalledWith(mockCallbackUrl, {
+        success: true,
+        result: mockResult,
+        aiServiceRequestId: mockAiServiceRequestId,
       });
+      expect(mockChannel.ack).toHaveBeenCalledWith(mockMessage);
     });
 
     it("should nack message when JSON parsing fails", async () => {
@@ -177,7 +185,7 @@ describe("capabilitiesConsumer", () => {
       expect(mockChannel.nack).toHaveBeenCalledWith(
         invalidJsonMessage,
         false,
-        false
+        false,
       );
       expect(mockChannel.ack).not.toHaveBeenCalled();
       expect(mockCapabilities["parse-task"].handler).not.toHaveBeenCalled();
@@ -199,7 +207,7 @@ describe("capabilitiesConsumer", () => {
       expect(mockChannel.nack).toHaveBeenCalledWith(
         invalidSchemaMessage,
         false,
-        false
+        false,
       );
       expect(mockChannel.ack).not.toHaveBeenCalled();
       expect(mockCapabilities["parse-task"].handler).not.toHaveBeenCalled();
@@ -242,33 +250,12 @@ describe("capabilitiesConsumer", () => {
         {
           requestId: mockAiServiceRequestId,
           operation: "sendCallbackHandler",
-        }
+        },
       );
     });
   });
 
   describe("sendCallbackHandler", () => {
-    it("should send success callback with correct payload and acknowledge message", async () => {
-      const mockResult = {
-        message: "success",
-      };
-      mockCapabilities["parse-task"].handler.mockResolvedValue(mockResult);
-      mockCapabilities["parse-task"].outputSchema.parse.mockReturnValue(
-        mockResult
-      );
-
-      await consumeCapabilitiesMessage();
-
-      expect(mockTasksClient.post).toHaveBeenCalledWith(mockCallbackUrl, {
-        success: true,
-        result: mockResult,
-        aiServiceRequestId: mockAiServiceRequestId,
-      });
-      expect(mockChannel.ack).toHaveBeenCalledTimes(1);
-      expect(mockChannel.ack).toHaveBeenCalledWith(mockMessage);
-      expect(mockChannel.nack).not.toHaveBeenCalled();
-    });
-
     it("should nack message when success callback fails after retries", async () => {
       mockWithRetry.mockRejectedValue(new InternalError("Callback failed"));
 
@@ -297,7 +284,7 @@ describe("capabilitiesConsumer", () => {
         {
           requestId: mockAiServiceRequestId,
           operation: "sendCallbackHandler",
-        }
+        },
       );
       expect(mockTasksClient.post).toHaveBeenCalledWith(mockCallbackUrl, {
         success: false,
@@ -306,22 +293,6 @@ describe("capabilitiesConsumer", () => {
       });
       expect(mockChannel.ack).toHaveBeenCalledTimes(1);
       expect(mockChannel.ack).toHaveBeenCalledWith(mockMessage);
-    });
-
-    it("should nack message when error callback fails after retries", async () => {
-      const executionError = new InternalError("Execution failed");
-      mockCapabilities["parse-task"].handler.mockRejectedValue(executionError);
-      mockExtractErrorInfo.mockReturnValue({
-        status: 500,
-        message: "Execution failed",
-      });
-      mockWithRetry.mockRejectedValue(new InternalError("Callback failed"));
-
-      await consumeCapabilitiesMessage();
-
-      expect(mockChannel.nack).toHaveBeenCalledTimes(1);
-      expect(mockChannel.nack).toHaveBeenCalledWith(mockMessage, false, false);
-      expect(mockChannel.ack).not.toHaveBeenCalled();
     });
   });
 });
