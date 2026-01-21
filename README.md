@@ -112,8 +112,11 @@ graph TB
 ### Additional Commands
 
 ```bash
-# Type checking (runs in watch mode)
+# Type checking across all services (runs in watch mode)
 npm run type-check
+
+# Full type check across all services (one-time execution, ideal for CI)
+npm run type-check:ci
 
 # Prisma commands (from backend/services/tasks directory)
 cd backend/services/tasks
@@ -904,4 +907,5 @@ GitHub Actions provides automated testing and quality assurance:
   - All tests must pass before merging
   - Branches must be up to date with `main` before merging
   - Status checks are required and cannot be bypassed
-- **Test Coverage**: The CI workflow runs all unit and integration tests
+- **Quality Assurance**: The CI workflow performs full TypeScript type checking across all services and the shared library using `npm run type-check:ci`.
+- **Test Coverage**: The CI workflow runs all unit and integration tests after type checking passes.
