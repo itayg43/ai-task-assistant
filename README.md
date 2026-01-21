@@ -102,7 +102,6 @@ graph TB
    ```
 
    Services will be available at:
-
    - **Tasks Service**: `http://localhost:3001`
    - **AI Service**: `http://localhost:3002`
    - **Redis**: `localhost:6379`
@@ -124,7 +123,7 @@ npm run prisma:seed  # Seed database with sample data
 
 # View logs
 docker compose logs -f ai
-docker compose -f docker-compose.dev.yml logs -f ai-consumer
+docker compose logs -f ai-consumer
 docker compose logs -f tasks
 ```
 
@@ -857,7 +856,6 @@ A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualizati
 1. **Async AI Processing with RabbitMQ** 🔄 **IN-PROGRESS**
 
 2. **Multi-Tenant Architecture**
-
    - **Data Model**:
      - `Account`: Represents organization/workspace (replaces previous Tenant model)
      - `User`: Team members within an account (role: owner, admin, member)
@@ -871,7 +869,6 @@ A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualizati
      - Data isolation at query level (can't access other accounts' data)
 
 3. **Load Balancing & Horizontal Scaling**
-
    - **Nginx Reverse Proxy**:
      - Route requests across multiple service instances
      - Load balancing algorithm: least_conn for optimal distribution
@@ -884,7 +881,6 @@ A pre-configured dashboard (`tasks-service-dashboard.json`) provides visualizati
 ## Known Issues
 
 1. **Prisma Migrations Fail on First Run**
-
    - **Issue**: When running `npm run start:dev` for the first time, the tasks service attempts to run Prisma migrations before the PostgreSQL database is fully ready, resulting in:
      ```
      Error: P1001: Can't reach database server at `postgres:5432`
