@@ -5,7 +5,9 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc && tsc-alias",
-    "test": "vitest"
+    "test": "vitest",
+    "type-check": "tsc --noEmit",
+    "type-check:watch": "tsc --noEmit --watch"
   },
   "type": "commonjs",
   "dependencies": {

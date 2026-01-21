@@ -11,8 +11,8 @@
     "test": "vitest",
     "test:prompts": "npm run test:prompts -w backend/services/ai",
     "test:db": "npm run test:db -w backend/services/tasks",
-    "type-check": "tsc --noEmit --watch -p backend/shared/tsconfig.json & tsc --noEmit --watch -p backend/services/ai/tsconfig.json & tsc --noEmit --watch -p backend/services/tasks/tsconfig.json & wait",
-    "type-check:ci": "tsc --noEmit -p backend/shared/tsconfig.json && tsc --noEmit -p backend/services/ai/tsconfig.json && tsc --noEmit -p backend/services/tasks/tsconfig.json"
+    "type-check": "npm run type-check:watch -w backend/shared & npm run type-check:watch -w backend/services/ai & npm run type-check:watch -w backend/services/tasks & wait",
+    "type-check:ci": "npm run type-check -w backend/shared && npm run type-check -w backend/services/ai && npm run type-check -w backend/services/tasks"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

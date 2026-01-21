@@ -10,7 +10,9 @@
     "start:consumer": "node dist/consumer.js",
     "start:consumer:dev": "ts-node-dev -r tsconfig-paths/register --respawn src/consumer.ts",
     "test": "vitest",
-    "test:prompts": "npx dotenv-cli -e .env.test -- vitest --config vitest.prompts.config.ts"
+    "test:prompts": "npx dotenv-cli -e .env.test -- vitest --config vitest.prompts.config.ts",
+    "type-check": "tsc --noEmit",
+    "type-check:watch": "tsc --noEmit --watch"
   },
   "keywords": [],
   "author": "",
