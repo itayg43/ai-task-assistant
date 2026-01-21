@@ -5,7 +5,6 @@ services:
       dockerfile: backend/services/ai/Dockerfile.dev
     command: ["npm", "run", "start:dev", "-w", "backend/services/ai"]
     ports:
-      - "3002:3002"
       - "51205:51204"
     env_file:
       - ./backend/services/ai/.env.dev
@@ -67,7 +66,6 @@ services:
       context: .
       dockerfile: backend/services/tasks/Dockerfile.dev
     ports:
-      - "3001:3001"
       - "51204:51204"
     env_file:
       - ./backend/services/tasks/.env.dev

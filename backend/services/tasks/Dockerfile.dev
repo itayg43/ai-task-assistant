@@ -4,33 +4,20 @@ ENV NODE_ENV=development
 
 WORKDIR /app
 
-RUN apk add --no-cache curl openssl libc6-compat
-
-# Copy root package files
 COPY package.json package-lock.json ./
-
-# Copy service package files
 COPY backend/shared/package.json backend/shared/
 COPY backend/services/tasks/package.json backend/services/tasks/
 
-# Install dependencies from root
 RUN npm install
 
-# Copy shared source code and build
 COPY backend/shared backend/shared
 RUN npm run build -w backend/shared
 
-# Copy service source code
 COPY backend/services/tasks backend/services/tasks
 
-# Generate Prisma client
 RUN npm run prisma:generate -w backend/services/tasks
-
-# Make startup script executable
 RUN chmod +x backend/services/tasks/scripts/start-dev.sh
 
-EXPOSE 3001
 EXPOSE 51204
 
-# Run migrations and start the service
 CMD ["sh", "backend/services/tasks/scripts/start-dev.sh"]
