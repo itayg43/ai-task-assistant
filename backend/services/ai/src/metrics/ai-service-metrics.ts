@@ -1,6 +1,5 @@
 import { Counter, Histogram, register } from "@shared/clients/prom";
 import { createLogger } from "@shared/config/create-logger";
-
 import { Capability } from "@types";
 
 const logger = createLogger("aiServiceMetrics");
@@ -35,44 +34,59 @@ const aiApiRequestDurationMs = new Histogram({
 export const recordAiApiSuccess = (
   capability: Capability,
   durationMs: number,
-  requestId: string
+  requestId: string,
 ): void => {
-  const status = "success";
+  try {
+    const status = "success";
 
-  aiApiRequestsTotal.inc({
-    capability,
-    status,
-  });
-  aiApiRequestDurationMs.observe(
-    {
+    aiApiRequestsTotal.inc({
       capability,
       status,
-    },
-    durationMs
-  );
+    });
+    aiApiRequestDurationMs.observe(
+      {
+        capability,
+        status,
+      },
+      durationMs,
+    );
 
-  logger.debug("Recorded AI API success metrics", {
-    requestId,
-    capability,
-    status,
-    durationMs,
-  });
+    logger.debug("Recorded AI API success metrics", {
+      requestId,
+      capability,
+      status,
+      durationMs,
+    });
+  } catch (error) {
+    logger.error("Failed to record AI API success metrics", error, {
+      requestId,
+      capability,
+      durationMs,
+    });
+  }
 };
 
 export const recordAiApiFailure = (
   capability: Capability,
-  requestId: string
+  requestId: string,
 ): void => {
-  const status = "failure";
+  try {
+    const status = "failure";
 
-  aiApiRequestsTotal.inc({
-    capability,
-    status,
-  });
+    aiApiRequestsTotal.inc({
+      capability,
+      status,
+    });
 
-  logger.debug("Recorded AI API failure metrics", {
-    requestId,
-    capability,
-    status,
-  });
+    logger.debug("Recorded AI API failure metrics", {
+      requestId,
+      capability,
+      status,
+    });
+  } catch (error) {
+    logger.error("Failed to record AI API failure metrics", error, {
+      requestId,
+      capability,
+    });
+  }
 };

@@ -56,72 +56,92 @@ export const recordOpenAiApiSuccessMetrics = (
   durationMs: number,
   inputTokens: number,
   outputTokens: number,
-  requestId: string
+  requestId: string,
 ): void => {
-  const status = "success";
+  try {
+    const status = "success";
 
-  openaiApiRequestsTotal.inc({
-    capability,
-    operation,
-    status,
-  });
-  openaiApiRequestDurationMs.observe(
-    {
+    openaiApiRequestsTotal.inc({
       capability,
       operation,
       status,
-    },
-    durationMs
-  );
-  openaiApiTokensTotal.inc(
-    {
-      capability,
-      operation,
-      type: "input",
-      model,
-    },
-    inputTokens
-  );
-  openaiApiTokensTotal.inc(
-    {
-      capability,
-      operation,
-      type: "output",
-      model,
-    },
-    outputTokens
-  );
+    });
+    openaiApiRequestDurationMs.observe(
+      {
+        capability,
+        operation,
+        status,
+      },
+      durationMs,
+    );
+    openaiApiTokensTotal.inc(
+      {
+        capability,
+        operation,
+        type: "input",
+        model,
+      },
+      inputTokens,
+    );
+    openaiApiTokensTotal.inc(
+      {
+        capability,
+        operation,
+        type: "output",
+        model,
+      },
+      outputTokens,
+    );
 
-  logger.debug("Recorded OpenAI API success metrics", {
-    requestId,
-    capability,
-    operation,
-    model,
-    status,
-    durationMs,
-    inputTokens,
-    outputTokens,
-    totalTokens: inputTokens + outputTokens,
-  });
+    logger.debug("Recorded OpenAI API success metrics", {
+      requestId,
+      capability,
+      operation,
+      model,
+      status,
+      durationMs,
+      inputTokens,
+      outputTokens,
+      totalTokens: inputTokens + outputTokens,
+    });
+  } catch (error) {
+    logger.error("Failed to record OpenAI API success metrics", error, {
+      requestId,
+      capability,
+      operation,
+      model,
+      durationMs,
+      inputTokens,
+      outputTokens,
+    });
+  }
 };
 
 export const recordOpenAiApiFailureMetrics = (
   capability: string,
   operation: string,
-  requestId: string
+  requestId: string,
 ): void => {
-  const status = "failure";
+  try {
+    const status = "failure";
 
-  openaiApiRequestsTotal.inc({
-    capability,
-    operation,
-    status,
-  });
+    openaiApiRequestsTotal.inc({
+      capability,
+      operation,
+      status,
+    });
 
-  logger.debug("Recorded OpenAI API failure metrics", {
-    requestId,
-    capability,
-    operation,
-    status,
-  });
+    logger.debug("Recorded OpenAI API failure metrics", {
+      requestId,
+      capability,
+      operation,
+      status,
+    });
+  } catch (error) {
+    logger.error("Failed to record OpenAI API failure metrics", error, {
+      requestId,
+      capability,
+      operation,
+    });
+  }
 };

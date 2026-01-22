@@ -1,5 +1,8 @@
 import { CAPABILITY } from "@constants";
 import { Counter, register } from "@shared/clients/prom";
+import { createLogger } from "@shared/config/create-logger";
+
+const logger = createLogger("parseTaskMetrics");
 
 export const vagueInputTotal = new Counter({
   name: "vague_input_total",
@@ -9,7 +12,12 @@ export const vagueInputTotal = new Counter({
 });
 
 export const recordVagueInput = () => {
-  vagueInputTotal.inc({
-    capability: CAPABILITY.PARSE_TASK,
-  });
+  try {
+    vagueInputTotal.inc({
+      capability: CAPABILITY.PARSE_TASK,
+    });
+    logger.debug("Recorded vague input metric for AI service");
+  } catch (error) {
+    logger.error("Failed to record vague input metric for AI service", error);
+  }
 };

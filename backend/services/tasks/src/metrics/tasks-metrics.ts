@@ -47,66 +47,94 @@ const tasksPromptInjectionTotal = new Counter({
 export const recordTasksApiSuccess = (
   operation: TasksOperation,
   durationMs: number,
-  requestId: string
+  requestId: string,
 ): void => {
-  const status = "success";
+  try {
+    const status = "success";
 
-  tasksApiRequestsTotal.inc({
-    operation,
-    status,
-  });
-  tasksApiRequestDurationMs.observe(
-    {
+    tasksApiRequestsTotal.inc({
       operation,
       status,
-    },
-    durationMs
-  );
+    });
+    tasksApiRequestDurationMs.observe(
+      {
+        operation,
+        status,
+      },
+      durationMs,
+    );
 
-  logger.debug("Recorded tasks API success metrics", {
-    requestId,
-    operation,
-    status,
-    durationMs,
-  });
+    logger.debug("Recorded tasks API success metrics", {
+      requestId,
+      operation,
+      status,
+      durationMs,
+    });
+  } catch (error) {
+    logger.error("Failed to record tasks API success metrics", error, {
+      requestId,
+      operation,
+      durationMs,
+    });
+  }
 };
 
 export const recordTasksApiFailure = (
   operation: TasksOperation,
-  requestId: string
+  requestId: string,
 ): void => {
-  const status = "failure";
+  try {
+    const status = "failure";
 
-  tasksApiRequestsTotal.inc({
-    operation,
-    status,
-  });
+    tasksApiRequestsTotal.inc({
+      operation,
+      status,
+    });
 
-  logger.debug("Recorded tasks API failure metrics", {
-    requestId,
-    operation,
-    status,
-  });
+    logger.debug("Recorded tasks API failure metrics", {
+      requestId,
+      operation,
+      status,
+    });
+  } catch (error) {
+    logger.error("Failed to record tasks API failure metrics", error, {
+      requestId,
+      operation,
+    });
+  }
 };
 
 export const recordVagueInput = (requestId: string): void => {
-  tasksVagueInputTotal.inc();
+  try {
+    tasksVagueInputTotal.inc();
 
-  logger.debug("Recorded vague input metric", {
-    requestId,
-  });
+    logger.debug("Recorded vague input metric", {
+      requestId,
+    });
+  } catch (error) {
+    logger.error("Failed to record vague input metric", error, {
+      requestId,
+    });
+  }
 };
 
 export const recordPromptInjection = (
   operation: TasksOperation,
-  requestId: string
+  requestId: string,
 ): void => {
-  tasksPromptInjectionTotal.inc({
-    operation,
-  });
+  try {
+    tasksPromptInjectionTotal.inc({
+      operation,
+    });
 
-  logger.debug("Recorded prompt injection metric", {
-    requestId,
-    operation,
-  });
+    logger.debug("Recorded prompt injection metric", {
+      requestId,
+      operation,
+    });
+  } catch (error) {
+    logger.error("Failed to record prompt injection metric", error, {
+      requestId,
+      operation,
+    });
+  }
 };

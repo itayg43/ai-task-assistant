@@ -1,4 +1,7 @@
 import { Counter, register } from "@shared/clients/prom";
+import { createLogger } from "@shared/config/create-logger";
+
+const logger = createLogger("promptInjectionMetrics");
 
 export const promptInjectionBlockedTotal = new Counter({
   name: "prompt_injection_blocked_total",
@@ -8,7 +11,14 @@ export const promptInjectionBlockedTotal = new Counter({
 });
 
 export const recordPromptInjectionBlocked = (patternType: string): void => {
-  promptInjectionBlockedTotal.inc({
-    pattern_type: patternType,
-  });
+  try {
+    promptInjectionBlockedTotal.inc({
+      pattern_type: patternType,
+    });
+    logger.debug("Recorded prompt injection blocked metric", { patternType });
+  } catch (error) {
+    logger.error("Failed to record prompt injection blocked metric", error, {
+      patternType,
+    });
+  }
 };
