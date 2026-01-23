@@ -49,7 +49,7 @@ export const getTasksInputSchema = z.object({
         orderDirection: z.enum(GET_TASKS_ALLOWED_ORDER_DIRECTIONS),
         category: z.string().optional(),
         priorityLevel: z.string().optional(),
-      })
+      }),
     ),
 });
 
@@ -76,7 +76,7 @@ export const openaiMetadataSchema = z.object({
 
 export const openaiMetadataRecordSchema = z.record(
   z.string(),
-  openaiMetadataSchema
+  openaiMetadataSchema,
 );
 
 export const parsedTaskSchema = z.object({

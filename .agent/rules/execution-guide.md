@@ -1,64 +1,76 @@
-# Execution Guide
+# Execution Guide (Cheat Sheet)
 
-This guide defines the standard commands for running the application, tests, and type checks. Use these commands to ensure consistency and avoid common errors.
+This guide provides the standard commands for development and verification. All commands must be run from the **project root**.
 
-## Working Directory
+## 1. The Golden Rule: No Interactive Modes
 
-Always execute these commands from the **project root directory**.
+Agents and CI processes **MUST NEVER** trigger "watch" or "interactive" modes. These commands hang the terminal and cause timeouts.
 
-## Running the Application
+- **NEVER** run: `npm test`, `npm run type-check`
+- **ALWAYS** use the `-- run` or `:ci` variants.
 
-To start the full development environment with Docker and hot-reloading:
+---
+
+## 2. Fast Commands Reference
+
+### Verifying Changes (The "Checklist")
+
+Prior to submitting any change, run these three commands:
 
 ```bash
+# 1. Run relevant tests
+npm test -- run <path_to_test_file>
+
+# 2. Performance/Logic check (if applicable)
+npm run test:prompts  # AI Service
+npm run test:db       # Tasks Service
+
+# 3. Final type safety check
+npm run type-check:ci
+```
+
+### Development Environment
+
+```bash
+# Start full stack (Docker + Postgres + RabbitMQ + Services)
 npm run start:dev
 ```
 
-## Running Tests
+### Running Tests (Vitest)
 
-This project uses **Vitest**.
+Always include `-- run` before the file path to disable watch mode.
 
-- **Run All Tests**:
-  - Interactive (Watch Mode):
-    ```bash
-    npm test
-    ```
-  - Single Run (CI / Agents):
-    ```bash
-    npm test -- run
-    ```
+```bash
+# Run all tests once
+npm test -- run
 
-- **Run Specific Tests**:
-  You can pass arguments to Vitest directly:
+# Run a specific file once (Preferred)
+npm test -- run backend/services/tasks/src/some-file.test.ts
 
-  ```bash
-  npm test src/path/to/test.ts
-  ```
+# Run matching files
+npm test -- run webhooks
+```
 
-- **AI Service Prompt Tests**:
+### Type Checking
 
-  ```bash
-  npm run test:prompts
-  ```
+```bash
+# One-off comprehensive check across all workspaces
+npm run type-check:ci
+```
 
-- **Tasks Service Database Tests**:
-  ```bash
-  npm run test:db
-  ```
+---
 
-## Type Checking
+## 3. Service Specific Commands
 
-To verify TypeScript types across all workspaces (`backend/shared`, `backend/services/ai`, `backend/services/tasks`).
+| Service    | Command                          | Purpose                                       |
+| :--------- | :------------------------------- | :-------------------------------------------- |
+| **AI**     | `npm run test:prompts`           | Runs prompt fidelity and quality tests        |
+| **Tasks**  | `npm run test:db`                | Runs tests requiring a real database (Prisma) |
+| **Shared** | `npm test -- run backend/shared` | Tests shared utilities and components         |
 
-- **One-off Check (Recommended for Agents)**:
-  Use this for verification steps to ensure the command exits upon completion.
+---
 
-  ```bash
-  npm run type-check:ci
-  ```
+## 4. Troubleshooting
 
-- **Watch Mode**:
-  Runs type checking in parallel and watches for changes.
-  ```bash
-  npm run type-check
-  ```
+- **Prisma Failures**: If a test fails with "PrismaClient constructor" errors, ensure the `@clients/prisma` module is mocked in your test file setup.
+- **Terminal Hanging**: If a command doesn't exit, you likely forgot the `-- run` flag for Vitest. Terminate the process and retry with the flag.

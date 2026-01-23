@@ -1,61 +1,93 @@
 # Testing Standards
 
-Always follow these standards when writing unit or integration tests to maintain consistency across the codebase.
+This guide defines the "Golden Path" for writing tests. Follow these patterns to ensure type safety, consistency, and easy maintenance.
 
-## File Naming
+## 1. The Golden Template
 
-- Use the `.test.ts` extension for all test files (e.g., `operation.test.ts`).
+Use this structure as a starting point for every new test file.
 
-## Lifecycle & Mocks
+```typescript
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Mocked } from "@shared/types";
 
-- **Imports**: Always destructure testing utilities from `vitest`:
-  ```typescript
-  import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-  ```
-- **Mock Definition**: Define mock variables and shared options at the top of the `describe` block.
-- **Type Safety**: Use `ReturnType<typeof vi.fn>` for properly typed mock variables:
-  ```typescript
-  let mockFunction: ReturnType<typeof vi.fn>;
-  ```
-- **State Management**:
-  - Initialize/reset mocks and shared options in `beforeEach`.
-  - Use `afterEach` to call `vi.clearAllMocks()` to ensure test isolation.
-- **Mocking Hierarchy**:
-  - **Services** should mock internal clients/repositories (e.g., `@clients/*`), not the underlying external SDKs.
-  - **Clients** should be the only place where external SDKs (e.g., `openai`, `stripe`) are mocked.
-- **Error Instance Checking**:
-  - When a test needs to verify `instanceof ThirdPartyError`, centralize that Error class in a shared mock folder and ensure both the SDK mock and the test use the same class reference.
+// 1. Setup top-level mocks (outside describe)
+vi.mock("@config/env", () => ({
+  env: {
+    /* mock env */
+  },
+}));
+vi.mock("@metrics/module", () => ({ recordSuccess: vi.fn() })); // Pattern A: Simple Utility
+vi.mock("@services/subject-service", () => ({ subjectHandler: vi.fn() })); // Pattern B: Complex Subject
 
-## Structure
+// 2. Import mocked functions to assert on them directly
+import { recordSuccess } from "@metrics/module";
+import { subjectHandler } from "@services/subject-service";
 
-- Use `describe` blocks to group tests for a specific function or class.
-- Use `it` blocks for individual test cases.
-- Follow the **Arrange-Act-Assert** pattern.
-- For async functions, use `await expect(...).rejects.toThrow(...)` for error cases.
+describe("SubjectService (unit/integration)", () => {
+  // 3. Shared test data (Scoped to this describe block)
+  const mockSubjectId = "test-id-123";
 
-## Philosophy
+  // 4. Define typed mock variables for complex overrides
+  let mockedSubjectHandler: Mocked<typeof subjectHandler>;
 
-- **Core Paths First**: Prioritize testing the main success and failure paths.
-- **Infrastructure Resilience**: If the underlying infrastructure (like metrics recorders or error handlers) is already tested for resilience (e.g., wrapped in `try-catch`), avoid redundant testing of those failure modes in business logic tests.
-- **Mock Interfaces**: Prefer mocking service/repository interfaces over complex internal logic when writing unit tests.
-- **Avoid Multi-Layer Mocks**: In high-level tests, don't re-test validation logic that is already guaranteed by a lower-layer unit test.
+  beforeEach(() => {
+    // 5. Initialize typed mocks
+    mockedSubjectHandler = vi.mocked(subjectHandler);
+    mockedSubjectHandler.mockResolvedValue({ id: mockSubjectId } as any);
+  });
 
-## Mock Management
+  afterEach(() => {
+    // 5. Mandatory isolation check
+    vi.clearAllMocks();
+  });
 
-- **Centralized Mocks**: Keep complex structural mocks for third-party SDKs in a centralized location (e.g., `src/mocks/`) instead of redefining them in individual test files.
-- **Mocking Patterns**:
-  - **Direct Import Assertion (Preferred)**: For simple named exports (like metrics or utilities), define the mock inline and import the function to assert on it. This avoids hoisting scope issues.
-    ```typescript
-    // In setup
-    vi.mock("@metrics/module", () => ({ recordSuccess: vi.fn() }));
-    // In test
-    import { recordSuccess } from "@metrics/module";
-    expect(recordSuccess).toHaveBeenCalled();
-    ```
-  - **`vi.hoisted`**: Use `vi.hoisted` only when you need to retain a reference to a mock implementation _inside_ the factory itself (e.g. for default exports or complex objects).
+  it("should execute success path", async () => {
+    // Arrange (using prefix pattern)
+    mockedSubjectHandler.mockResolvedValueOnce({ id: 2 } as any);
 
-## Observability & Metrics
+    // Act
+    // ... code that calls subjectHandler ...
 
-- **Verify Wrappers**: When testing code wrapped in observability utilities (e.g., `withMetrics`), verify the wrapper is called (and its arguments) in **BOTH** success and failure scenarios.
-- **Failures Count**: Explicitly verify that failure metrics recorders are called when operations fail.
-- **Payload Validation**: Verify that metric values are realistic (e.g., `durationMs` should be `> 0` or `expect.any(Number)`).
+    // Assert
+    expect(mockedSubjectHandler).toHaveBeenCalled();
+    expect(recordSuccess).toHaveBeenCalled(); // Direct Import Assertion
+  });
+});
+```
+
+## 2. The Three Golden Rules
+
+### I. Strict Typing
+
+- **NEVER** use `any` for mocks.
+- **ALWAYS** use the `Mocked<typeof T>` utility type from `@shared/types`.
+- This ensures that Vitest methods like `.mockResolvedValue()` and `.mockRejectedValue()` are type-safe.
+
+### II. Mock Patterns
+
+- **Direct Import Assertion (Preferred)**: For simple named exports (metrics, constants, pure utilities), define the mock at the top and import the function. Assert on the imported name directly.
+- **Scoped Mock Variables (The `mocked` Prefix)**: For services, repositories, or handlers where you need to change behavior per test, create a `let mocked...` variable at the top of the `describe` block.
+- **Scoping Test Data**: Derived constants (like `mockAiRequestId` from a central mock) should be defined inside the `describe` block or even specific `it` blocks to keep the global namespace clean and maintain clear context.
+- **Avoid `vi.hoisted`**: Do not use `vi.hoisted` unless you are dealing with default exports or complex cyclic dependencies that cannot be handled by the above patterns.
+
+### III. Strict Lifecycle
+
+- **Isolation**: Every test must be independent. Call `vi.clearAllMocks()` in `afterEach`.
+- **Reset**: Reset mock implementations (especially those with permanent failure mocks) in `beforeEach` to a healthy default state.
+
+## 3. Practical Standards
+
+### File Naming & Location
+
+- Extension: `.test.ts` (e.g., `user-service.test.ts`).
+- Location: Adjacent to the file being tested.
+
+### Testing Observability
+
+- **Business Logic Failures**: Always verify that a failure metric (e.g., `recordApiFailure`) is called when an operation fails.
+- **Async Flows**: For webhook or callback handlers, verify that `200 OK` is returned even on internal failure to satisfy the caller, while checking that the failure metric was recorded.
+
+### Mock Design
+
+- **Mock Interfaces**: Mock high-level services or repositories. Avoid mocking internal logic or third-party SDKs directly (unless you are testing a dedicated "Client" wrapper).
+- **Prisma Safety**: In integration tests, mock `@clients/prisma` to prevent the `PrismaClient` constructor from throwing errors due to missing environment variables during the test boot phase.
