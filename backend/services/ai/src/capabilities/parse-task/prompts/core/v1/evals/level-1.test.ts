@@ -9,7 +9,7 @@ import { mockParseTaskInputConfig } from "@capabilities/parse-task/parse-task-mo
 import { parseTaskOutputCoreSchema } from "@capabilities/parse-task/parse-task-schemas";
 import { ParseTaskOutputCore } from "@capabilities/parse-task/parse-task-types";
 import { parseTaskCorePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
-import { executeParse } from "@clients/openai";
+import { executeParse } from "@services/openai";
 
 const testCases = [
   {
@@ -138,7 +138,7 @@ const testCases = [
 const executeParseTask = async (naturalLanguage: string) => {
   const prompt = parseTaskCorePromptV1(
     naturalLanguage,
-    mockParseTaskInputConfig
+    mockParseTaskInputConfig,
   );
 
   return await executeParse<ParseTaskOutputCore>(
@@ -147,7 +147,7 @@ const executeParseTask = async (naturalLanguage: string) => {
     naturalLanguage,
     prompt,
     "v1",
-    randomUUID()
+    randomUUID(),
   );
 };
 
@@ -182,12 +182,12 @@ describe("corePromptV1 - Level1Tests", () => {
 
       expect(expected.priority.level).toContain(output.priority.level);
       expect(output.priority.score).toBeGreaterThanOrEqual(
-        expected.priority.minScore
+        expected.priority.minScore,
       );
       expect(output.priority.score).toBeLessThanOrEqual(
-        expected.priority.maxScore
+        expected.priority.maxScore,
       );
       expect(output.priority.reason).toBeTruthy();
-    }
+    },
   );
 });

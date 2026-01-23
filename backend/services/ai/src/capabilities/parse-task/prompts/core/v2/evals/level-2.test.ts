@@ -15,7 +15,7 @@ import {
   ParseTaskOutputJudge,
 } from "@capabilities/parse-task/parse-task-types";
 import { parseTaskCorePromptV2 } from "@capabilities/parse-task/prompts/core/v2";
-import { executeParse } from "@clients/openai";
+import { executeParse } from "@services/openai";
 
 import { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
@@ -70,7 +70,7 @@ const clearInputTestCases = [
 const logJudgeResult = (
   naturalLanguage: string,
   judgeOutput: ParseTaskOutputJudge,
-  context?: string
+  context?: string,
 ) => {
   const prefix = context
     ? `Judge for ${context}: "${naturalLanguage}"`
@@ -91,7 +91,7 @@ const logJudgeResult = (
 
 const createJudgeResponse = (
   instructions: string,
-  input: string
+  input: string,
 ): ResponseCreateParamsNonStreaming => {
   return {
     model: "gpt-4.1",
@@ -101,7 +101,7 @@ const createJudgeResponse = (
     text: {
       format: zodTextFormat(
         parseTaskOutputJudgeSchema,
-        "parseTaskOutputJudgeSchema"
+        "parseTaskOutputJudgeSchema",
       ),
     },
   };
@@ -110,7 +110,7 @@ const createJudgeResponse = (
 const executeParseTask = async (naturalLanguage: string) => {
   const prompt = parseTaskCorePromptV2(
     naturalLanguage,
-    mockParseTaskInputConfig
+    mockParseTaskInputConfig,
   );
 
   return await executeParse<ParseTaskOutputCoreV2>(
@@ -119,14 +119,14 @@ const executeParseTask = async (naturalLanguage: string) => {
     naturalLanguage,
     prompt,
     "v2",
-    randomUUID()
+    randomUUID(),
   );
 };
 
 const createJudgePromptForError = (
   naturalLanguage: string,
   output: ParseTaskOutputCoreV2,
-  _config: ParseTaskInputConfig
+  _config: ParseTaskInputConfig,
 ): ResponseCreateParamsNonStreaming => {
   const prompt = `
 ## Role
@@ -164,14 +164,14 @@ ${JUDGE_OUTPUT_FORMAT_INSTRUCTIONS}
 
   return createJudgeResponse(
     prompt,
-    "Please evaluate the error response for vague input."
+    "Please evaluate the error response for vague input.",
   );
 };
 
 const createJudgePromptForSuccess = (
   naturalLanguage: string,
   output: ParseTaskOutputCore,
-  config: ParseTaskInputConfig
+  config: ParseTaskInputConfig,
 ): ResponseCreateParamsNonStreaming => {
   const categoriesList = config.categories.join(", ");
 
@@ -232,13 +232,13 @@ ${JUDGE_OUTPUT_FORMAT_INSTRUCTIONS}
 
   return createJudgeResponse(
     prompt,
-    "Please evaluate the task parsing output."
+    "Please evaluate the task parsing output.",
   );
 };
 
 const executeJudge = async (
   naturalLanguage: string,
-  prompt: ResponseCreateParamsNonStreaming
+  prompt: ResponseCreateParamsNonStreaming,
 ) => {
   return await executeParse<ParseTaskOutputJudge>(
     PARSE_TASK_CAPABILITY,
@@ -246,18 +246,18 @@ const executeJudge = async (
     naturalLanguage,
     prompt,
     "v2",
-    randomUUID()
+    randomUUID(),
   );
 };
 
 const executeJudgeOutputForError = async (
   naturalLanguage: string,
-  output: ParseTaskOutputCoreV2
+  output: ParseTaskOutputCoreV2,
 ) => {
   const prompt = createJudgePromptForError(
     naturalLanguage,
     output,
-    mockParseTaskInputConfig
+    mockParseTaskInputConfig,
   );
 
   return executeJudge(naturalLanguage, prompt);
@@ -265,12 +265,12 @@ const executeJudgeOutputForError = async (
 
 const executeJudgeOutputForSuccess = async (
   naturalLanguage: string,
-  output: ParseTaskOutputCore
+  output: ParseTaskOutputCore,
 ) => {
   const prompt = createJudgePromptForSuccess(
     naturalLanguage,
     output,
-    mockParseTaskInputConfig
+    mockParseTaskInputConfig,
   );
 
   return executeJudge(naturalLanguage, prompt);
@@ -297,14 +297,14 @@ describe("corePromptV2 - Level2Tests", () => {
 
         const { output: judgeOutput } = await executeJudgeOutputForError(
           naturalLanguage,
-          parseOutput
+          parseOutput,
         );
 
         logJudgeResult(naturalLanguage, judgeOutput, "vague input");
 
         expect(judgeOutput.overallPass).toBe(true);
       },
-      TEST_TIMEOUT
+      TEST_TIMEOUT,
     );
   });
 
@@ -319,14 +319,14 @@ describe("corePromptV2 - Level2Tests", () => {
 
         const { output: judgeOutput } = await executeJudgeOutputForSuccess(
           naturalLanguage,
-          parseOutput.task!
+          parseOutput.task!,
         );
 
         logJudgeResult(naturalLanguage, judgeOutput);
 
         expect(judgeOutput.overallPass).toBe(true);
       },
-      TEST_TIMEOUT
+      TEST_TIMEOUT,
     );
   });
 });

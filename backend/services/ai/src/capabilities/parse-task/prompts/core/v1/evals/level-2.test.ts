@@ -15,7 +15,7 @@ import {
   ParseTaskOutputJudge,
 } from "@capabilities/parse-task/parse-task-types";
 import { parseTaskCorePromptV1 } from "@capabilities/parse-task/prompts/core/v1";
-import { executeParse } from "@clients/openai";
+import { executeParse } from "@services/openai";
 
 const TEST_TIMEOUT = 15000;
 
@@ -36,7 +36,7 @@ const testCases = [
 const executeParseTask = async (naturalLanguage: string) => {
   const prompt = parseTaskCorePromptV1(
     naturalLanguage,
-    mockParseTaskInputConfig
+    mockParseTaskInputConfig,
   );
 
   return await executeParse<ParseTaskOutputCore>(
@@ -45,14 +45,14 @@ const executeParseTask = async (naturalLanguage: string) => {
     naturalLanguage,
     prompt,
     "v1",
-    randomUUID()
+    randomUUID(),
   );
 };
 
 const createJudgePrompt = (
   naturalLanguage: string,
   output: ParseTaskOutputCore,
-  config: ParseTaskInputConfig
+  config: ParseTaskInputConfig,
 ): ResponseCreateParamsNonStreaming => {
   const categoriesList = config.categories.join(", ");
 
@@ -129,7 +129,7 @@ The output must follow one of two structures based on the evaluation result:
     text: {
       format: zodTextFormat(
         parseTaskOutputJudgeSchema,
-        "parseTaskOutputJudgeSchema"
+        "parseTaskOutputJudgeSchema",
       ),
     },
   };
@@ -137,12 +137,12 @@ The output must follow one of two structures based on the evaluation result:
 
 const executeJudgeOutput = async (
   naturalLanguage: string,
-  output: ParseTaskOutputCore
+  output: ParseTaskOutputCore,
 ) => {
   const prompt = createJudgePrompt(
     naturalLanguage,
     output,
-    mockParseTaskInputConfig
+    mockParseTaskInputConfig,
   );
 
   return await executeParse<ParseTaskOutputJudge>(
@@ -151,7 +151,7 @@ const executeJudgeOutput = async (
     naturalLanguage,
     prompt,
     "v1",
-    randomUUID()
+    randomUUID(),
   );
 };
 
@@ -171,12 +171,12 @@ describe("corePromptV1 - Level2Tests", () => {
       const { output: parseOutput } = await executeParseTask(naturalLanguage);
       const { output: judgeOutput } = await executeJudgeOutput(
         naturalLanguage,
-        parseOutput
+        parseOutput,
       );
 
       console.log(`\n=== Judge for: "${naturalLanguage}" ===`);
       console.log(
-        `Overall: ${judgeOutput.overallPass ? "✅ PASS" : "❌ FAIL"}`
+        `Overall: ${judgeOutput.overallPass ? "✅ PASS" : "❌ FAIL"}`,
       );
 
       if (!judgeOutput.overallPass) {
@@ -186,12 +186,12 @@ describe("corePromptV1 - Level2Tests", () => {
         judgeOutput.suggestedPromptImprovements.forEach(
           (improvement, index) => {
             console.log(`${index + 1}. ${improvement}`);
-          }
+          },
         );
       }
 
       expect(judgeOutput.overallPass).toBe(true);
     },
-    TEST_TIMEOUT
+    TEST_TIMEOUT,
   );
 });

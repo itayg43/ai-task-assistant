@@ -12,7 +12,7 @@ import {
 } from "@capabilities/parse-task/parse-task-schemas";
 import { ParseTaskOutputCoreV2 } from "@capabilities/parse-task/parse-task-types";
 import { parseTaskCorePromptV2 } from "@capabilities/parse-task/prompts/core/v2";
-import { executeParse } from "@clients/openai";
+import { executeParse } from "@services/openai";
 
 const vagueInputTestCases = [
   {
@@ -164,7 +164,7 @@ const clearInputTestCases = [
 const executeParseTask = async (naturalLanguage: string) => {
   const prompt = parseTaskCorePromptV2(
     naturalLanguage,
-    mockParseTaskInputConfig
+    mockParseTaskInputConfig,
   );
 
   return await executeParse<ParseTaskOutputCoreV2>(
@@ -173,7 +173,7 @@ const executeParseTask = async (naturalLanguage: string) => {
     naturalLanguage,
     prompt,
     "v2",
-    randomUUID()
+    randomUUID(),
   );
 };
 
@@ -207,7 +207,7 @@ describe("corePromptV2 - Level1Tests", () => {
         output.error?.suggestions.forEach((suggestion) => {
           expect(suggestion.trim().length).toBeGreaterThan(0);
         });
-      }
+      },
     );
   });
 
@@ -224,7 +224,7 @@ describe("corePromptV2 - Level1Tests", () => {
         expect(output.task).not.toBeNull();
 
         expect(() =>
-          parseTaskOutputCoreSchema.parse(output.task)
+          parseTaskOutputCoreSchema.parse(output.task),
         ).not.toThrow();
 
         const task = output.task!;
@@ -243,13 +243,13 @@ describe("corePromptV2 - Level1Tests", () => {
 
         expect(expected.priority.level).toContain(task.priority.level);
         expect(task.priority.score).toBeGreaterThanOrEqual(
-          expected.priority.minScore
+          expected.priority.minScore,
         );
         expect(task.priority.score).toBeLessThanOrEqual(
-          expected.priority.maxScore
+          expected.priority.maxScore,
         );
         expect(task.priority.reason).toBeTruthy();
-      }
+      },
     );
   });
 });

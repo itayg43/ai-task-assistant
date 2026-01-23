@@ -1,1 +1,1 @@
-export { openai, executeParse } from "./openai";
+export { openai, parseWithValidation } from "./openai";

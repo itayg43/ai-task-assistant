@@ -20,7 +20,6 @@ import {
   createParseTaskCorePrompt,
   createParseTaskSubtasksPrompt,
 } from "@capabilities/parse-task/prompts";
-import { executeParse } from "@clients/openai";
 import { env } from "@config/env";
 import { AI_ERROR_TYPE } from "@constants";
 import {
@@ -31,6 +30,7 @@ import {
   mockPromptVersion,
 } from "@mocks/openai-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
+import { executeParse } from "@services/openai";
 import { BadRequestError } from "@shared/errors";
 import { Mocked } from "@shared/types";
 
@@ -41,7 +41,7 @@ vi.mock("@config/env", () => ({
   },
 }));
 
-vi.mock("@clients/openai", () => ({
+vi.mock("@services/openai", () => ({
   executeParse: vi.fn(),
 }));
 
@@ -86,7 +86,7 @@ describe("parseTaskHandler", () => {
         ...mockParseTaskValidatedInput,
         naturalLanguage: mockNaturalLanguage,
       },
-      mockAiServiceRequestId
+      mockAiServiceRequestId,
     );
   };
 
@@ -96,14 +96,14 @@ describe("parseTaskHandler", () => {
     envCorePromptVersionSpy = vi.spyOn(
       env,
       "PARSE_TASK_CORE_PROMPT_VERSION",
-      "get"
+      "get",
     );
     envCorePromptVersionSpy.mockReturnValue("v1");
 
     envSubtasksPromptVersionSpy = vi.spyOn(
       env,
       "PARSE_TASK_SUBTASKS_PROMPT_VERSION",
-      "get"
+      "get",
     );
     envSubtasksPromptVersionSpy.mockReturnValue("v1");
 
@@ -131,7 +131,7 @@ describe("parseTaskHandler", () => {
     expect(mockedCreateCorePrompt).toHaveBeenCalledWith(
       mockPromptVersion,
       mockNaturalLanguage,
-      mockParseTaskInputConfig
+      mockParseTaskInputConfig,
     );
     expect(mockedExecuteParse).toHaveBeenCalledWith(
       PARSE_TASK_CAPABILITY,
@@ -139,11 +139,11 @@ describe("parseTaskHandler", () => {
       mockNaturalLanguage,
       mockPrompt,
       mockPromptVersion,
-      mockAiServiceRequestId
+      mockAiServiceRequestId,
     );
     expect(mockedCreateSubtasksPrompt).toHaveBeenCalledWith(
       mockPromptVersion,
-      mockNaturalLanguage
+      mockNaturalLanguage,
     );
     expect(mockedExecuteParse).toHaveBeenCalledWith(
       PARSE_TASK_CAPABILITY,
@@ -151,7 +151,7 @@ describe("parseTaskHandler", () => {
       mockNaturalLanguage,
       mockPrompt,
       mockPromptVersion,
-      mockAiServiceRequestId
+      mockAiServiceRequestId,
     );
   });
 
@@ -257,7 +257,7 @@ describe("parseTaskHandler", () => {
         expect(message).toBe(mockParseTaskErrorOutputCoreV2.error?.reason);
         expect(context?.type).toBe(AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR);
         expect(context?.suggestions).toEqual(
-          mockParseTaskErrorOutputCoreV2.error?.suggestions
+          mockParseTaskErrorOutputCoreV2.error?.suggestions,
         );
         expect(context?.openaiMetadata).toEqual({
           core: {

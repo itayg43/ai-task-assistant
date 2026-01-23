@@ -20,6 +20,11 @@ Always follow these standards when writing unit or integration tests to maintain
 - **State Management**:
   - Initialize/reset mocks and shared options in `beforeEach`.
   - Use `afterEach` to call `vi.clearAllMocks()` to ensure test isolation.
+- **Mocking Hierarchy**:
+  - **Services** should mock internal clients/repositories (e.g., `@clients/*`), not the underlying external SDKs.
+  - **Clients** should be the only place where external SDKs (e.g., `openai`, `stripe`) are mocked.
+- **Error Instance Checking**:
+  - When a test needs to verify `instanceof ThirdPartyError`, centralize that Error class in a shared mock folder and ensure both the SDK mock and the test use the same class reference.
 
 ## Structure
 
@@ -33,3 +38,8 @@ Always follow these standards when writing unit or integration tests to maintain
 - **Core Paths First**: Prioritize testing the main success and failure paths.
 - **Infrastructure Resilience**: If the underlying infrastructure (like metrics recorders or error handlers) is already tested for resilience (e.g., wrapped in `try-catch`), avoid redundant testing of those failure modes in business logic tests.
 - **Mock Interfaces**: Prefer mocking service/repository interfaces over complex internal logic when writing unit tests.
+- **Avoid Multi-Layer Mocks**: In high-level tests, don't re-test validation logic that is already guaranteed by a lower-layer unit test.
+
+## Mock Management
+
+- Keep complex structural mocks for third-party SDKs in a centralized location (e.g., `src/mocks/`) instead of redefining them in individual test files.

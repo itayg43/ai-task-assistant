@@ -13,7 +13,7 @@ import {
   ParseTaskOutputSubtasks,
 } from "@capabilities/parse-task/parse-task-types";
 import { parseTaskSubtasksPromptV1 } from "@capabilities/parse-task/prompts/subtasks/v1";
-import { executeParse } from "@clients/openai";
+import { executeParse } from "@services/openai";
 
 const TEST_TIMEOUT = 15000;
 
@@ -48,13 +48,13 @@ const executeParseSubtasks = async (naturalLanguage: string) => {
     naturalLanguage,
     prompt,
     "v1",
-    randomUUID()
+    randomUUID(),
   );
 };
 
 const createJudgePrompt = (
   naturalLanguage: string,
-  output: ParseTaskOutputSubtasks
+  output: ParseTaskOutputSubtasks,
 ): ResponseCreateParamsNonStreaming => {
   const subtasks = output.subtasks;
   const subtasksDisplay = subtasks
@@ -136,7 +136,7 @@ Use one of the following structures for your output, based on the evaluation res
     text: {
       format: zodTextFormat(
         parseTaskOutputJudgeSchema,
-        "parseTaskOutputJudgeSchema"
+        "parseTaskOutputJudgeSchema",
       ),
     },
   };
@@ -144,7 +144,7 @@ Use one of the following structures for your output, based on the evaluation res
 
 const executeJudgeOutput = async (
   naturalLanguage: string,
-  output: ParseTaskOutputSubtasks
+  output: ParseTaskOutputSubtasks,
 ) => {
   const prompt = createJudgePrompt(naturalLanguage, output);
 
@@ -154,7 +154,7 @@ const executeJudgeOutput = async (
     naturalLanguage,
     prompt,
     "v1",
-    randomUUID()
+    randomUUID(),
   );
 };
 
@@ -171,17 +171,16 @@ describe("subtasksPromptV1 - Level2Tests", () => {
   it.each(testCases)(
     "should judge $naturalLanguage",
     async ({ naturalLanguage }) => {
-      const { output: parseOutput } = await executeParseSubtasks(
-        naturalLanguage
-      );
+      const { output: parseOutput } =
+        await executeParseSubtasks(naturalLanguage);
       const { output: judgeOutput } = await executeJudgeOutput(
         naturalLanguage,
-        parseOutput
+        parseOutput,
       );
 
       console.log(`\n=== Judge for: "${naturalLanguage}" ===`);
       console.log(
-        `Overall: ${judgeOutput.overallPass ? "✅ PASS" : "❌ FAIL"}`
+        `Overall: ${judgeOutput.overallPass ? "✅ PASS" : "❌ FAIL"}`,
       );
 
       if (!judgeOutput.overallPass) {
@@ -191,12 +190,12 @@ describe("subtasksPromptV1 - Level2Tests", () => {
         judgeOutput.suggestedPromptImprovements.forEach(
           (improvement, index) => {
             console.log(`${index + 1}. ${improvement}`);
-          }
+          },
         );
       }
 
       expect(judgeOutput.overallPass).toBe(true);
     },
-    TEST_TIMEOUT
+    TEST_TIMEOUT,
   );
 });

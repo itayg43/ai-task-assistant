@@ -26,7 +26,8 @@
       "@utils/*": ["src/utils/*"],
       "@mocks/*": ["src/mocks/*"],
       "@metrics/*": ["src/metrics/*"],
-      "@consumers/*": ["src/consumers/*"]
+      "@consumers/*": ["src/consumers/*"],
+      "@services/*": ["src/services/*"]
     }
   },
   "include": ["src/"],

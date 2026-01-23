@@ -18,3 +18,17 @@ export const mockPrompt: ResponseCreateParamsNonStreaming = {
   input: "input",
   temperature: 0,
 };
+
+export class MockAPIError extends Error {
+  requestID?: string;
+  error?: { message?: string };
+  status?: number;
+
+  constructor(message: string, status?: number, requestId?: string) {
+    super(message);
+    this.name = "APIError";
+    this.status = status;
+    this.requestID = requestId;
+    this.error = { message };
+  }
+}

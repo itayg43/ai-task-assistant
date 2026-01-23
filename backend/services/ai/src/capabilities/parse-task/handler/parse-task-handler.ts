@@ -17,10 +17,10 @@ import {
 } from "@capabilities/parse-task/prompts";
 import { ParseTaskCorePromptVersion } from "@capabilities/parse-task/prompts/core";
 import { ParseTaskSubtasksPromptVersion } from "@capabilities/parse-task/prompts/subtasks";
-import { executeParse } from "@clients/openai";
 import { env } from "@config/env";
 import { AI_ERROR_TYPE } from "@constants";
 import { recordVagueInput } from "@metrics/parse-task-metrics";
+import { executeParse } from "@services/openai";
 import { createLogger } from "@shared/config/create-logger";
 import { BadRequestError } from "@shared/errors";
 import { exhaustiveSwitch } from "@shared/utils/exhaustive-switch";
@@ -32,12 +32,12 @@ const coreHandler = async (
   promptVersion: ParseTaskCorePromptVersion,
   naturalLanguage: string,
   config: ParseTaskInputConfig,
-  requestId: string
+  requestId: string,
 ) => {
   const prompt = createParseTaskCorePrompt(
     promptVersion,
     naturalLanguage,
-    config
+    config,
   );
 
   return exhaustiveSwitch(promptVersion, {
@@ -48,7 +48,7 @@ const coreHandler = async (
         naturalLanguage,
         prompt,
         promptVersion,
-        requestId
+        requestId,
       );
     },
     v2: async () => {
@@ -59,7 +59,7 @@ const coreHandler = async (
           naturalLanguage,
           prompt,
           promptVersion,
-          requestId
+          requestId,
         );
 
       if (!output.success) {
@@ -93,12 +93,12 @@ const coreHandler = async (
 const subtasksHandler = async (
   promptVersion: ParseTaskSubtasksPromptVersion,
   naturalLanguage: string,
-  requestId: string
+  requestId: string,
 ) => {
   try {
     const prompt = createParseTaskSubtasksPrompt(
       promptVersion,
-      naturalLanguage
+      naturalLanguage,
     );
 
     const response = await executeParse<ParseTaskOutputSubtasks>(
@@ -107,7 +107,7 @@ const subtasksHandler = async (
       naturalLanguage,
       prompt,
       promptVersion,
-      requestId
+      requestId,
     );
 
     return {
@@ -125,7 +125,7 @@ const subtasksHandler = async (
 
 export const parseTaskHandler = async (
   input: ParseTaskInput,
-  requestId: string
+  requestId: string,
 ): Promise<CapabilityResponse<typeof parseTaskOutputSchema>> => {
   const { naturalLanguage, config } = input;
 
@@ -134,14 +134,14 @@ export const parseTaskHandler = async (
     corePromptVersion,
     naturalLanguage,
     config,
-    requestId
+    requestId,
   );
 
   const subtasksPromptVersion = env.PARSE_TASK_SUBTASKS_PROMPT_VERSION;
   const subtasksResponse = await subtasksHandler(
     subtasksPromptVersion,
     naturalLanguage,
-    requestId
+    requestId,
   );
 
   return {
