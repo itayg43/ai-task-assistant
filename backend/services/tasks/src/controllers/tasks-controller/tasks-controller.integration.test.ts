@@ -78,6 +78,18 @@ vi.mock("@middlewares/token-usage-rate-limiter", () => ({
   openaiUpdateTokenUsage: mockOpenaiUpdateTokenUsage,
 }));
 
+const { mockRecordTasksApiSuccess, mockRecordTasksApiFailure } = vi.hoisted(
+  () => ({
+    mockRecordTasksApiSuccess: vi.fn(),
+    mockRecordTasksApiFailure: vi.fn(),
+  }),
+);
+
+vi.mock("@metrics/tasks-metrics", () => ({
+  recordTasksApiSuccess: mockRecordTasksApiSuccess,
+  recordTasksApiFailure: mockRecordTasksApiFailure,
+}));
+
 vi.mock("@shared/middlewares/authentication", () => ({
   authentication: (_req: any, res: any, next: any) => {
     res.locals.authenticationContext = {
@@ -97,7 +109,7 @@ describe("tasksController (integration)", () => {
   beforeEach(async () => {
     mockTokenBucketRateLimiter.mockImplementation((_req, _res, next) => next());
     mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) =>
-      next()
+      next(),
     );
     mockOpenaiUpdateTokenUsage.mockImplementation((_req, _res, next) => next());
   });
@@ -121,16 +133,15 @@ describe("tasksController (integration)", () => {
       const { prisma } = await import("@clients/prisma");
       vi.mocked(prisma.$transaction).mockImplementation(mockTransaction);
 
-      const { createTask, findTaskById } = await import(
-        "@repositories/tasks-repository"
-      );
+      const { createTask, findTaskById } =
+        await import("@repositories/tasks-repository");
       vi.mocked(createTask).mockResolvedValue(mockTask);
       vi.mocked(findTaskById).mockResolvedValue(mockTaskWithSubtasks);
     });
 
     it(`should return ${StatusCodes.ACCEPTED} with message for valid input`, async () => {
       mockedExecuteCapability.mockResolvedValue(
-        mockAiCapabilityImmediateResponse
+        mockAiCapabilityImmediateResponse,
       );
 
       const response = await request(app).post(createTaskUrl).send({
@@ -197,7 +208,7 @@ describe("tasksController (integration)", () => {
         expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
         // Verify no internal details leak to the client
         expect(response.body.type).toBeUndefined();
-      }
+      },
     );
 
     it("should handle unexpected errors and return 500", async () => {
@@ -223,7 +234,7 @@ describe("tasksController (integration)", () => {
 
       expect(response.status).toBe(StatusCodes.TOO_MANY_REQUESTS);
       expect(response.body.message).toBe(
-        "Rate limit exceeded, please try again later."
+        "Rate limit exceeded, please try again later.",
       );
       expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
     });
@@ -273,6 +284,12 @@ describe("tasksController (integration)", () => {
       };
 
       expect(response.body).toMatchObject(expectedBody);
+
+      expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
+        "get_tasks",
+        expect.any(Number),
+        expect.any(String),
+      );
     });
 
     it("should return 200 with default pagination when no query parameters provided", async () => {
@@ -314,7 +331,7 @@ describe("tasksController (integration)", () => {
           where: expect.objectContaining({
             category: "work",
           }),
-        })
+        }),
       );
     });
 
@@ -336,7 +353,7 @@ describe("tasksController (integration)", () => {
           where: expect.objectContaining({
             priorityLevel: "high",
           }),
-        })
+        }),
       );
     });
 
@@ -351,13 +368,13 @@ describe("tasksController (integration)", () => {
           });
 
         expect(response.status).toBe(StatusCodes.OK);
-      }
+      },
     );
 
     it.each(
       GET_TASKS_ALLOWED_ORDER_DIRECTIONS.map((orderDirection) => [
         orderDirection,
-      ])
+      ]),
     )("should support orderDirection: %s", async (orderDirection) => {
       const response = await request(app)
         .get(getTasksUrl)
@@ -415,6 +432,23 @@ describe("tasksController (integration)", () => {
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();
+    });
+
+    it("should return 500 and record failure metrics when an unexpected error occurs", async () => {
+      const { findTasks } = await import("@repositories/tasks-repository");
+      vi.mocked(findTasks).mockRejectedValue(
+        new Error("Database connection failed"),
+      );
+
+      const response = await request(app)
+        .get(getTasksUrl)
+        .query(mockGetTasksInputQuery);
+
+      expect(response.status).toBe(StatusCodes.INTERNAL_SERVER_ERROR);
+      expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
+        "get_tasks",
+        expect.any(String),
+      );
     });
   });
 });

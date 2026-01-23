@@ -1,10 +1,10 @@
-export type WithMetricsOptions = {
-  operation: string;
+export type WithMetricsOptions<TOperation extends string = string> = {
+  operation: TOperation;
   requestId: string;
   onRecordSuccess: (
-    operation: string,
+    operation: TOperation,
     durationMs: number,
     requestId: string,
   ) => void;
-  onRecordFailure: (operation: string, requestId: string) => void;
+  onRecordFailure: (operation: TOperation, requestId: string) => void;
 };

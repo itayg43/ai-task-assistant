@@ -1,8 +1,8 @@
 import { WithMetricsOptions } from "../../types";
 import { withDurationAsync } from "../with-duration";
 
-export const withMetrics = async <TReturn>(
-  options: WithMetricsOptions,
+export const withMetrics = async <TOperation extends string, TReturn>(
+  options: WithMetricsOptions<TOperation>,
   fn: () => Promise<TReturn>,
 ): Promise<TReturn> => {
   try {

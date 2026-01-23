@@ -42,4 +42,14 @@ Always follow these standards when writing unit or integration tests to maintain
 
 ## Mock Management
 
-- Keep complex structural mocks for third-party SDKs in a centralized location (e.g., `src/mocks/`) instead of redefining them in individual test files.
+- **Centralized Mocks**: Keep complex structural mocks for third-party SDKs in a centralized location (e.g., `src/mocks/`) instead of redefining them in individual test files.
+- **Module Mocking**: Use `vi.hoisted()` for module-level mocks (like metrics or config) to allow clean reference in tests without inline dynamic imports.
+  ```typescript
+  const { mockRecorder } = vi.hoisted(() => ({ mockRecorder: vi.fn() }));
+  vi.mock("@metrics/module", () => ({ recorder: mockRecorder }));
+  ```
+
+## Observability & Metrics
+
+- **Verify Wrappers**: When testing code wrapped in observability utilities (e.g., `withMetrics`), verify the wrapper is called (and its arguments) in **BOTH** success and failure scenarios.
+- **Failures Count**: Explicitly verify that failure metrics recorders are called when operations fail, ensuring visibility into system errors.

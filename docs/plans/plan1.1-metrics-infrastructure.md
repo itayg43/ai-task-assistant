@@ -28,9 +28,14 @@ Wrap the following functions in `try-catch` blocks to ensure metrics failures ne
 
 - **File**: `backend/shared/src/utils/with-metrics/with-metrics.ts`
 - **Purpose**: A wrapper for async functions that automatically handles timing and calls success/failure recorders.
+- **Implementation Refinements**:
+  - Uses an `options` object for configuration.
+  - Recording calls are synchronous ("fire-and-forget").
+  - Relies on the resilience of the recording functions themselves (no internal `try-catch` inside `withMetrics`).
 - **Dependencies**: Uses `withDurationAsync`.
+- **Types**: Uses centralized `WithMetricsOptions` type in `backend/shared/src/types/with-metrics-options.ts`.
 
 ## Verification Plan
 
-- Unit tests for updated metrics functions ensuring no errors are thrown even if Prometheus clients fail.
-- Unit tests for `withMetrics` utility.
+- Unit tests for `withMetrics` utility in `with-metrics.test.ts`, focusing on core success and failure paths.
+- General verification via `npm run type-check:ci` and existing test suites.

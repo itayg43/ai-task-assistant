@@ -1,10 +1,16 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
+import { TASKS_OPERATION } from "@constants";
+import {
+  recordTasksApiFailure,
+  recordTasksApiSuccess,
+} from "@metrics/tasks-metrics";
 import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
 import { createLogger } from "@shared/config/create-logger";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
 import { getValidatedQuery } from "@shared/utils/validated-query";
+import { withMetrics } from "@shared/utils/with-metrics";
 import {
   CreateTaskRequestInput,
   CreateTaskResponse,
@@ -18,7 +24,7 @@ const logger = createLogger("tasksController");
 export const createTask = async (
   req: Request<unknown, unknown, CreateTaskRequestInput["body"]>,
   res: Response<CreateTaskResponse>,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { requestId } = res.locals;
   const { naturalLanguage } = req.body;
@@ -38,51 +44,48 @@ export const createTask = async (
 export const getTasks = async (
   _req: Request<{}, unknown, unknown, GetTasksInput["query"]>,
   res: Response<GetTasksResponse>,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { requestId } = res.locals;
-  const { userId } = getAuthenticationContext(res);
-  const query = getValidatedQuery<GetTasksInput["query"]>(res);
-
-  const baseLogContext = {
-    requestId,
-    userId,
-    query,
-  };
 
   try {
-    logger.info("Get tasks - starting", baseLogContext);
-
-    const result = await getTasksHandler(userId, {
-      skip: query.skip,
-      take: query.take,
-      orderBy: query.orderBy,
-      orderDirection: query.orderDirection,
-      where: {
-        category: query.category,
-        priorityLevel: query.priorityLevel,
+    await withMetrics(
+      {
+        operation: TASKS_OPERATION.GET_TASKS,
+        requestId,
+        onRecordSuccess: recordTasksApiSuccess,
+        onRecordFailure: recordTasksApiFailure,
       },
-    });
+      async () => {
+        const { userId } = getAuthenticationContext(res);
+        const query = getValidatedQuery<GetTasksInput["query"]>(res);
 
-    const response: GetTasksResponse = {
-      tasksServiceRequestId: requestId,
-      tasks: result.tasks.map(taskToResponseDto),
-      pagination: {
-        totalCount: result.totalCount,
-        skip: query.skip,
-        take: query.take,
-        hasMore: result.hasMore,
-        currentPage: result.currentPage,
-        totalPages: result.totalPages,
+        const { tasks, totalCount, hasMore, currentPage, totalPages } =
+          await getTasksHandler(userId, {
+            skip: query.skip,
+            take: query.take,
+            orderBy: query.orderBy,
+            orderDirection: query.orderDirection,
+            where: {
+              category: query.category,
+              priorityLevel: query.priorityLevel,
+            },
+          });
+
+        res.status(StatusCodes.OK).json({
+          tasksServiceRequestId: requestId,
+          tasks: tasks.map(taskToResponseDto),
+          pagination: {
+            totalCount,
+            skip: query.skip,
+            take: query.take,
+            hasMore,
+            currentPage,
+            totalPages,
+          },
+        });
       },
-    };
-
-    logger.info("Get tasks - succeeded", {
-      ...baseLogContext,
-      result: response,
-    });
-
-    res.status(StatusCodes.OK).json(response);
+    );
   } catch (error) {
     next(error);
   }
