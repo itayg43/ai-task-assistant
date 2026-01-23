@@ -9,6 +9,10 @@ import {
   CAPABILITY_EXECUTION_ERROR_MESSAGE,
   RABBITMQ_QUEUE,
 } from "@constants";
+import {
+  recordAiApiFailure,
+  recordAiApiSuccess,
+} from "@metrics/ai-service-metrics";
 import { capabilitiesQueueMessageDataSchema } from "@schemas";
 import { createLogger } from "@shared/config/create-logger";
 import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
@@ -106,7 +110,7 @@ const capabilitiesMessageHandler = async (
   message: amqp.ConsumeMessage,
   messageData: CapabilitiesQueueMessageData,
 ) => {
-  const { requestId, capability, input, callbackUrl } = messageData;
+  const { requestId, capability, input, callbackUrl, startTime } = messageData;
 
   logger.info(
     `Received ${capability} capability execution message from queue`,
@@ -126,9 +130,12 @@ const capabilitiesMessageHandler = async (
       validatedInput,
     );
 
+    const durationMs = Date.now() - startTime;
+    recordAiApiSuccess(capability, durationMs, requestId);
+
     logger.info(
       `Capability execution completed successfully for ${capability}`,
-      { requestId },
+      { requestId, durationMs },
     );
 
     await sendCallbackHandler(channel, message, requestId, callbackUrl, {
@@ -136,6 +143,8 @@ const capabilitiesMessageHandler = async (
       result,
     });
   } catch (error) {
+    recordAiApiFailure(capability, requestId);
+
     logger.error(`Capability execution failed for ${capability}`, error, {
       requestId,
     });

@@ -43,13 +43,19 @@ Always follow these standards when writing unit or integration tests to maintain
 ## Mock Management
 
 - **Centralized Mocks**: Keep complex structural mocks for third-party SDKs in a centralized location (e.g., `src/mocks/`) instead of redefining them in individual test files.
-- **Module Mocking**: Use `vi.hoisted()` for module-level mocks (like metrics or config) to allow clean reference in tests without inline dynamic imports.
-  ```typescript
-  const { mockRecorder } = vi.hoisted(() => ({ mockRecorder: vi.fn() }));
-  vi.mock("@metrics/module", () => ({ recorder: mockRecorder }));
-  ```
+- **Mocking Patterns**:
+  - **Direct Import Assertion (Preferred)**: For simple named exports (like metrics or utilities), define the mock inline and import the function to assert on it. This avoids hoisting scope issues.
+    ```typescript
+    // In setup
+    vi.mock("@metrics/module", () => ({ recordSuccess: vi.fn() }));
+    // In test
+    import { recordSuccess } from "@metrics/module";
+    expect(recordSuccess).toHaveBeenCalled();
+    ```
+  - **`vi.hoisted`**: Use `vi.hoisted` only when you need to retain a reference to a mock implementation _inside_ the factory itself (e.g. for default exports or complex objects).
 
 ## Observability & Metrics
 
 - **Verify Wrappers**: When testing code wrapped in observability utilities (e.g., `withMetrics`), verify the wrapper is called (and its arguments) in **BOTH** success and failure scenarios.
-- **Failures Count**: Explicitly verify that failure metrics recorders are called when operations fail, ensuring visibility into system errors.
+- **Failures Count**: Explicitly verify that failure metrics recorders are called when operations fail.
+- **Payload Validation**: Verify that metric values are realistic (e.g., `durationMs` should be `> 0` or `expect.any(Number)`).

@@ -13,7 +13,7 @@ const logger = createLogger("capabilitiesController");
 export const executeCapability = async (
   _req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const requestId = res.locals.requestId;
@@ -32,6 +32,7 @@ export const executeCapability = async (
       capability: config.name,
       input,
       callbackUrl,
+      startTime: Date.now(),
     });
 
     logger.info("Capability execution request queued successfully", {

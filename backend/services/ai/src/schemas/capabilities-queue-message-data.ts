@@ -7,4 +7,5 @@ export const capabilitiesQueueMessageDataSchema = z.object({
   capability: z.nativeEnum(CAPABILITY),
   input: z.unknown(),
   callbackUrl: z.string().url(),
+  startTime: z.number(),
 });

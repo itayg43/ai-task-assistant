@@ -210,6 +210,7 @@ describe("rabbitmq", () => {
         naturalLanguage: "test input",
       },
       callbackUrl: "https://example.com/callback",
+      startTime: 1234567890,
     };
 
     it("should send message to queue with correct payload", async () => {

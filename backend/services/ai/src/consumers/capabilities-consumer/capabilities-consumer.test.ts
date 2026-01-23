@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockParseTaskValidatedInput } from "@capabilities/parse-task/parse-task-mocks";
 import { AI_ERROR_TYPE, CAPABILITY, RABBITMQ_QUEUE } from "@constants";
 import { consumeCapabilitiesMessage } from "@consumers/capabilities-consumer";
+import {
+  recordAiApiFailure,
+  recordAiApiSuccess,
+} from "@metrics/ai-service-metrics";
 import { mockCallbackUrl } from "@mocks/callbackUrl-mocks";
 import {
   createMockChannel,
@@ -42,6 +46,11 @@ const {
   },
 }));
 
+vi.mock("@metrics/ai-service-metrics", () => ({
+  recordAiApiSuccess: vi.fn(),
+  recordAiApiFailure: vi.fn(),
+}));
+
 vi.mock("@clients/rabbitmq", () => ({
   getRabbitMQChannel: mockGetRabbitMQChannel,
 }));
@@ -66,6 +75,8 @@ describe("capabilitiesConsumer", () => {
   let mockChannel: amqp.Channel;
   let mockMessage: amqp.ConsumeMessage;
 
+  const mockStartTime = 1234567890;
+
   beforeEach(() => {
     // Create a mock RabbitMQ message with test data
     mockMessage = createMockMessage({
@@ -73,6 +84,7 @@ describe("capabilitiesConsumer", () => {
       capability: CAPABILITY.PARSE_TASK,
       input: mockParseTaskValidatedInput,
       callbackUrl: mockCallbackUrl,
+      startTime: mockStartTime,
     });
 
     // Create a mock channel that will deliver mockMessage when consume() is called
@@ -160,6 +172,16 @@ describe("capabilitiesConsumer", () => {
         mockCapabilities["parse-task"].outputSchema.parse,
       ).toHaveBeenCalledWith(mockResult);
 
+      // Verify metrics
+      expect(recordAiApiSuccess).toHaveBeenCalledWith(
+        CAPABILITY.PARSE_TASK,
+        expect.any(Number),
+        mockAiServiceRequestId,
+      );
+      // Verify duration is calculated (roughly positive)
+      const durationArg = vi.mocked(recordAiApiSuccess).mock.calls[0][1];
+      expect(durationArg).toBeGreaterThanOrEqual(0);
+
       // Verify callback and ack
       expect(mockTasksClient.post).toHaveBeenCalledWith(mockCallbackUrl, {
         success: true,
@@ -197,6 +219,7 @@ describe("capabilitiesConsumer", () => {
         capability: "invalid-capability",
         input: mockParseTaskValidatedInput,
         callbackUrl: mockCallbackUrl,
+        startTime: mockStartTime,
       });
 
       setupConsumeWithMessage(mockChannel, invalidSchemaMessage);
@@ -221,6 +244,7 @@ describe("capabilitiesConsumer", () => {
         capability: CAPABILITY.PARSE_TASK,
         input: mockParseTaskValidatedInput,
         callbackUrl: mockCallbackUrl,
+        startTime: mockStartTime,
       });
 
       // Temporarily replace the capabilities mock to simulate missing capability
@@ -251,6 +275,10 @@ describe("capabilitiesConsumer", () => {
           requestId: mockAiServiceRequestId,
           operation: "sendCallbackHandler",
         },
+      );
+      expect(recordAiApiFailure).toHaveBeenCalledWith(
+        CAPABILITY.PARSE_TASK,
+        mockAiServiceRequestId,
       );
     });
   });
