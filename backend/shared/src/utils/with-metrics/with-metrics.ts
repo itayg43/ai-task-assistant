@@ -5,12 +5,14 @@ export const withMetrics = async <TOperation extends string, TReturn>(
   options: WithMetricsOptions<TOperation>,
   fn: () => Promise<TReturn>,
 ): Promise<TReturn> => {
+  const { operation, requestId, onRecordSuccess, onRecordFailure } = options;
+
   try {
     const { result, durationMs } = await withDurationAsync(fn);
-    options.onRecordSuccess(options.operation, durationMs, options.requestId);
+    onRecordSuccess(operation, durationMs, requestId);
     return result;
   } catch (error) {
-    options.onRecordFailure(options.operation, options.requestId);
+    onRecordFailure(operation, requestId);
     throw error;
   }
 };

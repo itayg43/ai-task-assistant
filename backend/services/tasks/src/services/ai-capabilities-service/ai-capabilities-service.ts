@@ -10,14 +10,14 @@ const logger = createLogger("aiCapabilitiesService");
 
 export const executeCapability = async <TCapability extends TAiCapability>(
   requestId: string,
-  config: TExecuteCapabilityConfig<TCapability>
+  config: TExecuteCapabilityConfig<TCapability>,
 ): Promise<TAiCapabilityImmediateResponse> => {
   const { capability, callbackUrl, params } = config;
 
   try {
     const { data } = await aiClient.post<TAiCapabilityImmediateResponse>(
       `/capabilities/${capability}?callbackUrl=${callbackUrl}`,
-      params
+      params,
     );
 
     logger.info(`Successfully called execute ${capability} capability`, {

@@ -9,7 +9,7 @@ import { executeCapability } from "@services/ai-capabilities-service";
 
 export const createTaskHandler = async (
   requestId: string,
-  naturalLanguage: string
+  naturalLanguage: string,
 ): Promise<string> => {
   const { message } = await executeCapability<"parse-task">(requestId, {
     capability: "parse-task",
@@ -25,7 +25,7 @@ export const createTaskHandler = async (
 
 export const getTasksHandler = async (
   userId: number,
-  options: FindTasksOptions
+  options: FindTasksOptions,
 ): Promise<FindTasksResult> => {
   return await findTasks(prisma, userId, options);
 };
