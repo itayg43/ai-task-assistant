@@ -13,7 +13,7 @@ export const createTaskHandler = async (
 ): Promise<string> => {
   const { message } = await executeCapability<"parse-task">(requestId, {
     capability: "parse-task",
-    callbackUrl: "http://tasks:3001/api/v1/webhooks/create-task",
+    callbackUrl: `http://tasks:3001/api/v1/webhooks/create-task?tasksServiceRequestId=${requestId}`,
     params: {
       naturalLanguage,
       config: DEFAULT_PARSE_TASK_CONFIG,

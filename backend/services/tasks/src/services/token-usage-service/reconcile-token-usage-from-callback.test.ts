@@ -2,20 +2,24 @@ import Redis from "ioredis";
 import Redlock from "redlock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createLoggerMock } from "@shared/mocks/logger-mock";
 import { createRedisClientMock } from "@shared/mocks/redis-mock";
 import { createRedlockClientMock } from "@shared/mocks/redlock-mock";
-import type { Mocked, RequestMetadata } from "@shared/types";
+import type { Mocked } from "@shared/types";
 import { getTokenBucketLockKey } from "@shared/utils/token-bucket/key-utils";
 import { updateTokenUsage } from "@shared/utils/token-bucket/update-token-usage";
 import { withLock } from "@shared/utils/with-lock";
+import {
+  mockActualTokens,
+  mockLockTtlMs,
+  mockRequestMetadata,
+  mockTokenUsageRequestId,
+} from "@mocks/token-usage-mocks";
 
 import { getRequestMetadata, getRequestMetadataKey } from "./request-metadata";
 import { reconcileTokenUsageFromCallback } from "./reconcile-token-usage-from-callback";
 
-const { mockLoggerDebug, mockLoggerWarn } = vi.hoisted(() => ({
-  mockLoggerDebug: vi.fn(),
-  mockLoggerWarn: vi.fn(),
-}));
+const { mockLoggerDebug, mockLoggerWarn } = vi.hoisted(() => createLoggerMock());
 
 vi.mock("@shared/config/create-logger", () => ({
   createLogger: vi.fn(() => ({
@@ -47,19 +51,6 @@ describe("reconcileTokenUsageFromCallback", () => {
   let mockedUpdateTokenUsage: Mocked<typeof updateTokenUsage>;
   let mockedWithLock: Mocked<typeof withLock>;
 
-  const mockRequestId = "test-request-id";
-  const mockActualTokens = 450;
-  const mockLockTtlMs = 5000;
-
-  const mockMetadata: RequestMetadata = {
-    userId: 123,
-    tokensReserved: 500,
-    windowStartTimestamp: 1234567890000,
-    startTime: 1234567890000,
-    serviceName: "tasks",
-    rateLimiterName: "openai-token-usage",
-  };
-
   beforeEach(() => {
     mockRedisClient = createRedisClientMock();
     mockRedlockClient = createRedlockClientMock();
@@ -71,9 +62,9 @@ describe("reconcileTokenUsageFromCallback", () => {
     mockedWithLock = vi.mocked(withLock);
 
     // Default mock implementations
-    mockedGetRequestMetadata.mockResolvedValue(mockMetadata);
+    mockedGetRequestMetadata.mockResolvedValue(mockRequestMetadata);
     mockedGetRequestMetadataKey.mockReturnValue(
-      `request-metadata:${mockRequestId}`
+      `request-metadata:${mockTokenUsageRequestId}`
     );
     mockedGetTokenBucketLockKey.mockReturnValue(
       "token-bucket:tasks:openai-token-usage:123"
@@ -91,7 +82,7 @@ describe("reconcileTokenUsageFromCallback", () => {
     const result = await reconcileTokenUsageFromCallback(
       mockRedisClient,
       mockRedlockClient,
-      mockRequestId,
+      mockTokenUsageRequestId,
       mockActualTokens,
       mockLockTtlMs
     );
@@ -99,7 +90,7 @@ describe("reconcileTokenUsageFromCallback", () => {
     // Verify metadata retrieval
     expect(mockedGetRequestMetadata).toHaveBeenCalledWith(
       mockRedisClient,
-      mockRequestId
+      mockTokenUsageRequestId
     );
 
     // Verify lock acquisition
@@ -114,7 +105,7 @@ describe("reconcileTokenUsageFromCallback", () => {
       mockLockTtlMs,
       expect.any(Function),
       {
-        requestId: mockRequestId,
+        requestId: mockTokenUsageRequestId,
         operation: "reconcileTokenUsageFromCallback",
       }
     );
@@ -131,16 +122,16 @@ describe("reconcileTokenUsageFromCallback", () => {
     );
 
     // Verify metadata cleanup
-    expect(mockedGetRequestMetadataKey).toHaveBeenCalledWith(mockRequestId);
+    expect(mockedGetRequestMetadataKey).toHaveBeenCalledWith(mockTokenUsageRequestId);
     expect(mockRedisClient.del).toHaveBeenCalledWith(
-      `request-metadata:${mockRequestId}`
+      `request-metadata:${mockTokenUsageRequestId}`
     );
 
     // Verify logging
     expect(mockLoggerDebug).toHaveBeenCalledWith(
       "Token usage reconciled successfully",
       {
-        requestId: mockRequestId,
+        requestId: mockTokenUsageRequestId,
         userId: 123,
         actualTokens: mockActualTokens,
         tokensReserved: 500,
@@ -158,7 +149,7 @@ describe("reconcileTokenUsageFromCallback", () => {
     const result = await reconcileTokenUsageFromCallback(
       mockRedisClient,
       mockRedlockClient,
-      mockRequestId,
+      mockTokenUsageRequestId,
       mockActualTokens,
       mockLockTtlMs
     );
@@ -167,7 +158,7 @@ describe("reconcileTokenUsageFromCallback", () => {
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       "Cannot reconcile token usage: metadata not found",
       {
-        requestId: mockRequestId,
+        requestId: mockTokenUsageRequestId,
       }
     );
     expect(mockedWithLock).not.toHaveBeenCalled();

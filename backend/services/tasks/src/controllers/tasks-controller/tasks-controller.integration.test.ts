@@ -24,6 +24,7 @@ import {
   ServiceUnavailableError,
   TooManyRequestsError,
 } from "@shared/errors";
+import { waitForBackgroundTasks } from "@shared/test-utils";
 import { Mocked } from "@shared/types";
 import { GetTasksResponse } from "@types";
 import { app } from "../../app";
@@ -32,6 +33,7 @@ vi.mock("@config/env", () => ({
   env: {
     SERVICE_NAME: "tasks",
     SERVICE_PORT: 3000,
+    OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME: "openai-token-usage",
   },
 }));
 
@@ -55,15 +57,15 @@ vi.mock("@clients/prisma", () => ({
   },
 }));
 
-const { mockTokenBucketRateLimiter } = vi.hoisted(() => ({
+const {
+  mockTokenBucketRateLimiter,
+  mockOpenaiTokenUsageRateLimiter,
+  mockOpenaiUpdateTokenUsage,
+} = vi.hoisted(() => ({
   mockTokenBucketRateLimiter: vi.fn((_req, _res, next) => next()),
+  mockOpenaiTokenUsageRateLimiter: vi.fn((_req, _res, next) => next()),
+  mockOpenaiUpdateTokenUsage: vi.fn((_req, _res, next) => next()),
 }));
-
-const { mockOpenaiTokenUsageRateLimiter, mockOpenaiUpdateTokenUsage } =
-  vi.hoisted(() => ({
-    mockOpenaiTokenUsageRateLimiter: vi.fn((_req, _res, next) => next()),
-    mockOpenaiUpdateTokenUsage: vi.fn((_req, _res, next) => next()),
-  }));
 
 vi.mock("@middlewares/token-bucket-rate-limiter", () => ({
   tokenBucketRateLimiter: {
@@ -104,6 +106,14 @@ vi.mock("@shared/middlewares/authentication", () => ({
 vi.mock("@middlewares/cors", () => {
   return import("../../middlewares/cors/__mocks__/cors");
 });
+
+const { mockStoreRequestMetadata } = vi.hoisted(() => ({
+  mockStoreRequestMetadata: vi.fn(),
+}));
+
+vi.mock("@services/token-usage-service", () => ({
+  storeRequestMetadata: mockStoreRequestMetadata,
+}));
 
 describe("tasksController (integration)", () => {
   beforeEach(async () => {
@@ -252,6 +262,95 @@ describe("tasksController (integration)", () => {
       expect(response.status).toBe(StatusCodes.SERVICE_UNAVAILABLE);
       expect(response.body.message).toBe(DEFAULT_ERROR_MESSAGE);
       expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
+    });
+
+    it("should store request metadata when tokenUsage is present", async () => {
+      mockedExecuteCapability.mockResolvedValue(
+        mockAiCapabilityImmediateResponse,
+      );
+
+      // Set up middleware to provide tokenUsage
+      mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) => {
+        _res.locals.tokenUsage = {
+          tokensReserved: 100,
+          windowStartTimestamp: Date.now(),
+        };
+        next();
+      });
+
+      const response = await request(app).post(createTaskUrl).send({
+        naturalLanguage: mockNaturalLanguage,
+      });
+
+      expect(response.status).toBe(StatusCodes.ACCEPTED);
+
+      // Wait for background metadata storage to complete
+      await waitForBackgroundTasks();
+
+      expect(mockStoreRequestMetadata).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(String),
+        expect.objectContaining({
+          userId: 1,
+          tokensReserved: 100,
+          windowStartTimestamp: expect.any(Number),
+          startTime: expect.any(Number),
+          serviceName: expect.any(String),
+          rateLimiterName: expect.any(String),
+        }),
+      );
+    });
+
+    it("should not fail request if metadata storage fails in background", async () => {
+      mockedExecuteCapability.mockResolvedValue(
+        mockAiCapabilityImmediateResponse,
+      );
+
+      // Set up middleware to provide tokenUsage
+      mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) => {
+        _res.locals.tokenUsage = {
+          tokensReserved: 100,
+          windowStartTimestamp: Date.now(),
+        };
+        next();
+      });
+
+      // Make metadata storage fail (though in reality it has internal error handling)
+      mockStoreRequestMetadata.mockRejectedValue(
+        new Error("Redis connection failed"),
+      );
+
+      const response = await request(app).post(createTaskUrl).send({
+        naturalLanguage: mockNaturalLanguage,
+      });
+
+      // Request should succeed immediately, before background task completes
+      expect(response.status).toBe(StatusCodes.ACCEPTED);
+      expect(response.body.message).toBeDefined();
+      expect(response.body.tasksServiceRequestId).toEqual(expect.any(String));
+
+      // Wait for background task attempt
+      await waitForBackgroundTasks();
+
+      expect(mockStoreRequestMetadata).toHaveBeenCalled();
+    });
+
+    it("should not call storeRequestMetadata when tokenUsage is undefined", async () => {
+      mockedExecuteCapability.mockResolvedValue(
+        mockAiCapabilityImmediateResponse,
+      );
+
+      // Don't set tokenUsage in middleware
+      mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) => {
+        next();
+      });
+
+      const response = await request(app).post(createTaskUrl).send({
+        naturalLanguage: mockNaturalLanguage,
+      });
+
+      expect(response.status).toBe(StatusCodes.ACCEPTED);
+      expect(mockStoreRequestMetadata).not.toHaveBeenCalled();
     });
   });
 

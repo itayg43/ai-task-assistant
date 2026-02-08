@@ -1,19 +1,22 @@
 import Redis from "ioredis";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createRedisClientMock } from "@shared/mocks/redis-mock";
-import type { Mocked, RequestMetadata } from "@shared/types";
-
+import {
+  mockRequestMetadata,
+  mockTokenUsageRequestId,
+} from "@mocks/token-usage-mocks";
 import {
   getRequestMetadata,
   getRequestMetadataKey,
   storeRequestMetadata,
-} from "./request-metadata";
+} from "@services/token-usage-service";
+import { createLoggerMock } from "@shared/mocks/logger-mock";
+import { createRedisClientMock } from "@shared/mocks/redis-mock";
+import type { RequestMetadata } from "@shared/types";
 
-const { mockLoggerDebug, mockLoggerError } = vi.hoisted(() => ({
-  mockLoggerDebug: vi.fn(),
-  mockLoggerError: vi.fn(),
-}));
+const { mockLoggerDebug, mockLoggerError } = vi.hoisted(() =>
+  createLoggerMock(),
+);
 
 vi.mock("@shared/config/create-logger", () => ({
   createLogger: vi.fn(() => ({
@@ -24,18 +27,8 @@ vi.mock("@shared/config/create-logger", () => ({
   })),
 }));
 
-describe("request-metadata", () => {
+describe("requestMetadata", () => {
   let mockRedisClient: Redis;
-
-  const mockRequestId = "test-request-id";
-  const mockMetadata: RequestMetadata = {
-    userId: 123,
-    tokensReserved: 500,
-    windowStartTimestamp: 1234567890000,
-    startTime: 1234567890000,
-    serviceName: "tasks",
-    rateLimiterName: "openai-token-usage",
-  };
 
   beforeEach(() => {
     mockRedisClient = createRedisClientMock();
@@ -47,8 +40,8 @@ describe("request-metadata", () => {
 
   describe("getRequestMetadataKey", () => {
     it("should return the correct Redis key format", () => {
-      const key = getRequestMetadataKey(mockRequestId);
-      expect(key).toBe(`request-metadata:${mockRequestId}`);
+      const key = getRequestMetadataKey(mockTokenUsageRequestId);
+      expect(key).toBe(`request-metadata:${mockTokenUsageRequestId}`);
     });
   });
 
@@ -56,45 +49,46 @@ describe("request-metadata", () => {
     it("should store metadata in Redis with correct TTL", async () => {
       await storeRequestMetadata(
         mockRedisClient,
-        mockRequestId,
-        mockMetadata
+        mockTokenUsageRequestId,
+        mockRequestMetadata,
       );
 
       expect(mockRedisClient.setex).toHaveBeenCalledWith(
-        `request-metadata:${mockRequestId}`,
+        `request-metadata:${mockTokenUsageRequestId}`,
         3600, // 1 hour TTL
-        JSON.stringify(mockMetadata)
+        JSON.stringify(mockRequestMetadata),
       );
     });
 
     it("should log debug message on successful storage", async () => {
       await storeRequestMetadata(
         mockRedisClient,
-        mockRequestId,
-        mockMetadata
+        mockTokenUsageRequestId,
+        mockRequestMetadata,
       );
 
       expect(mockLoggerDebug).toHaveBeenCalledWith(
         "Request metadata stored successfully",
         {
-          requestId: mockRequestId,
-          key: `request-metadata:${mockRequestId}`,
+          requestId: mockTokenUsageRequestId,
+          key: `request-metadata:${mockTokenUsageRequestId}`,
           ttl: 3600,
-        }
+        },
       );
     });
 
     it("should serialize all metadata fields correctly", async () => {
       await storeRequestMetadata(
         mockRedisClient,
-        mockRequestId,
-        mockMetadata
+        mockTokenUsageRequestId,
+        mockRequestMetadata,
       );
 
-      const serializedData = vi.mocked(mockRedisClient.setex).mock.calls[0][2] as string;
+      const serializedData = vi.mocked(mockRedisClient.setex).mock
+        .calls[0][2] as string;
       const parsed = JSON.parse(serializedData);
 
-      expect(parsed).toEqual(mockMetadata);
+      expect(parsed).toEqual(mockRequestMetadata);
       expect(parsed.userId).toBe(123);
       expect(parsed.tokensReserved).toBe(500);
       expect(parsed.windowStartTimestamp).toBe(1234567890000);
@@ -106,35 +100,43 @@ describe("request-metadata", () => {
 
   describe("getRequestMetadata", () => {
     it("should retrieve and parse metadata successfully", async () => {
-      vi.mocked(mockRedisClient.get).mockResolvedValue(JSON.stringify(mockMetadata));
+      vi.mocked(mockRedisClient.get).mockResolvedValue(
+        JSON.stringify(mockRequestMetadata),
+      );
 
-      const result = await getRequestMetadata(mockRedisClient, mockRequestId);
+      const result = await getRequestMetadata(
+        mockRedisClient,
+        mockTokenUsageRequestId,
+      );
 
       expect(mockRedisClient.get).toHaveBeenCalledWith(
-        `request-metadata:${mockRequestId}`
+        `request-metadata:${mockTokenUsageRequestId}`,
       );
-      expect(result).toEqual(mockMetadata);
+      expect(result).toEqual(mockRequestMetadata);
       expect(mockLoggerDebug).toHaveBeenCalledWith(
         "Request metadata retrieved successfully",
         {
-          requestId: mockRequestId,
-          key: `request-metadata:${mockRequestId}`,
-        }
+          requestId: mockTokenUsageRequestId,
+          key: `request-metadata:${mockTokenUsageRequestId}`,
+        },
       );
     });
 
     it("should return null when metadata is not found", async () => {
       vi.mocked(mockRedisClient.get).mockResolvedValue(null);
 
-      const result = await getRequestMetadata(mockRedisClient, mockRequestId);
+      const result = await getRequestMetadata(
+        mockRedisClient,
+        mockTokenUsageRequestId,
+      );
 
       expect(result).toBeNull();
       expect(mockLoggerDebug).toHaveBeenCalledWith(
         "Request metadata not found",
         {
-          requestId: mockRequestId,
-          key: `request-metadata:${mockRequestId}`,
-        }
+          requestId: mockTokenUsageRequestId,
+          key: `request-metadata:${mockTokenUsageRequestId}`,
+        },
       );
     });
 
@@ -142,17 +144,20 @@ describe("request-metadata", () => {
       const invalidJson = "{ invalid json }";
       vi.mocked(mockRedisClient.get).mockResolvedValue(invalidJson);
 
-      const result = await getRequestMetadata(mockRedisClient, mockRequestId);
+      const result = await getRequestMetadata(
+        mockRedisClient,
+        mockTokenUsageRequestId,
+      );
 
       expect(result).toBeNull();
       expect(mockLoggerError).toHaveBeenCalledWith(
         "Failed to parse request metadata",
         expect.any(Error),
         {
-          requestId: mockRequestId,
-          key: `request-metadata:${mockRequestId}`,
+          requestId: mockTokenUsageRequestId,
+          key: `request-metadata:${mockTokenUsageRequestId}`,
           serializedMetadata: invalidJson,
-        }
+        },
       );
     });
 
@@ -167,10 +172,13 @@ describe("request-metadata", () => {
       };
 
       vi.mocked(mockRedisClient.get).mockResolvedValue(
-        JSON.stringify(metadataWithDifferentValues)
+        JSON.stringify(metadataWithDifferentValues),
       );
 
-      const result = await getRequestMetadata(mockRedisClient, mockRequestId);
+      const result = await getRequestMetadata(
+        mockRedisClient,
+        mockTokenUsageRequestId,
+      );
 
       expect(result).toEqual(metadataWithDifferentValues);
       expect(result?.userId).toBe(999);

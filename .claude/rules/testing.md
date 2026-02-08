@@ -62,6 +62,106 @@ vi.mock("@shared/config/create-logger", () => ({
 }));
 ```
 
+## Shared Mock Data and Helpers
+
+**ALWAYS reuse mock data and helpers to reduce duplication:**
+
+### Available Shared Mocks
+
+**Mock Factories (for reference/documentation - see usage note below):**
+- `createLoggerMock()` - Logger with all methods
+- `createRedisClientMock()` - Redis client
+- `createRedlockClientMock()` - Redlock client
+- `createMockPrismaClient()` - Prisma client (tasks service)
+- `createMiddlewareMock()` - Generic Express middleware
+- `createRateLimiterMocks()` - All rate limiter middlewares
+- `createTasksMetricsMock()` - Tasks metrics functions
+- `createTokenUsageServiceMock()` - Token usage service functions
+
+**Test Helpers:**
+- `waitForBackgroundTasks()` - Helper for fire-and-forget promises (from `@shared/test-utils/`)
+
+**Mock Data Constants:**
+- `@mocks/tasks-mocks` - Task-related mock data and constants
+- `@mocks/token-usage-mocks` - RequestMetadata and token usage constants
+
+### Important: Hoisting Limitation
+
+⚠️ **You CANNOT call imported factory functions inside `vi.hoisted()`** due to import hoisting order.
+
+**❌ This will fail:**
+```typescript
+import { createRateLimiterMocks } from "@shared/mocks/middleware-mock";
+
+// ERROR: Cannot access import before initialization
+const { mockTokenBucketRateLimiter } = vi.hoisted(() => createRateLimiterMocks());
+```
+
+**✅ Instead, define mocks inline in hoisted blocks:**
+```typescript
+// For integration tests with vi.mock()
+const { mockTokenBucketRateLimiter } = vi.hoisted(() => ({
+  mockTokenBucketRateLimiter: vi.fn((_req, _res, next) => next()),
+}));
+```
+
+**The mock factory files serve as:**
+1. **Documentation** - Reference for what mocks should look like
+2. **Consistency** - Ensures all tests mock the same way
+3. **Unit tests** - Can be used in non-hoisted contexts
+
+### When to Create New Shared Mocks
+
+Follow this decision tree:
+
+1. **Used in 1 test file only** → Define locally in that test
+2. **Used in 2+ test files in same service** → Extract to service-level `@mocks/`
+3. **Used across multiple services** → Extract to `@shared/mocks/` or `@shared/test-utils/`
+
+### Examples
+
+**Using shared test helpers:**
+```typescript
+import { waitForBackgroundTasks } from "@shared/test-utils";
+
+it("should handle background operations", async () => {
+  const response = await makeRequest();
+  await waitForBackgroundTasks();
+  expect(mockBackgroundFunction).toHaveBeenCalled();
+});
+```
+
+**Using service-specific mock data:**
+```typescript
+import {
+  mockRequestMetadata,
+  mockTokenUsageRequestId,
+} from "@mocks/token-usage-mocks";
+
+it("should store request metadata", async () => {
+  await storeRequestMetadata(redis, mockTokenUsageRequestId, mockRequestMetadata);
+  expect(redis.setex).toHaveBeenCalledWith(
+    expect.any(String),
+    3600,
+    JSON.stringify(mockRequestMetadata)
+  );
+});
+```
+
+**Using shared middleware mocks:**
+```typescript
+import { createRateLimiterMocks } from "@shared/mocks/middleware-mock";
+
+const { mockTokenBucketRateLimiter, mockOpenaiTokenUsageRateLimiter } =
+  vi.hoisted(() => createRateLimiterMocks());
+
+vi.mock("@middlewares/token-bucket-rate-limiter", () => ({
+  tokenBucketRateLimiter: {
+    api: mockTokenBucketRateLimiter,
+  },
+}));
+```
+
 ## Type Assertions
 
 Use `Mocked<T>` type from `@shared/types` for type-safe assertions:

@@ -101,6 +101,9 @@ const createTaskSuccessInputSchema = z.object({
 });
 
 export const createTaskWebhookInputSchema = z.object({
+  query: z.object({
+    tasksServiceRequestId: z.string().uuid(),
+  }),
   body: z.discriminatedUnion("success", [
     createTaskErrorInputSchema,
     createTaskSuccessInputSchema,

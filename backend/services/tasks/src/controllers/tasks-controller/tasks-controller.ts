@@ -1,12 +1,15 @@
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
+import { redis } from "@clients/redis";
+import { env } from "@config/env";
 import { TASKS_OPERATION } from "@constants";
 import {
   recordTasksApiFailure,
   recordTasksApiSuccess,
 } from "@metrics/tasks-metrics";
 import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
+import { storeRequestMetadata } from "@services/token-usage-service";
 import { createLogger } from "@shared/config/create-logger";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
 import { getValidatedQuery } from "@shared/utils/validated-query";
@@ -28,6 +31,7 @@ export const createTask = async (
 ) => {
   const { requestId } = res.locals;
   const { naturalLanguage } = req.body;
+  const startTime = Date.now();
 
   try {
     const message = await createTaskHandler(requestId, naturalLanguage);
@@ -36,6 +40,20 @@ export const createTask = async (
       message,
       tasksServiceRequestId: requestId,
     });
+
+    // Background: Store request metadata for later reconciliation (non-blocking)
+    // Note: storeRequestMetadata has internal error handling and never throws
+    if (res.locals.tokenUsage) {
+      const { userId } = getAuthenticationContext(res);
+      void storeRequestMetadata(redis, requestId, {
+        userId,
+        tokensReserved: res.locals.tokenUsage.tokensReserved,
+        windowStartTimestamp: res.locals.tokenUsage.windowStartTimestamp,
+        startTime,
+        serviceName: env.SERVICE_NAME,
+        rateLimiterName: env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
+      });
+    }
   } catch (error) {
     next(error);
   }

@@ -18,6 +18,7 @@ import type {
 export const mockNaturalLanguage = "Submit Q2 report by next Friday";
 
 export const mockRequestId = "test-request-id-123";
+export const mockTasksServiceRequestId = "550e8400-e29b-41d4-a716-446655440000";
 
 export const mockParsedTask: TParsedTask = {
   title: "Submit Q2 report",

@@ -4,17 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AI_ERROR_TYPE, TASKS_OPERATION } from "@constants";
 import {
-  recordPromptInjection,
-  recordTasksApiFailure,
-  recordTasksApiSuccess,
-  recordVagueInput,
-} from "@metrics/tasks-metrics";
-import {
   mockAiCapabilityResponse,
   mockParsedTask,
+  mockTasksServiceRequestId,
   mockUserId,
 } from "@mocks/tasks-mocks";
 import { createTaskHandler } from "@services/webhooks-service";
+import { waitForBackgroundTasks } from "@shared/test-utils";
 import { Mocked } from "@shared/types";
 import { app } from "../../app";
 
@@ -22,6 +18,7 @@ vi.mock("@config/env", () => ({
   env: {
     SERVICE_NAME: "tasks",
     SERVICE_PORT: 3000,
+    OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS: 10000,
   },
 }));
 
@@ -31,15 +28,43 @@ vi.mock("@clients/prisma", () => ({
   },
 }));
 
+vi.mock("@clients/redis", () => ({
+  redis: {},
+}));
+
+vi.mock("@clients/redlock", () => ({
+  redlock: {},
+}));
+
+const {
+  mockRecordTasksApiSuccess,
+  mockRecordTasksApiFailure,
+  mockRecordVagueInput,
+  mockRecordPromptInjection,
+} = vi.hoisted(() => ({
+  mockRecordTasksApiSuccess: vi.fn(),
+  mockRecordTasksApiFailure: vi.fn(),
+  mockRecordVagueInput: vi.fn(),
+  mockRecordPromptInjection: vi.fn(),
+}));
+
 vi.mock("@metrics/tasks-metrics", () => ({
-  recordTasksApiSuccess: vi.fn(),
-  recordTasksApiFailure: vi.fn(),
-  recordVagueInput: vi.fn(),
-  recordPromptInjection: vi.fn(),
+  recordTasksApiSuccess: mockRecordTasksApiSuccess,
+  recordTasksApiFailure: mockRecordTasksApiFailure,
+  recordVagueInput: mockRecordVagueInput,
+  recordPromptInjection: mockRecordPromptInjection,
 }));
 
 vi.mock("@services/webhooks-service", () => ({
   createTaskHandler: vi.fn(),
+}));
+
+const { mockReconcileTokenUsageFromCallback } = vi.hoisted(() => ({
+  mockReconcileTokenUsageFromCallback: vi.fn(),
+}));
+
+vi.mock("@services/token-usage-service", () => ({
+  reconcileTokenUsageFromCallback: mockReconcileTokenUsageFromCallback,
 }));
 
 vi.mock("@shared/middlewares/authentication", () => ({
@@ -73,7 +98,10 @@ describe("webhooksController (integration)", () => {
   describe("createTask", () => {
     const createTaskUrl = "/api/v1/webhooks/create-task";
 
-    it(`should return ${StatusCodes.OK} and record success metrics on successful task creation`, async () => {
+    it(`should return ${StatusCodes.OK} and record success metrics with calculated duration on successful task creation`, async () => {
+      const startTime = Date.now() - 1000; // 1 second ago
+      mockReconcileTokenUsageFromCallback.mockResolvedValue(startTime);
+
       const payload = {
         success: true,
         aiServiceRequestId: mockAiRequestId,
@@ -83,18 +111,36 @@ describe("webhooksController (integration)", () => {
         },
       };
 
-      const response = await request(app).post(createTaskUrl).send(payload);
+      const response = await request(app)
+        .post(createTaskUrl)
+        .query({ tasksServiceRequestId: mockTasksServiceRequestId })
+        .send(payload);
 
       expect(response.status).toBe(StatusCodes.OK);
       expect(mockedCreateTaskHandler).toHaveBeenCalledWith(
         mockUserId,
         mockParsedTask,
       );
-      expect(recordTasksApiSuccess).toHaveBeenCalledWith(
+
+      // Wait for background reconciliation and metrics to complete
+      await waitForBackgroundTasks();
+
+      expect(mockReconcileTokenUsageFromCallback).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        mockTasksServiceRequestId,
+        expect.any(Number),
+        expect.any(Number),
+      );
+      expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
-        0,
+        expect.any(Number),
         mockAiRequestId,
       );
+      // Verify duration is non-zero (between 900-1100ms to account for test execution time)
+      const recordedDuration = (recordTasksApiSuccess as any).mock.calls[0][1];
+      expect(recordedDuration).toBeGreaterThan(900);
+      expect(recordedDuration).toBeLessThan(1100);
     });
 
     it(`should record vague input metric when error type is ${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR}`, async () => {
@@ -110,15 +156,18 @@ describe("webhooksController (integration)", () => {
         },
       };
 
-      const response = await request(app).post(createTaskUrl).send(payload);
+      const response = await request(app)
+        .post(createTaskUrl)
+        .query({ tasksServiceRequestId: mockTasksServiceRequestId })
+        .send(payload);
 
       expect(response.status).toBe(StatusCodes.OK);
       expect(mockedCreateTaskHandler).not.toHaveBeenCalled();
-      expect(recordTasksApiFailure).toHaveBeenCalledWith(
+      expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         mockAiRequestId,
       );
-      expect(recordVagueInput).toHaveBeenCalledWith(mockAiRequestId);
+      expect(mockRecordVagueInput).toHaveBeenCalledWith(mockAiRequestId);
     });
 
     it(`should record prompt injection metric when error type is ${AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED}`, async () => {
@@ -134,16 +183,51 @@ describe("webhooksController (integration)", () => {
         },
       };
 
-      const response = await request(app).post(createTaskUrl).send(payload);
+      const response = await request(app)
+        .post(createTaskUrl)
+        .query({ tasksServiceRequestId: mockTasksServiceRequestId })
+        .send(payload);
 
       expect(response.status).toBe(StatusCodes.OK);
-      expect(recordPromptInjection).toHaveBeenCalledWith(
+      expect(mockRecordPromptInjection).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         mockAiRequestId,
       );
     });
 
+    it(`should use duration 0 when reconciliation returns null (metadata expired)`, async () => {
+      mockReconcileTokenUsageFromCallback.mockResolvedValue(null);
+
+      const payload = {
+        success: true,
+        aiServiceRequestId: mockAiRequestId,
+        result: {
+          openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
+          result: mockParsedTask,
+        },
+      };
+
+      const response = await request(app)
+        .post(createTaskUrl)
+        .query({ tasksServiceRequestId: mockTasksServiceRequestId })
+        .send(payload);
+
+      expect(response.status).toBe(StatusCodes.OK);
+
+      // Wait for background reconciliation and metrics to complete
+      await waitForBackgroundTasks();
+
+      expect(mockReconcileTokenUsageFromCallback).toHaveBeenCalled();
+      expect(recordTasksApiSuccess).toHaveBeenCalledWith(
+        TASKS_OPERATION.CREATE_TASK,
+        0,
+        mockAiRequestId,
+      );
+    });
+
     it(`should return ${StatusCodes.OK} and record failure metrics when createTaskHandler fails`, async () => {
+      mockReconcileTokenUsageFromCallback.mockResolvedValue(null);
+
       const payload = {
         success: true,
         aiServiceRequestId: mockAiRequestId,
@@ -155,13 +239,32 @@ describe("webhooksController (integration)", () => {
 
       mockedCreateTaskHandler.mockRejectedValue(new Error("DB Error"));
 
-      const response = await request(app).post(createTaskUrl).send(payload);
+      const response = await request(app)
+        .post(createTaskUrl)
+        .query({ tasksServiceRequestId: mockTasksServiceRequestId })
+        .send(payload);
 
       expect(response.status).toBe(StatusCodes.OK);
-      expect(recordTasksApiFailure).toHaveBeenCalledWith(
+      expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         mockAiRequestId,
       );
+    });
+
+    it(`should return ${StatusCodes.BAD_REQUEST} when tasksServiceRequestId query parameter is missing`, async () => {
+      const payload = {
+        success: true,
+        aiServiceRequestId: mockAiRequestId,
+        result: {
+          openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
+          result: mockParsedTask,
+        },
+      };
+
+      const response = await request(app).post(createTaskUrl).send(payload);
+
+      expect(response.status).toBe(StatusCodes.BAD_REQUEST);
+      expect(response.body.message).toBeDefined();
     });
   });
 });
