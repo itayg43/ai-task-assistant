@@ -14,6 +14,7 @@ export type {
 export type { Mocked } from "./mocked";
 export type { PrismaTransactionClient } from "./prisma-transaction-client";
 export type { ProcessExitCallback } from "./process-exit-callback";
+export type { RequestMetadata } from "./request-metadata";
 export type { RetryConfig } from "./retry-config";
 export type {
   ServicesCallbacks,

@@ -23,7 +23,9 @@
   "devDependencies": {
     "@types/supertest": "^6.0.3",
     "dotenv-cli": "^10.0.0",
+    "ioredis": "^5.9.2",
     "prisma": "^5.22.0",
+    "redlock": "^5.0.0-beta.2",
     "supertest": "^7.1.4",
     "vite-tsconfig-paths": "^5.1.4"
   },

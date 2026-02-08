@@ -8,4 +8,7 @@ export const createRedisClientMock = (): Redis =>
     expire: vi.fn(),
     ttl: vi.fn(),
     hincrby: vi.fn(),
+    setex: vi.fn(),
+    get: vi.fn(),
+    del: vi.fn(),
   } as unknown as Redis);

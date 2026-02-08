@@ -26,6 +26,6 @@ routers.use(
 
 routers.use(
   "/api/v1/webhooks",
-  [requestId, authentication, requestResponseMetadata],
+  [authentication, requestResponseMetadata],
   webhooksRouter,
 );
