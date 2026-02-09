@@ -138,7 +138,7 @@ describe("webhooksController (integration)", () => {
         mockAiRequestId,
       );
       // Verify duration is non-zero (between 900-1100ms to account for test execution time)
-      const recordedDuration = (recordTasksApiSuccess as any).mock.calls[0][1];
+      const recordedDuration = (mockRecordTasksApiSuccess as any).mock.calls[0][1];
       expect(recordedDuration).toBeGreaterThan(900);
       expect(recordedDuration).toBeLessThan(1100);
     });
@@ -218,7 +218,7 @@ describe("webhooksController (integration)", () => {
       await waitForBackgroundTasks();
 
       expect(mockReconcileTokenUsageFromCallback).toHaveBeenCalled();
-      expect(recordTasksApiSuccess).toHaveBeenCalledWith(
+      expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         0,
         mockAiRequestId,
