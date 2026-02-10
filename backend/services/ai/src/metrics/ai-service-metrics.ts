@@ -33,10 +33,11 @@ const aiApiRequestDurationMs = new Histogram({
 
 export const recordAiApiSuccess = (
   capability: Capability,
-  durationMs: number,
+  startTime: number,
   requestId: string,
 ): void => {
   try {
+    const durationMs = Date.now() - startTime;
     const status = "success";
 
     aiApiRequestsTotal.inc({
@@ -61,7 +62,6 @@ export const recordAiApiSuccess = (
     logger.error("Failed to record AI API success metrics", error, {
       requestId,
       capability,
-      durationMs,
     });
   }
 };

@@ -26,8 +26,9 @@ describe("withMetrics", () => {
     vi.clearAllMocks();
   });
 
-  it("should call onRecordSuccess and return result when the function succeeds", async () => {
+  it("should call onRecordSuccess with startTime and return result when the function succeeds", async () => {
     const fn = vi.fn().mockResolvedValue("success-result");
+    const beforeCall = Date.now();
 
     const result = await withMetrics(mockOptions, fn);
 
@@ -37,6 +38,12 @@ describe("withMetrics", () => {
       expect.any(Number),
       mockRequestId,
     );
+
+    // Verify the second parameter is a recent timestamp (startTime), not a duration
+    const startTime = mockOnRecordSuccess.mock.calls[0][1];
+    expect(startTime).toBeGreaterThanOrEqual(beforeCall);
+    expect(startTime).toBeLessThanOrEqual(Date.now());
+
     expect(mockOnRecordFailure).not.toHaveBeenCalled();
   });
 

@@ -2,7 +2,6 @@ import Redis from "ioredis";
 import Redlock from "redlock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createLoggerMock } from "@shared/mocks/logger-mock";
 import { createRedisClientMock } from "@shared/mocks/redis-mock";
 import { createRedlockClientMock } from "@shared/mocks/redlock-mock";
 import type { Mocked } from "@shared/types";
@@ -19,7 +18,10 @@ import {
 import { getRequestMetadata, getRequestMetadataKey } from "./request-metadata";
 import { reconcileTokenUsageFromCallback } from "./reconcile-token-usage-from-callback";
 
-const { mockLoggerDebug, mockLoggerWarn } = vi.hoisted(() => createLoggerMock());
+const { mockLoggerDebug, mockLoggerWarn } = vi.hoisted(() => ({
+  mockLoggerDebug: vi.fn(),
+  mockLoggerWarn: vi.fn(),
+}));
 
 vi.mock("@shared/config/create-logger", () => ({
   createLogger: vi.fn(() => ({

@@ -46,10 +46,11 @@ const tasksPromptInjectionTotal = new Counter({
 
 export const recordTasksApiSuccess = (
   operation: TasksOperation,
-  durationMs: number,
+  startTime: number,
   requestId: string,
 ): void => {
   try {
+    const durationMs = Date.now() - startTime;
     const status = "success";
 
     tasksApiRequestsTotal.inc({
@@ -74,7 +75,6 @@ export const recordTasksApiSuccess = (
     logger.error("Failed to record tasks API success metrics", error, {
       requestId,
       operation,
-      durationMs,
     });
   }
 };

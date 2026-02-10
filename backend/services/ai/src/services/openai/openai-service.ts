@@ -10,7 +10,6 @@ import {
 import { createLogger } from "@shared/config/create-logger";
 import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { InternalError } from "@shared/errors";
-import { withDurationAsync } from "@shared/utils/with-duration";
 import { withRetry } from "@shared/utils/with-retry";
 import { Capability } from "@types";
 
@@ -37,20 +36,17 @@ export const executeParse = async <TOutput>(
   try {
     logger.info("executeParse - start", baseLogContext);
 
-    const { result: response, durationMs } = await withDurationAsync(
+    const startTime = Date.now();
+    const response = await withRetry(
+      DEFAULT_RETRY_CONFIG,
       async () => {
-        return await withRetry(
-          DEFAULT_RETRY_CONFIG,
-          async () => {
-            return await parseWithValidation<TOutput>(prompt, (id) => {
-              openaiResponseId = id;
-            });
-          },
-          {
-            requestId,
-            operation: `executeParse - ${operation}`,
-          },
-        );
+        return await parseWithValidation<TOutput>(prompt, (id) => {
+          openaiResponseId = id;
+        });
+      },
+      {
+        requestId,
+        operation: `executeParse - ${operation}`,
       },
     );
 
@@ -63,7 +59,7 @@ export const executeParse = async <TOutput>(
           output: response.usage?.output_tokens || 0,
         },
       },
-      durationMs,
+      durationMs: Date.now() - startTime,
     };
 
     logger.info("executeParse - succeeded", {
@@ -75,7 +71,7 @@ export const executeParse = async <TOutput>(
       capability,
       operation,
       prompt.model,
-      durationMs,
+      startTime,
       result.usage.tokens.input,
       result.usage.tokens.output,
       requestId,

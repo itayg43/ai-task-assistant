@@ -88,10 +88,9 @@ export const createTask = async (
       extractOpenaiTokenUsage(openaiMetadata),
       env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,
     ).then((startTime) => {
-      const durationMs = startTime ? Date.now() - startTime : 0;
       recordTasksApiSuccess(
         TASKS_OPERATION.CREATE_TASK,
-        durationMs,
+        startTime ?? Date.now(),
         tasksServiceRequestId,
       );
     });

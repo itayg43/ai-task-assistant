@@ -130,12 +130,11 @@ const capabilitiesMessageHandler = async (
       validatedInput,
     );
 
-    const durationMs = Date.now() - startTime;
-    recordAiApiSuccess(capability, durationMs, requestId);
+    recordAiApiSuccess(capability, startTime, requestId);
 
     logger.info(
       `Capability execution completed successfully for ${capability}`,
-      { requestId, durationMs },
+      { requestId },
     );
 
     await sendCallbackHandler(channel, message, requestId, callbackUrl, {

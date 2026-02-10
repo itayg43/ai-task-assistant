@@ -138,10 +138,11 @@ describe("webhooksController (integration)", () => {
         expect.any(Number),
         mockTasksServiceRequestId,
       );
-      // Verify duration is non-zero (between 900-1100ms to account for test execution time)
-      const recordedDuration = (mockRecordTasksApiSuccess as any).mock.calls[0][1];
-      expect(recordedDuration).toBeGreaterThan(900);
-      expect(recordedDuration).toBeLessThan(1100);
+      // Verify startTime is passed and calculate duration
+      const recordedStartTime = (mockRecordTasksApiSuccess as any).mock.calls[0][1];
+      const calculatedDuration = Date.now() - recordedStartTime;
+      expect(calculatedDuration).toBeGreaterThan(900);
+      expect(calculatedDuration).toBeLessThan(1100);
     });
 
     it(`should record vague input metric and reconcile token usage when error type is ${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR}`, async () => {
@@ -236,9 +237,13 @@ describe("webhooksController (integration)", () => {
       expect(mockReconcileTokenUsageFromCallback).toHaveBeenCalled();
       expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
-        0,
+        expect.any(Number),
         mockTasksServiceRequestId,
       );
+      // When startTime is null, fallback to Date.now() results in near-0 duration
+      const recordedStartTime = (mockRecordTasksApiSuccess as any).mock.calls[0][1];
+      const calculatedDuration = Date.now() - recordedStartTime;
+      expect(calculatedDuration).toBeLessThan(50);
     });
 
     it(`should return ${StatusCodes.OK} and record failure metrics when createTaskHandler fails`, async () => {

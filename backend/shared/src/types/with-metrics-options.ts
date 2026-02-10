@@ -3,7 +3,7 @@ export type WithMetricsOptions<TOperation extends string = string> = {
   requestId: string;
   onRecordSuccess: (
     operation: TOperation,
-    durationMs: number,
+    startTime: number,
     requestId: string,
   ) => void;
   onRecordFailure: (operation: TOperation, requestId: string) => void;

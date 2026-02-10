@@ -10,13 +10,13 @@ import {
   getRequestMetadataKey,
   storeRequestMetadata,
 } from "@services/token-usage-service";
-import { createLoggerMock } from "@shared/mocks/logger-mock";
 import { createRedisClientMock } from "@shared/mocks/redis-mock";
 import type { RequestMetadata } from "@shared/types";
 
-const { mockLoggerDebug, mockLoggerError } = vi.hoisted(() =>
-  createLoggerMock(),
-);
+const { mockLoggerDebug, mockLoggerError } = vi.hoisted(() => ({
+  mockLoggerDebug: vi.fn(),
+  mockLoggerError: vi.fn(),
+}));
 
 vi.mock("@shared/config/create-logger", () => ({
   createLogger: vi.fn(() => ({

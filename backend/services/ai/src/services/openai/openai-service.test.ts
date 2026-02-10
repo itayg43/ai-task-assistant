@@ -16,7 +16,6 @@ import {
 } from "@metrics/openai-metrics";
 import {
   MockAPIError,
-  mockOpenaiDurationMs,
   mockOpenaiRequestId,
   mockOpenaiResponseId,
   mockOpenaiTokenUsage,
@@ -27,7 +26,6 @@ import { mockAiServiceRequestId } from "@mocks/request-ids";
 import { executeParse } from "@services/openai";
 import { InternalError } from "@shared/errors";
 import { Mocked } from "@shared/types";
-import { withDurationAsync } from "@shared/utils/with-duration";
 import { withRetry } from "@shared/utils/with-retry";
 
 vi.mock("@config/env", () => ({
@@ -46,10 +44,6 @@ vi.mock("@clients/openai", () => ({
   parseWithValidation: vi.fn(),
 }));
 
-vi.mock("@shared/utils/with-duration", () => ({
-  withDurationAsync: vi.fn(),
-}));
-
 vi.mock("@shared/utils/with-retry", () => ({
   withRetry: vi.fn(),
 }));
@@ -61,7 +55,6 @@ vi.mock("@metrics/openai-metrics", () => ({
 
 describe("executeParse", () => {
   let mockedParseWithValidation: Mocked<typeof parseWithValidation>;
-  let mockedWithDurationAsync: Mocked<typeof withDurationAsync>;
   let mockedWithRetry: Mocked<typeof withRetry>;
   let mockedRecordSuccessMetrics: Mocked<typeof recordOpenAiApiSuccessMetrics>;
   let mockedRecordFailureMetrics: Mocked<typeof recordOpenAiApiFailureMetrics>;
@@ -77,15 +70,6 @@ describe("executeParse", () => {
         output_tokens: mockOpenaiTokenUsage.output,
       },
     } as any);
-
-    mockedWithDurationAsync = vi.mocked(withDurationAsync);
-    mockedWithDurationAsync.mockImplementation(async (fn) => {
-      const result = await fn();
-      return {
-        result,
-        durationMs: mockOpenaiDurationMs,
-      };
-    });
 
     mockedWithRetry = vi.mocked(withRetry);
     mockedWithRetry.mockImplementation(async (_config, fn) => {
@@ -110,7 +94,6 @@ describe("executeParse", () => {
       mockAiServiceRequestId,
     );
 
-    expect(mockedWithDurationAsync).toHaveBeenCalled();
     expect(mockedWithRetry).toHaveBeenCalled();
     expect(mockedParseWithValidation).toHaveBeenCalledWith(
       mockPrompt,
@@ -123,18 +106,21 @@ describe("executeParse", () => {
       usage: {
         tokens: mockOpenaiTokenUsage,
       },
-      durationMs: mockOpenaiDurationMs,
+      durationMs: expect.any(Number),
     });
 
+    // Verify startTime is passed to metrics (should be a recent timestamp)
     expect(mockedRecordSuccessMetrics).toHaveBeenCalledWith(
       PARSE_TASK_CAPABILITY,
       PARSE_TASK_CORE_OPERATION,
       mockPrompt.model,
-      mockOpenaiDurationMs,
+      expect.any(Number),
       mockOpenaiTokenUsage.input,
       mockOpenaiTokenUsage.output,
       mockAiServiceRequestId,
     );
+    const startTime = mockedRecordSuccessMetrics.mock.calls[0][3];
+    expect(startTime).toBeGreaterThan(Date.now() - 1000);
   });
 
   it("should handle OpenAI API errors by wrapping them and recording failure", async () => {

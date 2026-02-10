@@ -53,12 +53,13 @@ export const recordOpenAiApiSuccessMetrics = (
   capability: string,
   operation: string,
   model: ResponseCreateParamsNonStreaming["model"],
-  durationMs: number,
+  startTime: number,
   inputTokens: number,
   outputTokens: number,
   requestId: string,
 ): void => {
   try {
+    const durationMs = Date.now() - startTime;
     const status = "success";
 
     openaiApiRequestsTotal.inc({
@@ -110,7 +111,6 @@ export const recordOpenAiApiSuccessMetrics = (
       capability,
       operation,
       model,
-      durationMs,
       inputTokens,
       outputTokens,
     });

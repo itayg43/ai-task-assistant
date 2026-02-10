@@ -172,15 +172,12 @@ describe("capabilitiesConsumer", () => {
         mockCapabilities["parse-task"].outputSchema.parse,
       ).toHaveBeenCalledWith(mockResult);
 
-      // Verify metrics
+      // Verify metrics - startTime from message should be passed
       expect(recordAiApiSuccess).toHaveBeenCalledWith(
         CAPABILITY.PARSE_TASK,
-        expect.any(Number),
+        mockStartTime,
         mockAiServiceRequestId,
       );
-      // Verify duration is calculated (roughly positive)
-      const durationArg = vi.mocked(recordAiApiSuccess).mock.calls[0][1];
-      expect(durationArg).toBeGreaterThanOrEqual(0);
 
       // Verify callback and ack
       expect(mockTasksClient.post).toHaveBeenCalledWith(mockCallbackUrl, {
