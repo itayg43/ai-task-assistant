@@ -2,6 +2,19 @@
 
 This file provides testing standards for this project. Follow these patterns when writing or modifying tests.
 
+## Running Tests
+
+**Standard tests** (unit + integration, excludes database/prompt tests):
+```bash
+npm test -- --run     # Single run (use this in automation/Claude)
+```
+
+**Specialized tests** (opt-in):
+```bash
+npm run test:db       # Database integration tests (real PostgreSQL)
+npm run test:prompts  # Prompt evaluation tests
+```
+
 ## Mock Hoisting Pattern
 
 **ALWAYS use `vi.hoisted()` for mock factories** before `vi.mock()` calls:
@@ -314,6 +327,30 @@ it.each([
 Reference: `/backend/shared/src/utils/with-lock/with-lock.test.ts:38-142`
 
 ## Special Patterns
+
+### Testing Fire-and-Forget Operations
+
+When testing async operations triggered with `void` keyword (fire-and-forget), use `waitForBackgroundTasks()`:
+
+```typescript
+import { waitForBackgroundTasks } from "@shared/test-utils";
+
+it("should reconcile tokens in background", async () => {
+  // Act - triggers void reconcileTokenUsage(...)
+  const response = await request(app).post("/endpoint").send(payload);
+
+  // Wait for background promises to settle
+  await waitForBackgroundTasks();
+
+  // Assert - now safe to verify background operations
+  expect(mockReconcileTokenUsage).toHaveBeenCalled();
+  expect(mockMetricsRecording).toHaveBeenCalled();
+});
+```
+
+**Pattern**: Act → `waitForBackgroundTasks()` → Assert
+
+Reference: `/backend/services/tasks/src/controllers/webhooks-controller/webhooks-controller.integration.test.ts`
 
 ### Express Request/Response Mocking
 

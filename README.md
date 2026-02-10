@@ -89,11 +89,6 @@ npm run test:prompts
 
 # Run database integration tests (requires .env.test in backend/services/tasks)
 npm run test:db
-
-# Run tests for specific workspace
-npm test -w backend/services/ai
-npm test -w backend/services/tasks
-npm test -w backend/shared
 ```
 
 **Important Notes for `npm run test:db`:**

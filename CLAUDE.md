@@ -12,21 +12,10 @@ Async AI-powered task management system. Two microservices communicate via Rabbi
 # Start all services (Docker Compose with watch mode)
 npm run start:dev
 
-# Run all unit tests (watch mode)
-npm test
-
-# Run tests once (CI)
+# Run standard tests (unit + integration, excludes database/prompts)
 npm test -- --run
 
-# Run a single test file
-npx vitest run backend/services/tasks/src/controllers/some-controller.test.ts
-
-# Run tests for a specific workspace
-npm test -w backend/services/ai
-npm test -w backend/services/tasks
-npm test -w backend/shared
-
-# Database integration tests (resets test DB first)
+# Database integration tests (resets test DB, runs with real PostgreSQL)
 npm run test:db
 
 # Prompt evaluation tests
@@ -54,18 +43,34 @@ npm run prisma:seed -w backend/services/tasks
 
 ### Async Processing Flow
 
-1. Client calls Tasks Service `POST /api/v1/tasks` with natural language
-2. Tasks Service forwards to AI Service `POST /api/v1/capabilities/:capability`
-3. AI Service validates, queues message to RabbitMQ, returns `202 Accepted`
-4. AI Consumer (separate process) picks up message, calls OpenAI, posts result to webhook
-5. Tasks Service webhook controller `POST /api/v1/webhooks/create-task` receives callback, creates DB records
+**Request Path** (synchronous):
+1. Client → Tasks Service `POST /api/v1/tasks` with natural language
+2. Rate limiter reserves tokens, stores metadata in Redis (1-hour TTL)
+3. Tasks Service → AI Service `POST /api/v1/capabilities/:capability`
+4. AI Service validates input, queues message to RabbitMQ
+5. Tasks Service receives `202 Accepted`, returns to client
+
+**Callback Path** (asynchronous via RabbitMQ):
+1. AI Consumer picks up queued message
+2. Consumer calls OpenAI API, receives response with actual token usage
+3. Consumer → Tasks Service `POST /api/v1/webhooks/create-task` with result + OpenAI metadata
+4. Webhook controller creates DB records (success) or records error metrics (failure)
+5. Background: Token reconciliation (actual vs reserved) + metrics recording
+6. Background: Metadata cleanup from Redis
+
+**Error Handling**:
+- Request-path errors (prompt injection, validation): Reconcile with 0 tokens immediately
+- Callback-path errors with OpenAI metadata (vague input): Reconcile with actual tokens
+- Callback-path errors without OpenAI metadata (API failures): Reconcile with 0 tokens
+- Error transformation at service boundary: AI→Tasks (full context), Tasks→Client (sanitized)
 
 ### Key Patterns
 
 - **Capability System**: Strategy pattern in `services/ai/src/capabilities/`. Each capability has a handler, input/output Zod schemas, and prompt injection fields.
 - **Repository Pattern**: Data access in `services/tasks/src/repositories/`. Functions accept both `PrismaClient` and `PrismaTransactionClient` for transaction support.
+- **Token Usage System**: Reserve tokens upfront (rate limiter), store metadata in Redis (1-hour TTL), reconcile actual vs reserved tokens asynchronously via webhook callbacks. Handles all error scenarios (vague input with tokens, API failures with 0 tokens, request-path errors). Uses `reconcileTokensIfPossible()` helper for DRY pattern.
 - **Higher-order wrappers**: `withRetry` (exponential backoff), `withLock` (Redlock distributed locking), `withMetrics` (Prometheus recording), `withDuration` (timing).
-- **Custom Error Hierarchy**: All errors extend `BaseError` with `statusCode` and `context`. Types: `AuthenticationError`, `BadRequestError`, `ForbiddenError`, `InternalError`, `NotFoundError`, `ServiceUnavailableError`, `TooManyRequestsError`.
+- **Custom Error Hierarchy**: All errors extend `BaseError` with `statusCode` and `context`. Types: `AuthenticationError`, `BadRequestError`, `ForbiddenError`, `InternalError`, `NotFoundError`, `ServiceUnavailableError`, `TooManyRequestsError`. Internal error context (like `type`) is preserved for service-to-service communication but stripped before returning to clients.
 - **Middleware chain**: `requestId → authentication → requestResponseMetadata → rateLimiter → validateSchema → controller → errorHandler`. Validated data stored in `res.locals`.
 - **Zod validation**: All request/response schemas use Zod. Access validated data via `getValidatedQuery<T>(res)`, `getValidatedParams<T>(res)`, `getCapabilityValidatedInput(res)`.
 - **Environment config**: Each service has `src/config/env.ts` using `envalid` for validation. Separate `.env.dev` and `.env.test` files per service.
@@ -96,10 +101,12 @@ Schema at `backend/services/tasks/prisma/schema.prisma`. Two models: `Task` (wit
 ## Testing
 
 - **Framework**: Vitest with `globals: true` (no need to import `describe`/`it`/`expect`)
-- **Test files**: Colocated with source code as `*.test.ts`
-- **Integration tests**: `*.integration.test.ts` (excluded from default `npm test`)
+- **Test files**: Colocated with source code as `*.test.ts` (unit) or `*.integration.test.ts` (integration)
+- **Standard tests**: `npm test -- --run` runs unit + integration tests (excludes database/prompts)
+- **Database tests**: `npm run test:db` runs Prisma repository tests with real PostgreSQL
 - **Mocking**: Use `vi.mock()` with path aliases (e.g., `vi.mock('@config/env', ...)`)
-- **Integration test pattern**: Use `supertest` with the Express app, mock external dependencies
+- **Fire-and-forget testing**: Use `waitForBackgroundTasks()` from `@shared/test-utils` after triggering `void` operations
+- **Detailed patterns**: See `.claude/rules/testing.md` for mock hoisting, shared mocks, and test structure
 
 ## Infrastructure (Docker Compose)
 
