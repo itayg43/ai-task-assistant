@@ -69,3 +69,23 @@ export const getRequestMetadata = async (
     return null;
   }
 };
+
+export const deleteRequestMetadata = async (
+  redisClient: Redis,
+  requestId: string,
+): Promise<void> => {
+  const key = getRequestMetadataKey(requestId);
+
+  try {
+    await redisClient.del(key);
+    logger.debug("Request metadata deleted successfully", {
+      requestId,
+      key,
+    });
+  } catch (error) {
+    logger.error("Failed to delete request metadata", error, {
+      requestId,
+      key,
+    });
+  }
+};

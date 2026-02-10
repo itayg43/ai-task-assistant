@@ -2,16 +2,24 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
 import { redis } from "@clients/redis";
+import { redlock } from "@clients/redlock";
 import { env } from "@config/env";
-import { TASKS_OPERATION } from "@constants";
+import { AI_ERROR_TYPE, TASKS_OPERATION } from "@constants";
 import {
+  recordPromptInjection,
   recordTasksApiFailure,
   recordTasksApiSuccess,
 } from "@metrics/tasks-metrics";
 import { createTaskHandler, getTasksHandler } from "@services/tasks-service";
-import { storeRequestMetadata } from "@services/token-usage-service";
+import {
+  reconcileTokenUsage,
+  storeRequestMetadata,
+} from "@services/token-usage-service";
 import { createLogger } from "@shared/config/create-logger";
+import { BaseError } from "@shared/errors";
+import type { RequestMetadata } from "@shared/types";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
+import { extractErrorInfo } from "@shared/utils/extract-error-info";
 import { getValidatedQuery } from "@shared/utils/validated-query";
 import { withMetrics } from "@shared/utils/with-metrics";
 import {
@@ -41,8 +49,6 @@ export const createTask = async (
       tasksServiceRequestId: requestId,
     });
 
-    // Background: Store request metadata for later reconciliation (non-blocking)
-    // Note: storeRequestMetadata has internal error handling and never throws
     if (res.locals.tokenUsage) {
       const { tokensReserved, windowStartTimestamp } = res.locals.tokenUsage;
       const { userId } = getAuthenticationContext(res);
@@ -56,7 +62,43 @@ export const createTask = async (
       });
     }
   } catch (error) {
-    next(error);
+    // Extract error info to access internal context (type, etc.)
+    const errorInfo = extractErrorInfo(error);
+
+    // Record general failure metric
+    recordTasksApiFailure(TASKS_OPERATION.CREATE_TASK, requestId);
+
+    // Handle specific error types with additional metrics
+    if (errorInfo.context?.type === AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED) {
+      recordPromptInjection(TASKS_OPERATION.CREATE_TASK, requestId);
+    }
+
+    // Reconcile tokens for request-path errors (use 0 tokens - no OpenAI call completed)
+    if (res.locals.tokenUsage) {
+      const { userId } = getAuthenticationContext(res);
+      const { tokensReserved, windowStartTimestamp } = res.locals.tokenUsage;
+
+      const metadata: RequestMetadata = {
+        userId,
+        tokensReserved,
+        windowStartTimestamp,
+        startTime,
+        serviceName: env.SERVICE_NAME,
+        rateLimiterName: env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
+      };
+
+      void reconcileTokenUsage(
+        redis,
+        redlock,
+        requestId,
+        metadata,
+        0, // Request-path error - no tokens consumed
+        env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,
+      );
+    }
+
+    // Pass sanitized error to error handler (no internal context like 'type')
+    next(new BaseError(errorInfo.message, errorInfo.status));
   }
 };
 

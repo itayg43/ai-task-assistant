@@ -131,6 +131,16 @@ npm test -w backend/shared
      - Dynamic instance registration with load balancer
      - Shared state via Redis (no instance affinity required)
 
+## Future Changes
+
+### Monitoring & Observability
+
+1. **Metadata Expiration Metric**
+   - **Context**: When webhook callbacks arrive after the 1-hour metadata TTL expires, we cannot reconcile token usage (tokens leak)
+   - **Enhancement**: Add `recordMetadataNotFound()` metric to track how often this edge case occurs
+   - **Location**: `backend/services/tasks/src/controllers/webhooks-controller/webhooks-controller.ts`
+   - **Impact**: Better visibility into token leakage and webhook latency issues
+
 ## Known Issues
 
 1. **Prisma Migrations Fail on First Run**

@@ -75,6 +75,10 @@ const createTaskAiErrorContext = z.discriminatedUnion("type", [
     openaiMetadata: openaiMetadataRecordSchema,
   }),
   z.object({
+    type: z.literal(AI_ERROR_TYPE.OPENAI_API_ERROR),
+    openaiRequestId: z.string().optional(),
+  }),
+  z.object({
     type: z.literal(AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED),
   }),
 ]);

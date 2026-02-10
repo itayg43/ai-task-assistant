@@ -60,12 +60,20 @@ vi.mock("@services/webhooks-service", () => ({
   createTaskHandler: vi.fn(),
 }));
 
-const { mockReconcileTokenUsageFromCallback } = vi.hoisted(() => ({
-  mockReconcileTokenUsageFromCallback: vi.fn(),
+const { mockGetRequestMetadata } = vi.hoisted(() => ({
+  mockGetRequestMetadata: vi.fn(),
 }));
 
 vi.mock("@services/token-usage-service", () => ({
-  reconcileTokenUsageFromCallback: mockReconcileTokenUsageFromCallback,
+  getRequestMetadata: mockGetRequestMetadata,
+}));
+
+const { mockReconcileTokensIfPossible } = vi.hoisted(() => ({
+  mockReconcileTokensIfPossible: vi.fn(),
+}));
+
+vi.mock("@utils/reconcile-tokens-if-possible", () => ({
+  reconcileTokensIfPossible: mockReconcileTokensIfPossible,
 }));
 
 vi.mock("@shared/middlewares/authentication", () => ({
@@ -101,7 +109,14 @@ describe("webhooksController (integration)", () => {
 
     it(`should return ${StatusCodes.OK} and record success metrics with calculated duration on successful task creation`, async () => {
       const startTime = Date.now() - 1000; // 1 second ago
-      mockReconcileTokenUsageFromCallback.mockResolvedValue(startTime);
+      mockGetRequestMetadata.mockResolvedValue({
+        userId: mockUserId,
+        tokensReserved: 200,
+        windowStartTimestamp: Date.now(),
+        startTime,
+        serviceName: "tasks",
+        rateLimiterName: "openai-token-usage",
+      });
 
       const payload = {
         success: true,
@@ -126,7 +141,7 @@ describe("webhooksController (integration)", () => {
       // Wait for background reconciliation and metrics to complete
       await waitForBackgroundTasks();
 
-      expect(mockReconcileTokenUsageFromCallback).toHaveBeenCalledWith(
+      expect(mockReconcileTokensIfPossible).toHaveBeenCalledWith(
         expect.any(Object),
         expect.any(Object),
         mockTasksServiceRequestId,
@@ -135,7 +150,7 @@ describe("webhooksController (integration)", () => {
       );
       expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
-        expect.any(Number),
+        startTime,
         mockTasksServiceRequestId,
       );
       // Verify startTime is passed and calculate duration
@@ -175,7 +190,7 @@ describe("webhooksController (integration)", () => {
       await waitForBackgroundTasks();
 
       // Verify token reconciliation was called with expected token count
-      expect(mockReconcileTokenUsageFromCallback).toHaveBeenCalledWith(
+      expect(mockReconcileTokensIfPossible).toHaveBeenCalledWith(
         expect.any(Object), // redis
         expect.any(Object), // redlock
         mockTasksServiceRequestId,
@@ -187,15 +202,16 @@ describe("webhooksController (integration)", () => {
       expect(mockRecordTasksApiSuccess).not.toHaveBeenCalled();
     });
 
-    it(`should record prompt injection metric when error type is ${AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED}`, async () => {
+    it("should reconcile with 0 tokens for errors without openaiMetadata (non-vague-input errors)", async () => {
       const payload = {
         success: false,
         aiServiceRequestId: mockAiRequestId,
         error: {
-          status: StatusCodes.BAD_REQUEST,
-          message: "Injection detected",
+          status: StatusCodes.INTERNAL_SERVER_ERROR,
+          message: "Some error without token data",
           context: {
-            type: AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED,
+            type: AI_ERROR_TYPE.OPENAI_API_ERROR,
+            openaiRequestId: "req_123",
           },
         },
       };
@@ -206,14 +222,26 @@ describe("webhooksController (integration)", () => {
         .send(payload);
 
       expect(response.status).toBe(StatusCodes.OK);
-      expect(mockRecordPromptInjection).toHaveBeenCalledWith(
+      expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         mockTasksServiceRequestId,
       );
+
+      // Wait for background reconciliation to complete
+      await waitForBackgroundTasks();
+
+      // Verify token reconciliation with 0 tokens (no OpenAI metadata available)
+      expect(mockReconcileTokensIfPossible).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        mockTasksServiceRequestId,
+        0, // No tokens consumed
+        expect.any(Number),
+      );
     });
 
-    it(`should use duration 0 when reconciliation returns null (metadata expired)`, async () => {
-      mockReconcileTokenUsageFromCallback.mockResolvedValue(null);
+    it("should use duration 0 when metadata not found (expired)", async () => {
+      mockGetRequestMetadata.mockResolvedValue(null); // Metadata expired
 
       const payload = {
         success: true,
@@ -234,21 +262,18 @@ describe("webhooksController (integration)", () => {
       // Wait for background reconciliation and metrics to complete
       await waitForBackgroundTasks();
 
-      expect(mockReconcileTokenUsageFromCallback).toHaveBeenCalled();
       expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
-        expect.any(Number),
+        expect.any(Number), // Falls back to Date.now()
         mockTasksServiceRequestId,
       );
-      // When startTime is null, fallback to Date.now() results in near-0 duration
+      // When metadata is null, fallback to Date.now() results in near-0 duration
       const recordedStartTime = (mockRecordTasksApiSuccess as any).mock.calls[0][1];
       const calculatedDuration = Date.now() - recordedStartTime;
       expect(calculatedDuration).toBeLessThan(50);
     });
 
     it(`should return ${StatusCodes.OK} and record failure metrics when createTaskHandler fails`, async () => {
-      mockReconcileTokenUsageFromCallback.mockResolvedValue(null);
-
       const payload = {
         success: true,
         aiServiceRequestId: mockAiRequestId,
@@ -269,6 +294,18 @@ describe("webhooksController (integration)", () => {
       expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         mockTasksServiceRequestId,
+      );
+
+      // Wait for background reconciliation to complete
+      await waitForBackgroundTasks();
+
+      // Verify token reconciliation with 0 tokens (internal error, no OpenAI call)
+      expect(mockReconcileTokensIfPossible).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        mockTasksServiceRequestId,
+        0,
+        expect.any(Number),
       );
     });
 

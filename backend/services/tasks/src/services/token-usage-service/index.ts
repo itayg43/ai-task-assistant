@@ -1,5 +1,6 @@
-export { reconcileTokenUsageFromCallback } from "./reconcile-token-usage-from-callback";
+export { reconcileTokenUsage } from "./reconcile-token-usage";
 export {
+  deleteRequestMetadata,
   getRequestMetadata,
   getRequestMetadataKey,
   storeRequestMetadata,

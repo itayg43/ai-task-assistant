@@ -15,19 +15,17 @@ import {
   mockTokenUsageRequestId,
 } from "@mocks/token-usage-mocks";
 
-import { getRequestMetadata, getRequestMetadataKey } from "./request-metadata";
-import { reconcileTokenUsageFromCallback } from "./reconcile-token-usage-from-callback";
+import { reconcileTokenUsage } from "./reconcile-token-usage";
 
-const { mockLoggerDebug, mockLoggerWarn } = vi.hoisted(() => ({
+const { mockLoggerDebug } = vi.hoisted(() => ({
   mockLoggerDebug: vi.fn(),
-  mockLoggerWarn: vi.fn(),
 }));
 
 vi.mock("@shared/config/create-logger", () => ({
   createLogger: vi.fn(() => ({
     debug: mockLoggerDebug,
-    warn: mockLoggerWarn,
     info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn(),
   })),
 }));
@@ -35,20 +33,10 @@ vi.mock("@shared/config/create-logger", () => ({
 vi.mock("@shared/utils/token-bucket/key-utils");
 vi.mock("@shared/utils/token-bucket/update-token-usage");
 vi.mock("@shared/utils/with-lock");
-vi.mock("./request-metadata", async (importOriginal) => {
-  const original = await importOriginal<typeof import("./request-metadata")>();
-  return {
-    ...original,
-    getRequestMetadata: vi.fn(),
-    getRequestMetadataKey: vi.fn(),
-  };
-});
 
-describe("reconcileTokenUsageFromCallback", () => {
+describe("reconcileTokenUsage", () => {
   let mockRedisClient: Redis;
   let mockRedlockClient: Redlock;
-  let mockedGetRequestMetadata: Mocked<typeof getRequestMetadata>;
-  let mockedGetRequestMetadataKey: Mocked<typeof getRequestMetadataKey>;
   let mockedGetTokenBucketLockKey: Mocked<typeof getTokenBucketLockKey>;
   let mockedUpdateTokenUsage: Mocked<typeof updateTokenUsage>;
   let mockedWithLock: Mocked<typeof withLock>;
@@ -57,17 +45,11 @@ describe("reconcileTokenUsageFromCallback", () => {
     mockRedisClient = createRedisClientMock();
     mockRedlockClient = createRedlockClientMock();
 
-    mockedGetRequestMetadata = vi.mocked(getRequestMetadata);
-    mockedGetRequestMetadataKey = vi.mocked(getRequestMetadataKey);
     mockedGetTokenBucketLockKey = vi.mocked(getTokenBucketLockKey);
     mockedUpdateTokenUsage = vi.mocked(updateTokenUsage);
     mockedWithLock = vi.mocked(withLock);
 
     // Default mock implementations
-    mockedGetRequestMetadata.mockResolvedValue(mockRequestMetadata);
-    mockedGetRequestMetadataKey.mockReturnValue(
-      `request-metadata:${mockTokenUsageRequestId}`
-    );
     mockedGetTokenBucketLockKey.mockReturnValue(
       "token-bucket:tasks:openai-token-usage:123"
     );
@@ -80,19 +62,14 @@ describe("reconcileTokenUsageFromCallback", () => {
     vi.clearAllMocks();
   });
 
-  it("should reconcile token usage successfully when metadata exists", async () => {
-    const result = await reconcileTokenUsageFromCallback(
+  it("should reconcile token usage successfully", async () => {
+    await reconcileTokenUsage(
       mockRedisClient,
       mockRedlockClient,
       mockTokenUsageRequestId,
+      mockRequestMetadata,
       mockActualTokens,
       mockLockTtlMs
-    );
-
-    // Verify metadata retrieval
-    expect(mockedGetRequestMetadata).toHaveBeenCalledWith(
-      mockRedisClient,
-      mockTokenUsageRequestId
     );
 
     // Verify lock acquisition
@@ -108,7 +85,7 @@ describe("reconcileTokenUsageFromCallback", () => {
       expect.any(Function),
       {
         requestId: mockTokenUsageRequestId,
-        operation: "reconcileTokenUsageFromCallback",
+        operation: "reconcileTokenUsage",
       }
     );
 
@@ -123,12 +100,6 @@ describe("reconcileTokenUsageFromCallback", () => {
       1234567890000
     );
 
-    // Verify metadata cleanup
-    expect(mockedGetRequestMetadataKey).toHaveBeenCalledWith(mockTokenUsageRequestId);
-    expect(mockRedisClient.del).toHaveBeenCalledWith(
-      `request-metadata:${mockTokenUsageRequestId}`
-    );
-
     // Verify logging
     expect(mockLoggerDebug).toHaveBeenCalledWith(
       "Token usage reconciled successfully",
@@ -140,31 +111,5 @@ describe("reconcileTokenUsageFromCallback", () => {
         startTime: 1234567890000,
       }
     );
-
-    // Verify return value
-    expect(result).toBe(1234567890000);
-  });
-
-  it("should return null and log warning when metadata not found (indicates TTL expired)", async () => {
-    mockedGetRequestMetadata.mockResolvedValue(null);
-
-    const result = await reconcileTokenUsageFromCallback(
-      mockRedisClient,
-      mockRedlockClient,
-      mockTokenUsageRequestId,
-      mockActualTokens,
-      mockLockTtlMs
-    );
-
-    expect(result).toBeNull();
-    expect(mockLoggerWarn).toHaveBeenCalledWith(
-      "Cannot reconcile token usage: metadata not found",
-      {
-        requestId: mockTokenUsageRequestId,
-      }
-    );
-    expect(mockedWithLock).not.toHaveBeenCalled();
-    expect(mockedUpdateTokenUsage).not.toHaveBeenCalled();
-    expect(mockRedisClient.del).not.toHaveBeenCalled();
   });
 });
