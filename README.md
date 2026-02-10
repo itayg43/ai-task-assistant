@@ -99,11 +99,17 @@ npm run test:db
 - Ensure PostgreSQL is running and accessible before running tests
 - The test suite will clean up data after each test, but uses a real database connection
 
-## Near-Term Enhancements
+## Future Changes
 
 1. **Async AI Processing with RabbitMQ** 🔄 **IN-PROGRESS**
 
-2. **Multi-Tenant Architecture**
+2. **Metadata Expiration Metric**
+   - **Context**: When webhook callbacks arrive after the 1-hour metadata TTL expires, we cannot reconcile token usage (tokens leak)
+   - **Enhancement**: Add `recordMetadataNotFound()` metric to track how often this edge case occurs
+   - **Location**: `backend/services/tasks/src/controllers/webhooks-controller/webhooks-controller.ts`
+   - **Impact**: Better visibility into token leakage and webhook latency issues
+
+3. **Multi-Tenant Architecture**
    - **Data Model**:
      - `Account`: Represents organization/workspace (replaces previous Tenant model)
      - `User`: Team members within an account (role: owner, admin, member)
@@ -116,7 +122,7 @@ npm run test:db
    - **Security**:
      - Data isolation at query level (can't access other accounts' data)
 
-3. **Load Balancing & Horizontal Scaling**
+4. **Load Balancing & Horizontal Scaling**
    - **Nginx Reverse Proxy**:
      - Route requests across multiple service instances
      - Load balancing algorithm: least_conn for optimal distribution
@@ -125,16 +131,6 @@ npm run test:db
      - Docker Compose templating for N service instances
      - Dynamic instance registration with load balancer
      - Shared state via Redis (no instance affinity required)
-
-## Future Changes
-
-### Monitoring & Observability
-
-1. **Metadata Expiration Metric**
-   - **Context**: When webhook callbacks arrive after the 1-hour metadata TTL expires, we cannot reconcile token usage (tokens leak)
-   - **Enhancement**: Add `recordMetadataNotFound()` metric to track how often this edge case occurs
-   - **Location**: `backend/services/tasks/src/controllers/webhooks-controller/webhooks-controller.ts`
-   - **Impact**: Better visibility into token leakage and webhook latency issues
 
 ## Known Issues
 

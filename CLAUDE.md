@@ -12,6 +12,9 @@ Async AI-powered task management system. Two microservices communicate via Rabbi
 # Start all services (Docker Compose with watch mode)
 npm run start:dev
 
+# Type checking (ALWAYS run this before tests when making code changes)
+npm run type-check:ci
+
 # Run standard tests (unit + integration, excludes database/prompts)
 npm test -- --run
 
@@ -21,17 +24,13 @@ npm run test:db
 # Prompt evaluation tests
 npm run test:prompts
 
-# Type checking (watch mode)
-npm run type-check
-
-# Type checking (one-time, CI)
-npm run type-check:ci
-
 # Prisma (from backend/services/tasks)
 npm run prisma:generate -w backend/services/tasks
 npm run prisma:migrate:dev -w backend/services/tasks
 npm run prisma:seed -w backend/services/tasks
 ```
+
+**Important**: After making code changes, ALWAYS run `npm run type-check:ci` before running tests. This catches TypeScript errors early and provides faster feedback than waiting for test failures.
 
 ## Architecture
 
