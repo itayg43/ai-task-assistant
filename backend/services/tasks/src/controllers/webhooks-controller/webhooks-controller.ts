@@ -28,71 +28,71 @@ export const createTask = async (
 ) => {
   const { userId } = getAuthenticationContext(res);
   const { aiServiceRequestId, success } = req.body;
-  const { tasksServiceRequestId } = getValidatedQuery<CreateTaskWebhookInput["query"]>(res);
-
-  logger.info("Received callback from AI service", {
-    aiServiceRequestId,
-    tasksServiceRequestId,
-    success,
-  });
+  const { tasksServiceRequestId } =
+    getValidatedQuery<CreateTaskWebhookInput["query"]>(res);
 
   try {
+    res.sendStatus(StatusCodes.OK);
+
     if (!success) {
-      logger.warn("Callback indicates failure, skipping task creation", {
-        requestId: aiServiceRequestId,
-        error: req.body.error,
-      });
+      logger.error(
+        "create task callback indicates failure, skipping creation",
+        req.body.error,
+        {
+          aiServiceRequestId,
+          tasksServiceRequestId,
+        },
+      );
 
-      recordTasksApiFailure(TASKS_OPERATION.CREATE_TASK, aiServiceRequestId);
+      recordTasksApiFailure(TASKS_OPERATION.CREATE_TASK, tasksServiceRequestId);
 
-      if (
-        req.body.error?.context?.type ===
-        AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR
-      ) {
-        recordVagueInput(aiServiceRequestId);
+      const { error } = req.body;
+      if (error.context.type === AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR) {
+        recordVagueInput(tasksServiceRequestId);
+
+        const { openaiMetadata } = error.context;
+        void reconcileTokenUsageFromCallback(
+          redis,
+          redlock,
+          tasksServiceRequestId,
+          extractOpenaiTokenUsage(openaiMetadata),
+          env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,
+        );
       } else if (
-        req.body.error?.context?.type ===
-        AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED
+        error.context.type === AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED
       ) {
-        recordPromptInjection(TASKS_OPERATION.CREATE_TASK, aiServiceRequestId);
+        recordPromptInjection(
+          TASKS_OPERATION.CREATE_TASK,
+          tasksServiceRequestId,
+        );
       }
-
-      res.sendStatus(StatusCodes.OK);
 
       return;
     }
 
-    const { result } = req.body;
-    logger.info("Starting task creation from callback", {
-      aiServiceRequestId,
-      tasksServiceRequestId,
-    });
+    const {
+      result: { result, openaiMetadata },
+    } = req.body;
 
-    await createTaskHandler(userId, result.result);
+    await createTaskHandler(userId, result);
 
     logger.info("Task created successfully from callback", {
       aiServiceRequestId,
       tasksServiceRequestId,
     });
 
-    res.sendStatus(StatusCodes.OK);
-
-    // Background: Reconcile token usage and record metrics (non-blocking)
-    // These operations are non-critical and should not delay webhook response
-    // Note: reconcileTokenUsageFromCallback has internal error handling and never throws
-    const actualTokens = extractOpenaiTokenUsage(result.openaiMetadata) ?? 0;
     void reconcileTokenUsageFromCallback(
       redis,
       redlock,
       tasksServiceRequestId,
-      actualTokens,
+      extractOpenaiTokenUsage(openaiMetadata),
       env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,
     ).then((startTime) => {
-      const durationMs = startTime !== null ? Date.now() - startTime : 0;
+      const durationMs = startTime ? Date.now() - startTime : 0;
       recordTasksApiSuccess(
         TASKS_OPERATION.CREATE_TASK,
         durationMs,
-        aiServiceRequestId,
+        tasksServiceRequestId,
       );
     });
   } catch (error) {
@@ -101,8 +101,6 @@ export const createTask = async (
       tasksServiceRequestId,
     });
 
-    res.sendStatus(StatusCodes.OK);
-
-    recordTasksApiFailure(TASKS_OPERATION.CREATE_TASK, aiServiceRequestId);
+    recordTasksApiFailure(TASKS_OPERATION.CREATE_TASK, tasksServiceRequestId);
   }
 };

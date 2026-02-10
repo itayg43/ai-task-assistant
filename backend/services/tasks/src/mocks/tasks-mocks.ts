@@ -9,8 +9,7 @@ import type {
   GetTasksInput,
   TAiCapabilityImmediateResponse,
   TAiCapabilityResponse,
-  TAiParseTaskVagueInputErrorData,
-  TAiPromptInjectionDetectedErrorData,
+  TCreateTaskAiErrorContext,
   TExecuteCapabilityConfig,
   TParsedTask,
 } from "@types";
@@ -53,23 +52,24 @@ export const mockAiCapabilityResponse: TAiCapabilityResponse<TParsedTask> = {
   aiServiceRequestId: "ai-service-request-id-123",
 };
 
-export const mockParseTaskVagueInputErrorData: TAiParseTaskVagueInputErrorData =
-  {
-    message:
-      "The input is too vague - it doesn't specify what needs to be planned.",
-    type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
-    suggestions: [
-      "What specifically needs to be planned? (e.g., 'Plan vacation', 'Plan team meeting')",
-      "What is the context or category? (work, personal, etc.)",
-    ],
-    openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
-  };
+export const mockParseTaskVagueInputErrorData: Extract<
+  TCreateTaskAiErrorContext,
+  { type: typeof AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR }
+> = {
+  type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
+  suggestions: [
+    "What specifically needs to be planned? (e.g., 'Plan vacation', 'Plan team meeting')",
+    "What is the context or category? (work, personal, etc.)",
+  ],
+  openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
+};
 
-export const mockPromptInjectionErrorData: TAiPromptInjectionDetectedErrorData =
-  {
-    message: "Invalid input provided.",
-    type: AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED,
-  };
+export const mockPromptInjectionErrorData: Extract<
+  TCreateTaskAiErrorContext,
+  { type: typeof AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED }
+> = {
+  type: AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED,
+};
 
 export const mockUserId = 1;
 
@@ -140,7 +140,7 @@ export const mockFindTasksResult: FindTasksResult = {
 export const mockParsedTaskExecuteCapabilityConfig: TExecuteCapabilityConfig<"parse-task"> =
   {
     capability: "parse-task",
-    callbackUrl: "http://tasks:3001/api/v1/webhooks/create-task",
+    callbackUrl: `http://tasks:3001/api/v1/webhooks/create-task?tasksServiceRequestId=${mockRequestId}`,
     params: {
       naturalLanguage: mockNaturalLanguage,
       config: DEFAULT_PARSE_TASK_CONFIG,

@@ -44,11 +44,12 @@ export const createTask = async (
     // Background: Store request metadata for later reconciliation (non-blocking)
     // Note: storeRequestMetadata has internal error handling and never throws
     if (res.locals.tokenUsage) {
+      const { tokensReserved, windowStartTimestamp } = res.locals.tokenUsage;
       const { userId } = getAuthenticationContext(res);
       void storeRequestMetadata(redis, requestId, {
         userId,
-        tokensReserved: res.locals.tokenUsage.tokensReserved,
-        windowStartTimestamp: res.locals.tokenUsage.windowStartTimestamp,
+        tokensReserved,
+        windowStartTimestamp,
         startTime,
         serviceName: env.SERVICE_NAME,
         rateLimiterName: env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
@@ -76,17 +77,18 @@ export const getTasks = async (
       },
       async () => {
         const { userId } = getAuthenticationContext(res);
-        const query = getValidatedQuery<GetTasksInput["query"]>(res);
+        const { skip, take, orderBy, orderDirection, category, priorityLevel } =
+          getValidatedQuery<GetTasksInput["query"]>(res);
 
         const { tasks, totalCount, hasMore, currentPage, totalPages } =
           await getTasksHandler(userId, {
-            skip: query.skip,
-            take: query.take,
-            orderBy: query.orderBy,
-            orderDirection: query.orderDirection,
+            skip,
+            take,
+            orderBy,
+            orderDirection,
             where: {
-              category: query.category,
-              priorityLevel: query.priorityLevel,
+              category,
+              priorityLevel,
             },
           });
 
@@ -95,8 +97,8 @@ export const getTasks = async (
           tasks: tasks.map(taskToResponseDto),
           pagination: {
             totalCount,
-            skip: query.skip,
-            take: query.take,
+            skip,
+            take,
             hasMore,
             currentPage,
             totalPages,

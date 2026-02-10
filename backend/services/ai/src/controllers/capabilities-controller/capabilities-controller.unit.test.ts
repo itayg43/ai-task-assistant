@@ -111,6 +111,7 @@ describe("capabilitiesController (unit)", () => {
         capability: mockParseTaskCapabilityConfig.name,
         input: mockParseTaskValidatedInput,
         callbackUrl: mockCallbackUrl,
+        startTime: expect.any(Number),
       }
     );
     expect(mockResponse.status).toHaveBeenCalledWith(StatusCodes.ACCEPTED);

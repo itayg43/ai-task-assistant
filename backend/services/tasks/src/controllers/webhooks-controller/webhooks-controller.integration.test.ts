@@ -6,6 +6,7 @@ import { AI_ERROR_TYPE, TASKS_OPERATION } from "@constants";
 import {
   mockAiCapabilityResponse,
   mockParsedTask,
+  mockParseTaskVagueInputErrorData,
   mockTasksServiceRequestId,
   mockUserId,
 } from "@mocks/tasks-mocks";
@@ -135,7 +136,7 @@ describe("webhooksController (integration)", () => {
       expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         expect.any(Number),
-        mockAiRequestId,
+        mockTasksServiceRequestId,
       );
       // Verify duration is non-zero (between 900-1100ms to account for test execution time)
       const recordedDuration = (mockRecordTasksApiSuccess as any).mock.calls[0][1];
@@ -143,16 +144,14 @@ describe("webhooksController (integration)", () => {
       expect(recordedDuration).toBeLessThan(1100);
     });
 
-    it(`should record vague input metric when error type is ${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR}`, async () => {
+    it(`should record vague input metric and reconcile token usage when error type is ${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR}`, async () => {
       const payload = {
         success: false,
         aiServiceRequestId: mockAiRequestId,
         error: {
           status: StatusCodes.BAD_REQUEST,
           message: "Vague input",
-          context: {
-            type: AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR,
-          },
+          context: mockParseTaskVagueInputErrorData,
         },
       };
 
@@ -165,9 +164,26 @@ describe("webhooksController (integration)", () => {
       expect(mockedCreateTaskHandler).not.toHaveBeenCalled();
       expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
-        mockAiRequestId,
+        mockTasksServiceRequestId,
       );
-      expect(mockRecordVagueInput).toHaveBeenCalledWith(mockAiRequestId);
+      expect(mockRecordVagueInput).toHaveBeenCalledWith(
+        mockTasksServiceRequestId,
+      );
+
+      // Wait for background reconciliation to complete
+      await waitForBackgroundTasks();
+
+      // Verify token reconciliation was called with expected token count
+      expect(mockReconcileTokenUsageFromCallback).toHaveBeenCalledWith(
+        expect.any(Object), // redis
+        expect.any(Object), // redlock
+        mockTasksServiceRequestId,
+        150, // mockAiCapabilityResponse has 100 input + 50 output tokens
+        expect.any(Number), // lock TTL
+      );
+
+      // Verify success metrics NOT called (this is an error case)
+      expect(mockRecordTasksApiSuccess).not.toHaveBeenCalled();
     });
 
     it(`should record prompt injection metric when error type is ${AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED}`, async () => {
@@ -191,7 +207,7 @@ describe("webhooksController (integration)", () => {
       expect(response.status).toBe(StatusCodes.OK);
       expect(mockRecordPromptInjection).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
-        mockAiRequestId,
+        mockTasksServiceRequestId,
       );
     });
 
@@ -221,7 +237,7 @@ describe("webhooksController (integration)", () => {
       expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         0,
-        mockAiRequestId,
+        mockTasksServiceRequestId,
       );
     });
 
@@ -247,7 +263,7 @@ describe("webhooksController (integration)", () => {
       expect(response.status).toBe(StatusCodes.OK);
       expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
-        mockAiRequestId,
+        mockTasksServiceRequestId,
       );
     });
 

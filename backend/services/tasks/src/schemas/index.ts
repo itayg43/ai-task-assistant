@@ -1,6 +1,7 @@
 import z from "zod";
 
 import {
+  AI_ERROR_TYPE,
   GET_TASKS_ALLOWED_ORDER_BY_FIELDS,
   GET_TASKS_ALLOWED_ORDER_DIRECTIONS,
   GET_TASKS_DEFAULT_SKIP,
@@ -53,18 +54,6 @@ export const getTasksInputSchema = z.object({
     ),
 });
 
-const extractedErrorInfoSchema = z.object({
-  status: z.number(),
-  message: z.string(),
-  context: z.record(z.string(), z.unknown()),
-});
-
-const createTaskErrorInputSchema = z.object({
-  success: z.literal(false),
-  error: extractedErrorInfoSchema,
-  aiServiceRequestId: z.string(),
-});
-
 export const openaiMetadataSchema = z.object({
   responseId: z.string(),
   tokens: z.object({
@@ -78,6 +67,29 @@ export const openaiMetadataRecordSchema = z.record(
   z.string(),
   openaiMetadataSchema,
 );
+
+const createTaskAiErrorContext = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal(AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR),
+    suggestions: z.array(z.string().nonempty()),
+    openaiMetadata: openaiMetadataRecordSchema,
+  }),
+  z.object({
+    type: z.literal(AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED),
+  }),
+]);
+
+const extractedErrorInfoSchema = z.object({
+  status: z.number(),
+  message: z.string().nonempty(),
+  context: createTaskAiErrorContext,
+});
+
+const createTaskErrorInputSchema = z.object({
+  success: z.literal(false),
+  error: extractedErrorInfoSchema,
+  aiServiceRequestId: z.string(),
+});
 
 export const parsedTaskSchema = z.object({
   title: z.string(),

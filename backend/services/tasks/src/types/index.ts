@@ -5,12 +5,9 @@ export type {
   TExecuteCapabilityConfig,
 } from "./ai-capability";
 export type {
-  TAiErrorData,
-  TAiParseTaskVagueInputErrorData,
-  TAiPromptInjectionDetectedErrorData,
-  TAiRabbitMQSendMessageToQueueFailedErrorData,
-} from "./ai-error-data";
-export type { CreateTaskWebhookInput } from "./create-task-webhook-input";
+  CreateTaskWebhookInput,
+  TCreateTaskAiErrorContext,
+} from "./create-task-webhook-input";
 export type { TOpenaiMetadata, TOpenaiMetadataRecord } from "./openai-metadata";
 export type {
   TParseTaskConfig,

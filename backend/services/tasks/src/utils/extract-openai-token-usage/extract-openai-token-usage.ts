@@ -1,7 +1,7 @@
 import { TOpenaiMetadataRecord } from "@types";
 
 export const extractOpenaiTokenUsage = (
-  openaiMetadata: TOpenaiMetadataRecord
+  openaiMetadata: TOpenaiMetadataRecord,
 ) => {
   let totalTokens = 0;
 
