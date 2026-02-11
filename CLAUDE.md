@@ -107,8 +107,30 @@ Schema at `backend/services/tasks/prisma/schema.prisma`. Two models: `Task` (wit
 - **Fire-and-forget testing**: Use `waitForBackgroundTasks()` from `@shared/test-utils` after triggering `void` operations
 - **Detailed patterns**: See `.claude/rules/testing.md` for mock hoisting, shared mocks, and test structure
 
+## Development Standards
+
+### Rules (Always Active)
+
+The following files in `.claude/rules/` are automatically loaded and should be followed during all development:
+
+- **async-patterns.md**: Fire-and-forget patterns, promise error handling, testing async operations
+- **code-quality.md**: Type safety, DRY violations, naming conventions, function complexity guidelines
+- **error-handling.md**: Custom error hierarchy, error context, service boundary transformations
+- **architecture.md**: Layered architecture, repository pattern, service layer, async processing patterns
+- **testing.md**: Test structure, mocking patterns, test isolation, table-driven tests
+
+### Guides (Reference When Needed)
+
+The following files in `.claude/guides/` provide operational guidance for specific tasks:
+
+- **git-workflow.md**: Commit message conventions, branching strategy, PR process, pre-commit hooks
+  - **When to use**: Before committing, creating PRs, or performing git operations
+  - **Key sections**: Commit format, branch naming, STATUS.md integration
+
+Claude: Read guide files when performing the relevant operations (e.g., read git-workflow.md before committing).
+
 ## Infrastructure (Docker Compose)
 
 Services: `ai` (3002), `ai-consumer`, `tasks` (3001), `postgres` (5432), `redis` (6379), `rabbitmq` (5672/15672), `prometheus` (9090), `grafana` (3000).
 
-Known issue: On first run, tasks service may fail to connect to postgres before it's ready. Fix: `docker-compose restart tasks`.
+All services have healthchecks configured. Proper startup order: infrastructure (postgres, redis, rabbitmq) become healthy → app services start.
