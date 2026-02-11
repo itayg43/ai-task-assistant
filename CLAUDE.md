@@ -109,25 +109,14 @@ Schema at `backend/services/tasks/prisma/schema.prisma`. Two models: `Task` (wit
 
 ## Development Standards
 
-### Rules (Always Active)
-
 The following files in `.claude/rules/` are automatically loaded and should be followed during all development:
 
 - **async-patterns.md**: Fire-and-forget patterns, promise error handling, testing async operations
 - **code-quality.md**: Type safety, DRY violations, naming conventions, function complexity guidelines
 - **error-handling.md**: Custom error hierarchy, error context, service boundary transformations
 - **architecture.md**: Layered architecture, repository pattern, service layer, async processing patterns
-- **testing.md**: Test structure, mocking patterns, test isolation, table-driven tests
-
-### Guides (Reference When Needed)
-
-The following files in `.claude/guides/` provide operational guidance for specific tasks:
-
 - **git-workflow.md**: Commit message conventions, branching strategy, PR process, pre-commit hooks
-  - **When to use**: Before committing, creating PRs, or performing git operations
-  - **Key sections**: Commit format, branch naming, STATUS.md integration
-
-Claude: Read guide files when performing the relevant operations (e.g., read git-workflow.md before committing).
+- **testing.md**: Test structure, mocking patterns, test isolation, table-driven tests
 
 ## Infrastructure (Docker Compose)
 
