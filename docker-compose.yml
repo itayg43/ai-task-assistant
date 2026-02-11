@@ -5,15 +5,19 @@ services:
     ports:
       - "3002:3002"
     depends_on:
-      - rabbitmq
-      - prometheus
+      rabbitmq:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
 
   ai-consumer:
     build:
       context: ./backend
     depends_on:
-      - rabbitmq
-      - prometheus
+      rabbitmq:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
 
   tasks:
     build:
@@ -21,16 +25,25 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      - redis
-      - ai
-      - postgres
-      - prometheus
+      redis:
+        condition: service_healthy
+      ai:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
 
   redis:
     image: redis:8.0
     ports:
       - "6379:6379"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   postgres:
     image: postgres:16-alpine
@@ -43,6 +56,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -55,6 +74,12 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   prometheus:
     image: prom/prometheus:latest
