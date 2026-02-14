@@ -40,6 +40,35 @@ npm run prisma:seed -w backend/services/tasks
 - `backend/services/ai/` — AI capabilities service (port 3002) + RabbitMQ consumer
 - `backend/services/tasks/` — Task management service (port 3001) + webhook receiver
 
+### Independent Scaling Architecture
+
+The AI service and AI consumer are **separate deployable units** that can scale independently:
+
+**AI Service (HTTP Server)**:
+- Port 3002
+- Handles incoming HTTP requests
+- Validates input and queues to RabbitMQ
+- Returns `202 Accepted` immediately
+- **Scaling factor**: Incoming request rate
+
+**AI Consumer (RabbitMQ Worker)**:
+- No HTTP server
+- Processes queued messages
+- Calls OpenAI API (long-running operations)
+- Sends webhook callbacks
+- **Scaling factor**: Queue depth + message processing time
+
+**Benefits**:
+- **Resource Isolation**: Long OpenAI calls (5-15s) don't block HTTP requests
+- **Independent Horizontal Scaling**: Scale API based on request rate, consumers based on queue backlog
+  - Example: 1 AI service + 3 AI consumers
+  - Example: 2 AI services + 5 AI consumers during peak load
+- **Fault Isolation**: Consumer crashes don't affect API availability
+- **Different Resource Profiles**: Consumers need more CPU/memory for processing, API optimized for low latency
+- **Cost Optimization**: Can use different instance types for each component
+
+This pattern is used by production systems like Stripe (webhook processing), GitHub Actions (job runners), and AWS Lambda (event processing).
+
 ### Async Processing Flow
 
 **Request Path** (synchronous):

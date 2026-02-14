@@ -170,6 +170,112 @@ Async AI processing implementation is complete. Found 15 code quality issues dur
 - **Priority:** Medium
 - **Status:** 🔲 Planned
 
+### 4. Semantic Search with Embeddings
+- **Context:** Enable finding conceptually similar tasks beyond keyword matching. Users can discover related tasks even when using different terminology, synonyms, or describing concepts differently.
+- **Implementation:**
+  - **PostgreSQL pgvector Extension:** Add vector column to tasks table for storing embeddings
+  - **OpenAI Embeddings API:** Generate embeddings using `text-embedding-3-small` model (~$0.00002/1K tokens)
+  - **Schema Changes:**
+    - Add `embedding vector(1536)` column to tasks table
+    - Add vector similarity index: `CREATE INDEX ON tasks USING ivfflat (embedding vector_cosine_ops)`
+    - Generate embeddings on task creation from `title + description`
+  - **Query Pattern:**
+    ```sql
+    SELECT * FROM tasks
+    WHERE account_id = $1  -- Maintains data isolation
+    ORDER BY embedding <=> $queryVector
+    LIMIT 10
+    ```
+- **Use Cases:**
+  - **Team-wide search:** "Find tasks about client meetings" → discovers "Schedule call with stakeholder", "Prepare Q&A for customer sync", "Book conference room for demo"
+  - **Cross-user discovery:** Find similar tasks created by teammates (with accountId filtering)
+  - **Typo tolerance:** Searches work even with misspellings
+  - **Multi-language:** Semantic similarity works across languages
+- **Storage Cost:** ~6KB per task embedding (1536 dimensions × 4 bytes)
+- **Benefits vs Regular Search:**
+  - Regular: Exact keyword matching only (`title ILIKE '%meeting%'`)
+  - Semantic: Finds conceptually related tasks regardless of exact wording
+- **Priority:** Medium
+- **Status:** 🔲 Planned
+
+### 5. Infrastructure Metrics & Observability
+- **Context:** Add production-grade infrastructure monitoring for CPU, memory, and HTTP latency metrics across all services (tasks, ai, ai-consumer)
+- **Implementation:**
+  - **Default Metrics (automatic):** Enable `collectDefaultMetrics()` in shared Prometheus client
+    - CPU: `process_cpu_user_seconds_total`, `process_cpu_system_seconds_total`
+    - Memory: `process_resident_memory_bytes`, `nodejs_heap_space_size_bytes`, `nodejs_heap_space_used_bytes`
+    - Event Loop: `nodejs_eventloop_lag_seconds` (detects blocking operations)
+    - GC: `nodejs_gc_duration_seconds` (garbage collection performance)
+    - Active Resources: `nodejs_active_handles_total`, `nodejs_active_requests_total`
+  - **HTTP Latency Metrics (NEW custom middleware):** Create `httpMetricsMiddleware` (separate from `requestResponseMetadata` logging middleware)
+    - **Purpose**: Record Prometheus metrics only (not logging)
+    - Metric: `http_request_duration_ms` (histogram with p50, p95, p99 percentiles)
+    - Metric: `http_requests_total` (counter by status code)
+    - Labels: `service`, `method`, `route`, `status_code`
+    - **Parameters**: `serviceName` (string), `skipPaths` (string[], default: `['/metrics']`)
+    - **Skip Infrastructure Endpoints**: Exclude `/metrics`, `/health`, `/healthz` from tracking to avoid noise
+    - Apply early in middleware chain for all services
+  - **Middleware Separation (Single Responsibility):**
+    - `httpMetricsMiddleware` (NEW) → Prometheus metrics (histogram, counter)
+    - `requestResponseMetadata` (EXISTING) → Logging to stdout (logger.info)
+    - Keep separate for independent configuration, easier testing, clearer responsibilities
+  - **Expected Latency Patterns:**
+    - Tasks service: Fast for 202 endpoints (~50-200ms), moderate for GET/webhooks (~100-800ms)
+    - AI service: Consistently fast (~20-100ms, all 202 responses)
+    - AI consumer: No HTTP latency (worker), heavy lifting tracked via existing OpenAI metrics
+  - **Middleware Order** (app.ts):
+    ```
+    helmet → cors → json → requestId → httpMetricsMiddleware → requestResponseMetadata → routers → errorHandler
+    ```
+  - **Usage Example**:
+    ```typescript
+    app.use(httpMetricsMiddleware("tasks", ["/metrics", "/health"]));
+    ```
+- **Files to Create:**
+  - `backend/shared/src/middlewares/http-metrics-middleware/http-metrics-middleware.ts` (NEW)
+  - `backend/shared/src/middlewares/http-metrics-middleware/index.ts` (NEW)
+- **Files to Modify:**
+  - `backend/shared/src/clients/prom.ts` - Add `collectDefaultMetrics()`
+  - `backend/services/tasks/src/app.ts` - Apply middleware
+  - `backend/services/ai/src/app.ts` - Apply middleware
+- **Grafana Dashboards:**
+  - CPU usage: `rate(process_cpu_user_seconds_total[1m]) * 100`
+  - Memory (MB): `process_resident_memory_bytes / 1024 / 1024`
+  - p95 latency: `histogram_quantile(0.95, rate(http_request_duration_ms_bucket[5m]))`
+  - Request rate by status: `sum by (status_code) (rate(http_requests_total[1m]))`
+- **Priority:** Medium
+- **Status:** 🔲 Planned
+
+### 6. Middleware Refactoring: Top-Level Request Tracking
+- **Context:** Currently `requestId` and `requestResponseMetadata` are applied per-router (inside `routers/index.ts`), causing them to run only for specific routes. Move to top-level app middleware for universal coverage.
+- **Current Issues:**
+  - Request ID not available for all endpoints (health checks, 404s, metrics)
+  - Request/response logging only happens for authenticated routes
+  - `requestResponseMetadata` tightly coupled to authentication (calls `getAuthenticationContext()` which throws if auth missing)
+- **Implementation:**
+  - **Move to top-level** (`app.ts`): Apply `requestId` and `requestResponseMetadata` before all routes
+  - **Make auth context optional**: Update `requestResponseMetadata` to gracefully handle missing auth context instead of throwing
+  - **Add skipPaths parameter**: Similar to `httpMetricsMiddleware`, allow excluding infrastructure endpoints from logging
+  - **New middleware order** (app.ts):
+    ```
+    helmet → cors → json → requestId → httpMetricsMiddleware → requestResponseMetadata → routers → errorHandler
+    ```
+  - **Router-level middleware** (routers/index.ts): Keep only route-specific middleware (authentication, rate limiting, validation)
+  - **Note**: This task is separate from Task #5 (Infrastructure Metrics). Task #5 creates the NEW `httpMetricsMiddleware`, this task refactors the EXISTING `requestResponseMetadata`
+- **Benefits:**
+  - All requests get request IDs (easier debugging, distributed tracing)
+  - All requests logged (including health checks, 404s, unauthenticated endpoints)
+  - Separation of concerns (logging ≠ authentication)
+  - More flexible (can add public routes without breaking logging)
+- **Files to Modify:**
+  - `backend/shared/src/middlewares/request-response-metadata/request-reponse-metadata.ts` - Make auth context optional
+  - `backend/services/tasks/src/app.ts` - Move `requestId` + `requestResponseMetadata` to top level
+  - `backend/services/ai/src/app.ts` - Same as above
+  - `backend/services/tasks/src/routers/index.ts` - Remove moved middlewares
+  - `backend/services/ai/src/routers/index.ts` - Remove moved middlewares
+- **Priority:** Low
+- **Status:** 🔲 Planned
+
 ---
 
 ## Architecture Overview
