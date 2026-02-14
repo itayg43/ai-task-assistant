@@ -24,5 +24,4 @@ export type { TokenBucketRateLimiterConfig } from "./token-bucket-rate-limiter-c
 export type { TokenBucketState } from "./token-bucket-state";
 export type { TokenUsageRateLimiterConfig } from "./token-usage-rate-limiter-config";
 export type { TokenUsageState } from "./token-usage-state";
-export type { WithDurationResult } from "./with-duration-result";
 export type { WithMetricsOptions } from "./with-metrics-options";
