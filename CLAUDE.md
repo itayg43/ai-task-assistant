@@ -43,6 +43,7 @@ npm run prisma:seed -w backend/services/tasks
 ### Async Processing Flow
 
 **Request Path** (synchronous):
+
 1. Client → Tasks Service `POST /api/v1/tasks` with natural language
 2. Rate limiter reserves tokens, stores metadata in Redis (1-hour TTL)
 3. Tasks Service → AI Service `POST /api/v1/capabilities/:capability`
@@ -50,6 +51,7 @@ npm run prisma:seed -w backend/services/tasks
 5. Tasks Service receives `202 Accepted`, returns to client
 
 **Callback Path** (asynchronous via RabbitMQ):
+
 1. AI Consumer picks up queued message
 2. Consumer calls OpenAI API, receives response with actual token usage
 3. Consumer → Tasks Service `POST /api/v1/webhooks/create-task` with result + OpenAI metadata
@@ -58,6 +60,7 @@ npm run prisma:seed -w backend/services/tasks
 6. Background: Metadata cleanup from Redis
 
 **Error Handling**:
+
 - Request-path errors (prompt injection, validation): Reconcile with 0 tokens immediately
 - Callback-path errors with OpenAI metadata (vague input): Reconcile with actual tokens
 - Callback-path errors without OpenAI metadata (API failures): Reconcile with 0 tokens
@@ -106,17 +109,6 @@ Schema at `backend/services/tasks/prisma/schema.prisma`. Two models: `Task` (wit
 - **Mocking**: Use `vi.mock()` with path aliases (e.g., `vi.mock('@config/env', ...)`)
 - **Fire-and-forget testing**: Use `waitForBackgroundTasks()` from `@shared/test-utils` after triggering `void` operations
 - **Detailed patterns**: See `.claude/rules/testing.md` for mock hoisting, shared mocks, and test structure
-
-## Development Standards
-
-The following files in `.claude/rules/` are automatically loaded and should be followed during all development:
-
-- **async-patterns.md**: Fire-and-forget patterns, promise error handling, testing async operations
-- **code-quality.md**: Type safety, DRY violations, naming conventions, function complexity guidelines
-- **error-handling.md**: Custom error hierarchy, error context, service boundary transformations
-- **architecture.md**: Layered architecture, repository pattern, service layer, async processing patterns
-- **git-workflow.md**: Commit message conventions, branching strategy, PR process, pre-commit hooks
-- **testing.md**: Test structure, mocking patterns, test isolation, table-driven tests
 
 ## Infrastructure (Docker Compose)
 
