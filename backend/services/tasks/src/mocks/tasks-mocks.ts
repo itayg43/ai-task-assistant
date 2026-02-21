@@ -1,3 +1,5 @@
+import { StatusCodes } from "http-status-codes";
+
 import { AI_ERROR_TYPE, DEFAULT_PARSE_TASK_CONFIG } from "@constants";
 import type { Subtask } from "@repositories/subtasks-repository";
 import type {
@@ -6,6 +8,7 @@ import type {
   TaskWithSubtasks,
 } from "@repositories/tasks-repository";
 import type {
+  CreateTaskWebhookInput,
   GetTasksInput,
   TAiCapabilityImmediateResponse,
   TAiCapabilityResponse,
@@ -69,6 +72,48 @@ export const mockPromptInjectionErrorData: Extract<
   { type: typeof AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED }
 > = {
   type: AI_ERROR_TYPE.PROMPT_INJECTION_DETECTED,
+};
+
+// Webhook payload body mocks
+export const mockCreateTaskWebhookSuccessBody: Extract<
+  CreateTaskWebhookInput["body"],
+  { success: true }
+> = {
+  success: true,
+  aiServiceRequestId: mockAiCapabilityResponse.aiServiceRequestId,
+  result: {
+    openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
+    result: mockParsedTask,
+  },
+};
+
+export const mockCreateTaskWebhookVagueInputErrorBody: Extract<
+  CreateTaskWebhookInput["body"],
+  { success: false }
+> = {
+  success: false,
+  aiServiceRequestId: mockAiCapabilityResponse.aiServiceRequestId,
+  error: {
+    status: StatusCodes.BAD_REQUEST,
+    message: "Vague input",
+    context: mockParseTaskVagueInputErrorData,
+  },
+};
+
+export const mockCreateTaskWebhookOpenaiApiErrorBody: Extract<
+  CreateTaskWebhookInput["body"],
+  { success: false }
+> = {
+  success: false,
+  aiServiceRequestId: mockAiCapabilityResponse.aiServiceRequestId,
+  error: {
+    status: StatusCodes.INTERNAL_SERVER_ERROR,
+    message: "Some error without token data",
+    context: {
+      type: AI_ERROR_TYPE.OPENAI_API_ERROR,
+      openaiRequestId: "req_123",
+    },
+  },
 };
 
 export const mockUserId = 1;

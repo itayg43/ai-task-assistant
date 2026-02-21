@@ -1,6 +1,6 @@
 # Project Status
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-02-21
 **Current Branch:** `feature/itaygur/execute-capabilities-async`
 
 ---
@@ -9,21 +9,14 @@
 
 ### 🔴 HIGH Priority (Must Fix Before Merge)
 
-#### 1. Nested Fire-and-Forget with Unhandled Rejections
-
-- **Location:** `backend/services/tasks/src/utils/reconcile-tokens-if-possible/reconcile-tokens-if-possible.ts` (lines 27-37)
-- **Issue:** Double-nested fire-and-forget pattern with `.then()` chaining creates potential for silent failures
-- **Impact:** Silent metadata cleanup failures could cause Redis memory bloat over time
-- **Status:** 🔲 Not started
-
-#### 2. Unchecked Non-Null Assertion in Transaction
+#### 1. Unchecked Non-Null Assertion in Transaction
 
 - **Location:** `backend/services/tasks/src/services/webhooks-service/webhooks-service.ts` (line 18)
 - **Issue:** `return taskWithSubtasks!` without validation
 - **Impact:** Potential runtime crash if concurrent task deletion occurs during webhook processing
 - **Status:** 🔲 Not started
 
-#### 3. Untyped Generic in OpenAI Client
+#### 2. Untyped Generic in OpenAI Client
 
 - **Location:** `backend/services/ai/src/clients/openai/openai.ts` (line 15)
 - **Issue:** `<any, TOutput>` type parameter exposes untyped input
@@ -34,30 +27,14 @@
 
 ### 🟡 MEDIUM Priority (Should Fix Before Merge)
 
-#### 4. DRY Violation: Duplicated Token Reconciliation Pattern
-
-- **Location:**
-  - `webhooks-controller.ts` (lines 54, 64, 97, 113) - 4 identical calls
-  - `tasks-controller.ts` (line 90) - 1 call with different function
-- **Issue:** Token reconciliation called 5 times with inconsistent patterns and error handling
-- **Impact:** Harder to maintain, inconsistent retry/error behavior
-- **Status:** 🔲 Not started
-
-#### 5. Missing Metadata Expiration Metric
-
-- **Location:** `backend/services/tasks/src/utils/reconcile-tokens-if-possible/reconcile-tokens-if-possible.ts` (line 39)
-- **Issue:** TODO comment indicates documented but unimplemented metric for tracking when metadata expires before webhook callback
-- **Impact:** No visibility into token leakage, cannot determine if webhook latency is a problem
-- **Status:** 🔲 Not started
-
-#### 6. Untyped `any` in Prompt Injection Validation
+#### 3. Untyped `any` in Prompt Injection Validation
 
 - **Location:** `backend/services/ai/src/middlewares/validate-prompt-injection/validate-prompt-injection.ts` (line 25)
 - **Issue:** Helper function uses untyped `any` for nested object traversal
 - **Impact:** No type safety for validation logic
 - **Status:** 🔲 Not started
 
-#### 7. Hardcoded Service URLs in Business Logic
+#### 4. Hardcoded Service URLs in Business Logic
 
 - **Location:** `backend/services/tasks/src/services/tasks-service/tasks-service.ts` (line 16)
 - **Issue:** Callback URL hardcoded with service hostname and port
@@ -68,36 +45,36 @@
 
 ### 🟢 LOW Priority (Nice to Have)
 
-#### 8. Magic Numbers in Metrics Histogram Buckets
+#### 5. Magic Numbers in Metrics Histogram Buckets
 
 - **Location:** `backend/services/tasks/src/metrics/tasks-metrics.ts` (line 26)
 - **Issue:** Hardcoded values lack semantic meaning
 - **Status:** 🔲 Not started
 
-#### 9. Inconsistent Metadata Cleanup Error Handling
+#### 6. Inconsistent Metadata Cleanup Error Handling
 
 - **Location:** `backend/services/tasks/src/services/token-usage-service/request-metadata.ts` (lines 35-41, 64-70, 78-90)
 - **Issue:** All operations silently log errors but don't propagate them
 - **Status:** 🔲 Not started
 
-#### 10. Test Coverage Gap: Metadata Cleanup Errors
+#### 7. Test Coverage Gap: Metadata Cleanup Errors
 
 - **Location:** `backend/services/tasks/src/controllers/webhooks-controller/webhooks-controller.integration.test.ts`
 - **Issue:** No tests for failure scenarios in `deleteRequestMetadata()`
 - **Status:** 🔲 Not started
 
-#### 11. Race Condition Documentation Gap
+#### 8. Race Condition Documentation Gap
 
 - **Location:** `backend/shared/src/utils/token-bucket/process-token-bucket/process-token-bucket.ts` (lines 42-45)
 - **Issue:** Comment explains lock protection, but no corresponding comment at middleware level
 - **Status:** 🔲 Not started
 
-#### 12. Inconsistent Logger Usage
+#### 9. Inconsistent Logger Usage
 
 - **Issue:** Some modules use logger consistently, others don't
 - **Status:** 🔲 Not started
 
-#### 13-15. Minor Type Safety & Pattern Issues
+#### 10-12. Minor Type Safety & Pattern Issues
 
 - Various minor improvements across the codebase
 - **Status:** 🔲 Not started
@@ -343,23 +320,11 @@
 - **Priority:** Low
 - **Status:** 🔲 Planned
 
-### 4. Metadata Expiration Metric
+### 4. Multi-Tenant Architecture
 
-- **Context:** Track when webhook callbacks arrive after 1-hour metadata TTL expires (tokens leak in this edge case)
-- **Why Fourth:** Small focused improvement, benefits from #2's monitoring infrastructure being in place
-- **Dependencies:** None (but better with #2 complete)
-- **Blocks:** None
-- **Enhancement:** Add `recordMetadataNotFound()` metric
-- **Location:** `backend/services/tasks/src/controllers/webhooks-controller/webhooks-controller.ts`
-- **Impact:** Better visibility into token leakage and webhook latency issues
-- **Priority:** Medium
-- **Status:** 🔲 Planned (overlaps with code quality issue #5)
-
-### 5. Multi-Tenant Architecture
-
-- **Why Fifth:** Major architectural foundation, must precede #6 (Semantic Search)
+- **Why Fourth:** Major architectural foundation, must precede #5 (Semantic Search)
 - **Dependencies:** None
-- **Blocks:** #6 (Semantic Search needs `account_id` filtering)
+- **Blocks:** #5 (Semantic Search needs `account_id` filtering)
 - **Data Model:**
   - `Account`: Represents organization/workspace
   - `User`: Team members within an account (role: owner, admin, member)
@@ -373,11 +338,11 @@
 - **Priority:** High
 - **Status:** 🔲 Planned
 
-### 6. Semantic Search with Embeddings
+### 5. Semantic Search with Embeddings
 
 - **Context:** Enable finding conceptually similar tasks beyond keyword matching. Users can discover related tasks even when using different terminology, synonyms, or describing concepts differently.
-- **Why Sixth:** Query pattern requires `WHERE account_id = $1` from #5's multi-tenant data model
-- **Dependencies:** Requires #5 (Multi-Tenant Architecture)
+- **Why Fifth:** Query pattern requires `WHERE account_id = $1` from #4's multi-tenant data model
+- **Dependencies:** Requires #4 (Multi-Tenant Architecture)
 - **Blocks:** None
 - **Implementation:**
   - **PostgreSQL pgvector Extension:** Add vector column to tasks table for storing embeddings
@@ -405,9 +370,9 @@
 - **Priority:** Medium
 - **Status:** 🔲 Planned
 
-### 7. Load Balancing & Horizontal Scaling
+### 6. Load Balancing & Horizontal Scaling
 
-- **Why Last:** Should come after architecture is stable and proven in production
+- **Why Sixth:** Should come after architecture is stable and proven in production
 - **Dependencies:** Benefits from all prior changes being stable
 - **Blocks:** None
 - **Nginx Reverse Proxy:**

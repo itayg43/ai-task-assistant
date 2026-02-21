@@ -8,10 +8,11 @@ import {
 import {
   getRequestMetadata,
   getRequestMetadataKey,
+  REQUEST_METADATA_KEY_PREFIX,
+  REQUEST_METADATA_TTL_SECONDS,
   storeRequestMetadata,
 } from "@services/token-usage-service";
 import { createRedisClientMock } from "@shared/mocks/redis-mock";
-import type { RequestMetadata } from "@shared/types";
 
 const { mockLoggerDebug, mockLoggerError } = vi.hoisted(() => ({
   mockLoggerDebug: vi.fn(),
@@ -22,16 +23,18 @@ vi.mock("@shared/config/create-logger", () => ({
   createLogger: vi.fn(() => ({
     debug: mockLoggerDebug,
     error: mockLoggerError,
-    info: vi.fn(),
-    warn: vi.fn(),
   })),
 }));
 
 describe("requestMetadata", () => {
   let mockRedisClient: Redis;
 
+  let testKey: string;
+
   beforeEach(() => {
     mockRedisClient = createRedisClientMock();
+
+    testKey = getRequestMetadataKey(mockTokenUsageRequestId);
   });
 
   afterEach(() => {
@@ -40,8 +43,9 @@ describe("requestMetadata", () => {
 
   describe("getRequestMetadataKey", () => {
     it("should return the correct Redis key format", () => {
-      const key = getRequestMetadataKey(mockTokenUsageRequestId);
-      expect(key).toBe(`request-metadata:${mockTokenUsageRequestId}`);
+      expect(testKey).toBe(
+        `${REQUEST_METADATA_KEY_PREFIX}${mockTokenUsageRequestId}`,
+      );
     });
   });
 
@@ -54,8 +58,8 @@ describe("requestMetadata", () => {
       );
 
       expect(mockRedisClient.setex).toHaveBeenCalledWith(
-        `request-metadata:${mockTokenUsageRequestId}`,
-        3600, // 1 hour TTL
+        testKey,
+        REQUEST_METADATA_TTL_SECONDS,
         JSON.stringify(mockRequestMetadata),
       );
     });
@@ -71,30 +75,10 @@ describe("requestMetadata", () => {
         "Request metadata stored successfully",
         {
           requestId: mockTokenUsageRequestId,
-          key: `request-metadata:${mockTokenUsageRequestId}`,
-          ttl: 3600,
+          key: testKey,
+          ttl: REQUEST_METADATA_TTL_SECONDS,
         },
       );
-    });
-
-    it("should serialize all metadata fields correctly", async () => {
-      await storeRequestMetadata(
-        mockRedisClient,
-        mockTokenUsageRequestId,
-        mockRequestMetadata,
-      );
-
-      const serializedData = vi.mocked(mockRedisClient.setex).mock
-        .calls[0][2] as string;
-      const parsed = JSON.parse(serializedData);
-
-      expect(parsed).toEqual(mockRequestMetadata);
-      expect(parsed.userId).toBe(123);
-      expect(parsed.tokensReserved).toBe(500);
-      expect(parsed.windowStartTimestamp).toBe(1234567890000);
-      expect(parsed.startTime).toBe(1234567890000);
-      expect(parsed.serviceName).toBe("tasks");
-      expect(parsed.rateLimiterName).toBe("openai-token-usage");
     });
   });
 
@@ -109,15 +93,13 @@ describe("requestMetadata", () => {
         mockTokenUsageRequestId,
       );
 
-      expect(mockRedisClient.get).toHaveBeenCalledWith(
-        `request-metadata:${mockTokenUsageRequestId}`,
-      );
+      expect(mockRedisClient.get).toHaveBeenCalledWith(testKey);
       expect(result).toEqual(mockRequestMetadata);
       expect(mockLoggerDebug).toHaveBeenCalledWith(
         "Request metadata retrieved successfully",
         {
           requestId: mockTokenUsageRequestId,
-          key: `request-metadata:${mockTokenUsageRequestId}`,
+          key: testKey,
         },
       );
     });
@@ -135,7 +117,7 @@ describe("requestMetadata", () => {
         "Request metadata not found",
         {
           requestId: mockTokenUsageRequestId,
-          key: `request-metadata:${mockTokenUsageRequestId}`,
+          key: testKey,
         },
       );
     });
@@ -155,34 +137,10 @@ describe("requestMetadata", () => {
         expect.any(Error),
         {
           requestId: mockTokenUsageRequestId,
-          key: `request-metadata:${mockTokenUsageRequestId}`,
+          key: testKey,
           serializedMetadata: invalidJson,
         },
       );
-    });
-
-    it("should handle all field types correctly when parsing", async () => {
-      const metadataWithDifferentValues: RequestMetadata = {
-        userId: 999,
-        tokensReserved: 1500,
-        windowStartTimestamp: 9876543210000,
-        startTime: 9876543210000,
-        serviceName: "different-service",
-        rateLimiterName: "different-limiter",
-      };
-
-      vi.mocked(mockRedisClient.get).mockResolvedValue(
-        JSON.stringify(metadataWithDifferentValues),
-      );
-
-      const result = await getRequestMetadata(
-        mockRedisClient,
-        mockTokenUsageRequestId,
-      );
-
-      expect(result).toEqual(metadataWithDifferentValues);
-      expect(result?.userId).toBe(999);
-      expect(result?.tokensReserved).toBe(1500);
     });
   });
 });

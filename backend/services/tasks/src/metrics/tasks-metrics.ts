@@ -42,7 +42,12 @@ const tasksPromptInjectionTotal = new Counter({
   registers: [register],
 });
 
-// Helper functions with debug logging (following openai-metrics pattern)
+// Counter for metadata not found (expired before webhook callback)
+const tasksMetadataNotFoundTotal = new Counter({
+  name: "tasks_metadata_not_found_total",
+  help: "Total number of webhook callbacks where metadata expired (30s TTL) - indicates token leakage or queue backlog",
+  registers: [register],
+});
 
 export const recordTasksApiSuccess = (
   operation: TasksOperation,
@@ -135,6 +140,20 @@ export const recordPromptInjection = (
     logger.error("Failed to record prompt injection metric", error, {
       requestId,
       operation,
+    });
+  }
+};
+
+export const recordMetadataNotFound = (requestId: string): void => {
+  try {
+    tasksMetadataNotFoundTotal.inc();
+
+    logger.debug("Recorded metadata not found metric", {
+      requestId,
+    });
+  } catch (error) {
+    logger.error("Failed to record metadata not found metric", error, {
+      requestId,
     });
   }
 };

@@ -4,15 +4,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AI_ERROR_TYPE, TASKS_OPERATION } from "@constants";
 import {
-  mockAiCapabilityResponse,
+  mockCreateTaskWebhookOpenaiApiErrorBody,
+  mockCreateTaskWebhookSuccessBody,
+  mockCreateTaskWebhookVagueInputErrorBody,
   mockParsedTask,
-  mockParseTaskVagueInputErrorData,
   mockTasksServiceRequestId,
   mockUserId,
 } from "@mocks/tasks-mocks";
+import { mockRequestMetadata } from "@mocks/token-usage-mocks";
 import { createTaskHandler } from "@services/webhooks-service";
 import { waitForBackgroundTasks } from "@shared/test-utils";
-import { Mocked } from "@shared/types";
+import type { Mocked, RequestMetadata } from "@shared/types";
+import type { CreateTaskWebhookInput } from "@types";
 import { app } from "../../app";
 
 vi.mock("@config/env", () => ({
@@ -42,11 +45,13 @@ const {
   mockRecordTasksApiFailure,
   mockRecordVagueInput,
   mockRecordPromptInjection,
+  mockRecordMetadataNotFound,
 } = vi.hoisted(() => ({
   mockRecordTasksApiSuccess: vi.fn(),
   mockRecordTasksApiFailure: vi.fn(),
   mockRecordVagueInput: vi.fn(),
   mockRecordPromptInjection: vi.fn(),
+  mockRecordMetadataNotFound: vi.fn(),
 }));
 
 vi.mock("@metrics/tasks-metrics", () => ({
@@ -54,26 +59,21 @@ vi.mock("@metrics/tasks-metrics", () => ({
   recordTasksApiFailure: mockRecordTasksApiFailure,
   recordVagueInput: mockRecordVagueInput,
   recordPromptInjection: mockRecordPromptInjection,
+  recordMetadataNotFound: mockRecordMetadataNotFound,
 }));
 
 vi.mock("@services/webhooks-service", () => ({
   createTaskHandler: vi.fn(),
 }));
 
-const { mockGetRequestMetadata } = vi.hoisted(() => ({
+const { mockGetRequestMetadata, mockReconcileTokenUsage } = vi.hoisted(() => ({
   mockGetRequestMetadata: vi.fn(),
+  mockReconcileTokenUsage: vi.fn(),
 }));
 
 vi.mock("@services/token-usage-service", () => ({
   getRequestMetadata: mockGetRequestMetadata,
-}));
-
-const { mockReconcileTokensIfPossible } = vi.hoisted(() => ({
-  mockReconcileTokensIfPossible: vi.fn(),
-}));
-
-vi.mock("@utils/reconcile-tokens-if-possible", () => ({
-  reconcileTokensIfPossible: mockReconcileTokensIfPossible,
+  reconcileTokenUsage: mockReconcileTokenUsage,
 }));
 
 vi.mock("@shared/middlewares/authentication", () => ({
@@ -93,7 +93,7 @@ vi.mock("@middlewares/cors", () => {
 describe("webhooksController (integration)", () => {
   let mockedCreateTaskHandler: Mocked<typeof createTaskHandler>;
 
-  const mockAiRequestId = mockAiCapabilityResponse.aiServiceRequestId;
+  const mockLockTtlMs = 10000; // Matches env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS
 
   beforeEach(() => {
     mockedCreateTaskHandler = vi.mocked(createTaskHandler);
@@ -107,30 +107,21 @@ describe("webhooksController (integration)", () => {
   describe("createTask", () => {
     const createTaskUrl = "/api/v1/webhooks/create-task";
 
-    it(`should return ${StatusCodes.OK} and record success metrics with calculated duration on successful task creation`, async () => {
+    it(`should return ${StatusCodes.OK} and record success metrics on successful task creation`, async () => {
       const startTime = Date.now() - 1000; // 1 second ago
-      mockGetRequestMetadata.mockResolvedValue({
-        userId: mockUserId,
-        tokensReserved: 200,
-        windowStartTimestamp: Date.now(),
+      const testMetadata: RequestMetadata = {
+        ...mockRequestMetadata,
         startTime,
-        serviceName: "tasks",
-        rateLimiterName: "openai-token-usage",
-      });
-
-      const payload = {
-        success: true,
-        aiServiceRequestId: mockAiRequestId,
-        result: {
-          openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
-          result: mockParsedTask,
-        },
       };
+      mockGetRequestMetadata.mockResolvedValue(testMetadata);
+
+      const testPayload: CreateTaskWebhookInput["body"] =
+        mockCreateTaskWebhookSuccessBody;
 
       const response = await request(app)
         .post(createTaskUrl)
         .query({ tasksServiceRequestId: mockTasksServiceRequestId })
-        .send(payload);
+        .send(testPayload);
 
       expect(response.status).toBe(StatusCodes.OK);
       expect(mockedCreateTaskHandler).toHaveBeenCalledWith(
@@ -141,40 +132,31 @@ describe("webhooksController (integration)", () => {
       // Wait for background reconciliation and metrics to complete
       await waitForBackgroundTasks();
 
-      expect(mockReconcileTokensIfPossible).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.any(Object),
+      expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
+        expect.any(Object), // redis
+        expect.any(Object), // redlock
         mockTasksServiceRequestId,
-        expect.any(Number),
-        expect.any(Number),
+        testMetadata,
+        expect.any(Number), // actualTokens
+        mockLockTtlMs,
       );
       expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         startTime,
         mockTasksServiceRequestId,
       );
-      // Verify startTime is passed and calculate duration
-      const recordedStartTime = (mockRecordTasksApiSuccess as any).mock.calls[0][1];
-      const calculatedDuration = Date.now() - recordedStartTime;
-      expect(calculatedDuration).toBeGreaterThan(900);
-      expect(calculatedDuration).toBeLessThan(1100);
     });
 
     it(`should record vague input metric and reconcile token usage when error type is ${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR}`, async () => {
-      const payload = {
-        success: false,
-        aiServiceRequestId: mockAiRequestId,
-        error: {
-          status: StatusCodes.BAD_REQUEST,
-          message: "Vague input",
-          context: mockParseTaskVagueInputErrorData,
-        },
-      };
+      mockGetRequestMetadata.mockResolvedValue(mockRequestMetadata);
+
+      const testPayload: CreateTaskWebhookInput["body"] =
+        mockCreateTaskWebhookVagueInputErrorBody;
 
       const response = await request(app)
         .post(createTaskUrl)
         .query({ tasksServiceRequestId: mockTasksServiceRequestId })
-        .send(payload);
+        .send(testPayload);
 
       expect(response.status).toBe(StatusCodes.OK);
       expect(mockedCreateTaskHandler).not.toHaveBeenCalled();
@@ -189,13 +171,14 @@ describe("webhooksController (integration)", () => {
       // Wait for background reconciliation to complete
       await waitForBackgroundTasks();
 
-      // Verify token reconciliation was called with expected token count
-      expect(mockReconcileTokensIfPossible).toHaveBeenCalledWith(
+      // Verify token reconciliation was called with metadata and expected token count
+      expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
         expect.any(Object), // redis
         expect.any(Object), // redlock
         mockTasksServiceRequestId,
+        mockRequestMetadata,
         150, // mockAiCapabilityResponse has 100 input + 50 output tokens
-        expect.any(Number), // lock TTL
+        mockLockTtlMs,
       );
 
       // Verify success metrics NOT called (this is an error case)
@@ -203,23 +186,15 @@ describe("webhooksController (integration)", () => {
     });
 
     it("should reconcile with 0 tokens for errors without openaiMetadata (non-vague-input errors)", async () => {
-      const payload = {
-        success: false,
-        aiServiceRequestId: mockAiRequestId,
-        error: {
-          status: StatusCodes.INTERNAL_SERVER_ERROR,
-          message: "Some error without token data",
-          context: {
-            type: AI_ERROR_TYPE.OPENAI_API_ERROR,
-            openaiRequestId: "req_123",
-          },
-        },
-      };
+      mockGetRequestMetadata.mockResolvedValue(mockRequestMetadata);
+
+      const testPayload: CreateTaskWebhookInput["body"] =
+        mockCreateTaskWebhookOpenaiApiErrorBody;
 
       const response = await request(app)
         .post(createTaskUrl)
         .query({ tasksServiceRequestId: mockTasksServiceRequestId })
-        .send(payload);
+        .send(testPayload);
 
       expect(response.status).toBe(StatusCodes.OK);
       expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
@@ -231,64 +206,60 @@ describe("webhooksController (integration)", () => {
       await waitForBackgroundTasks();
 
       // Verify token reconciliation with 0 tokens (no OpenAI metadata available)
-      expect(mockReconcileTokensIfPossible).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.any(Object),
+      expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
+        expect.any(Object), // redis
+        expect.any(Object), // redlock
         mockTasksServiceRequestId,
+        mockRequestMetadata,
         0, // No tokens consumed
-        expect.any(Number),
+        mockLockTtlMs,
       );
     });
 
-    it("should use duration 0 when metadata not found (expired)", async () => {
+    it("should record metadata not found metric and skip reconciliation when metadata expired", async () => {
       mockGetRequestMetadata.mockResolvedValue(null); // Metadata expired
 
-      const payload = {
-        success: true,
-        aiServiceRequestId: mockAiRequestId,
-        result: {
-          openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
-          result: mockParsedTask,
-        },
-      };
+      const testPayload: CreateTaskWebhookInput["body"] =
+        mockCreateTaskWebhookSuccessBody;
 
       const response = await request(app)
         .post(createTaskUrl)
         .query({ tasksServiceRequestId: mockTasksServiceRequestId })
-        .send(payload);
+        .send(testPayload);
 
       expect(response.status).toBe(StatusCodes.OK);
 
-      // Wait for background reconciliation and metrics to complete
+      // Verify metadata not found metric was recorded
+      expect(mockRecordMetadataNotFound).toHaveBeenCalledWith(
+        mockTasksServiceRequestId,
+      );
+
+      // Wait for background tasks to complete
       await waitForBackgroundTasks();
 
+      // Verify success metrics use fallback timestamp
       expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
         TASKS_OPERATION.CREATE_TASK,
         expect.any(Number), // Falls back to Date.now()
         mockTasksServiceRequestId,
       );
-      // When metadata is null, fallback to Date.now() results in near-0 duration
-      const recordedStartTime = (mockRecordTasksApiSuccess as any).mock.calls[0][1];
-      const calculatedDuration = Date.now() - recordedStartTime;
-      expect(calculatedDuration).toBeLessThan(50);
+
+      // Verify reconciliation was NOT called (no metadata available)
+      expect(mockReconcileTokenUsage).not.toHaveBeenCalled();
     });
 
-    it(`should return ${StatusCodes.OK} and record failure metrics when createTaskHandler fails`, async () => {
-      const payload = {
-        success: true,
-        aiServiceRequestId: mockAiRequestId,
-        result: {
-          openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
-          result: mockParsedTask,
-        },
-      };
+    it(`should return ${StatusCodes.OK} and record failure metrics when createTaskHandler fails (internal error, not AI parsing error)`, async () => {
+      mockGetRequestMetadata.mockResolvedValue(mockRequestMetadata);
+
+      const testPayload: CreateTaskWebhookInput["body"] =
+        mockCreateTaskWebhookSuccessBody;
 
       mockedCreateTaskHandler.mockRejectedValue(new Error("DB Error"));
 
       const response = await request(app)
         .post(createTaskUrl)
         .query({ tasksServiceRequestId: mockTasksServiceRequestId })
-        .send(payload);
+        .send(testPayload);
 
       expect(response.status).toBe(StatusCodes.OK);
       expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
@@ -299,27 +270,22 @@ describe("webhooksController (integration)", () => {
       // Wait for background reconciliation to complete
       await waitForBackgroundTasks();
 
-      // Verify token reconciliation with 0 tokens (internal error, no OpenAI call)
-      expect(mockReconcileTokensIfPossible).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.any(Object),
+      // Verify token reconciliation with 0 tokens (internal error - database/webhook processing failure, not AI parsing error)
+      expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
+        expect.any(Object), // redis
+        expect.any(Object), // redlock
         mockTasksServiceRequestId,
-        0,
-        expect.any(Number),
+        mockRequestMetadata,
+        0, // No OpenAI call involved
+        mockLockTtlMs,
       );
     });
 
     it(`should return ${StatusCodes.BAD_REQUEST} when tasksServiceRequestId query parameter is missing`, async () => {
-      const payload = {
-        success: true,
-        aiServiceRequestId: mockAiRequestId,
-        result: {
-          openaiMetadata: mockAiCapabilityResponse.openaiMetadata,
-          result: mockParsedTask,
-        },
-      };
+      const testPayload: CreateTaskWebhookInput["body"] =
+        mockCreateTaskWebhookSuccessBody;
 
-      const response = await request(app).post(createTaskUrl).send(payload);
+      const response = await request(app).post(createTaskUrl).send(testPayload);
 
       expect(response.status).toBe(StatusCodes.BAD_REQUEST);
       expect(response.body.message).toBeDefined();

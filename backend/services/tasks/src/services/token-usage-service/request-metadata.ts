@@ -5,11 +5,11 @@ import type { RequestMetadata } from "@shared/types";
 
 const logger = createLogger("requestMetadata");
 
-const REQUEST_METADATA_TTL_SECONDS = 3600; // 1 hour
-const REQUEST_METADATA_KEY_PREFIX = "request-metadata";
+export const REQUEST_METADATA_TTL_SECONDS = 30;
+export const REQUEST_METADATA_KEY_PREFIX = "request-metadata:";
 
 export const getRequestMetadataKey = (requestId: string): string => {
-  return `${REQUEST_METADATA_KEY_PREFIX}:${requestId}`;
+  return `${REQUEST_METADATA_KEY_PREFIX}${requestId}`;
 };
 
 export const storeRequestMetadata = async (
@@ -67,25 +67,5 @@ export const getRequestMetadata = async (
       serializedMetadata,
     });
     return null;
-  }
-};
-
-export const deleteRequestMetadata = async (
-  redisClient: Redis,
-  requestId: string,
-): Promise<void> => {
-  const key = getRequestMetadataKey(requestId);
-
-  try {
-    await redisClient.del(key);
-    logger.debug("Request metadata deleted successfully", {
-      requestId,
-      key,
-    });
-  } catch (error) {
-    logger.error("Failed to delete request metadata", error, {
-      requestId,
-      key,
-    });
   }
 };

@@ -17,43 +17,50 @@ export const reconcileTokenUsage = async (
   actualTokens: number,
   lockTtlMs: number,
 ): Promise<void> => {
-  const {
-    userId,
-    tokensReserved,
-    windowStartTimestamp,
-    startTime,
-    serviceName,
-    rateLimiterName,
-  } = metadata;
+  try {
+    const {
+      userId,
+      tokensReserved,
+      windowStartTimestamp,
+      serviceName,
+      rateLimiterName,
+    } = metadata;
 
-  const lockKey = getTokenBucketLockKey(serviceName, rateLimiterName, userId);
+    const lockKey = getTokenBucketLockKey(serviceName, rateLimiterName, userId);
 
-  await withLock(
-    redlockClient,
-    lockKey,
-    lockTtlMs,
-    async () => {
-      await updateTokenUsage(
-        redisClient,
-        serviceName,
-        rateLimiterName,
-        userId,
-        actualTokens,
-        tokensReserved,
-        windowStartTimestamp,
-      );
-    },
-    {
+    await withLock(
+      redlockClient,
+      lockKey,
+      lockTtlMs,
+      async () => {
+        await updateTokenUsage(
+          redisClient,
+          serviceName,
+          rateLimiterName,
+          userId,
+          actualTokens,
+          tokensReserved,
+          windowStartTimestamp,
+        );
+      },
+      {
+        requestId,
+        operation: "reconcileTokenUsage",
+      },
+    );
+
+    logger.debug("Token usage reconciled successfully", {
       requestId,
-      operation: "reconcileTokenUsage",
-    },
-  );
-
-  logger.debug("Token usage reconciled successfully", {
-    requestId,
-    userId,
-    actualTokens,
-    tokensReserved,
-    startTime,
-  });
+      metadata,
+      actualTokens,
+    });
+  } catch (error) {
+    // Error already logged by withLock, but catch here to prevent unhandled rejection
+    // when called with fire-and-forget pattern (void reconcileTokenUsage(...))
+    logger.error("Token usage reconciliation failed", error, {
+      requestId,
+      metadata,
+      actualTokens,
+    });
+  }
 };

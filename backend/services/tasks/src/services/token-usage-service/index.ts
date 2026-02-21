@@ -1,7 +1,8 @@
 export { reconcileTokenUsage } from "./reconcile-token-usage";
 export {
-  deleteRequestMetadata,
   getRequestMetadata,
   getRequestMetadataKey,
+  REQUEST_METADATA_KEY_PREFIX,
+  REQUEST_METADATA_TTL_SECONDS,
   storeRequestMetadata,
 } from "./request-metadata";
