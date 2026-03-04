@@ -31,16 +31,20 @@ export type FindTasksOptions = {
 
 export type FindTasksResult = {
   tasks: TaskWithSubtasks[];
-  totalCount: number;
-  hasMore: boolean;
-  currentPage: number;
-  totalPages: number;
+  pagination: {
+    totalCount: number;
+    skip: number;
+    take: number;
+    hasMore: boolean;
+    currentPage: number;
+    totalPages: number;
+  };
 };
 
 export const createTask = async (
   client: PrismaClient | PrismaTransactionClient,
   userId: number,
-  parsedTask: TParsedTask
+  parsedTask: TParsedTask,
 ): Promise<Task> => {
   const { title, dueDate, category, priority } = parsedTask;
 
@@ -60,7 +64,7 @@ export const createTask = async (
 export const findTaskById = async (
   client: PrismaClient | PrismaTransactionClient,
   taskId: number,
-  userId: number
+  userId: number,
 ): Promise<TaskWithSubtasks | null> => {
   return await client.task.findUnique({
     where: {
@@ -76,7 +80,7 @@ export const findTaskById = async (
 export const findTasks = async (
   client: PrismaClient | PrismaTransactionClient,
   userId: number,
-  options: FindTasksOptions
+  options: FindTasksOptions,
 ): Promise<FindTasksResult> => {
   const { skip, take, orderBy, orderDirection, where: optionalWhere } = options;
 
@@ -104,9 +108,13 @@ export const findTasks = async (
 
   return {
     tasks,
-    totalCount,
-    hasMore: skip + take < totalCount,
-    currentPage: Math.floor(skip / take) + 1,
-    totalPages: totalCount > 0 ? Math.ceil(totalCount / take) : 0,
+    pagination: {
+      totalCount,
+      skip,
+      take,
+      hasMore: skip + take < totalCount,
+      currentPage: Math.floor(skip / take) + 1,
+      totalPages: totalCount > 0 ? Math.ceil(totalCount / take) : 0,
+    },
   };
 };

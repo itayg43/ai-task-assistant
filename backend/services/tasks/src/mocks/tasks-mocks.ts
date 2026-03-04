@@ -176,10 +176,14 @@ export const mockGetTasksInputQuery: GetTasksInput["query"] = {
 
 export const mockFindTasksResult: FindTasksResult = {
   tasks: [mockTaskWithSubtasks],
-  totalCount: 1,
-  hasMore: false,
-  currentPage: 1,
-  totalPages: 1,
+  pagination: {
+    totalCount: 1,
+    skip: 0,
+    take: 10,
+    hasMore: false,
+    currentPage: 1,
+    totalPages: 1,
+  },
 };
 
 export const mockParsedTaskExecuteCapabilityConfig: TExecuteCapabilityConfig<"parse-task"> =

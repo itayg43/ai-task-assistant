@@ -145,10 +145,14 @@ describe("tasksRepository (unit)", () => {
       });
       expect(result).toEqual({
         tasks: mockTasks,
-        totalCount: mockTotalCount,
-        hasMore: false,
-        currentPage: 1,
-        totalPages: 1,
+        pagination: {
+          totalCount: mockTotalCount,
+          skip: 0,
+          take: 10,
+          hasMore: false,
+          currentPage: 1,
+          totalPages: 1,
+        },
       });
     });
 
@@ -204,7 +208,7 @@ describe("tasksRepository (unit)", () => {
           orderDirection: "desc",
         });
 
-        expect(result.hasMore).toBe(hasMore);
+        expect(result.pagination.hasMore).toBe(hasMore);
       }
     );
   });

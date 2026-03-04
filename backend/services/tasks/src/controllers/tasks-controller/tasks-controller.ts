@@ -15,7 +15,6 @@ import {
   reconcileTokenUsage,
   storeRequestMetadata,
 } from "@services/token-usage-service";
-import { createLogger } from "@shared/config/create-logger";
 import { BaseError } from "@shared/errors";
 import type { RequestMetadata } from "@shared/types";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
@@ -29,8 +28,6 @@ import {
   GetTasksResponse,
 } from "@types";
 import { taskToResponseDto } from "@utils/task-to-response-dto";
-
-const logger = createLogger("tasksController");
 
 export const createTask = async (
   req: Request<unknown, unknown, CreateTaskRequestInput["body"]>,
@@ -122,29 +119,21 @@ export const getTasks = async (
         const { skip, take, orderBy, orderDirection, category, priorityLevel } =
           getValidatedQuery<GetTasksInput["query"]>(res);
 
-        const { tasks, totalCount, hasMore, currentPage, totalPages } =
-          await getTasksHandler(userId, {
-            skip,
-            take,
-            orderBy,
-            orderDirection,
-            where: {
-              category,
-              priorityLevel,
-            },
-          });
+        const { tasks, pagination } = await getTasksHandler(userId, {
+          skip,
+          take,
+          orderBy,
+          orderDirection,
+          where: {
+            category,
+            priorityLevel,
+          },
+        });
 
         res.status(StatusCodes.OK).json({
           tasksServiceRequestId: requestId,
           tasks: tasks.map(taskToResponseDto),
-          pagination: {
-            totalCount,
-            skip,
-            take,
-            hasMore,
-            currentPage,
-            totalPages,
-          },
+          pagination,
         });
       },
     );

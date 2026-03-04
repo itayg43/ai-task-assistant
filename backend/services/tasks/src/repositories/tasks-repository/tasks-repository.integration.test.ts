@@ -5,6 +5,7 @@ import {
   createTask,
   findTaskById,
   findTasks,
+  type Task,
 } from "@repositories/tasks-repository";
 import { GET_TASKS_ALLOWED_ORDER_DIRECTIONS } from "@constants";
 import { createPrismaClient } from "@shared/clients/prisma";
@@ -71,12 +72,12 @@ describe("tasksRepository (integration)", () => {
 
   describe("findTasks", () => {
     const createTestTask = async (
-      userId: number,
-      title: string,
-      category: string,
-      priorityLevel: string,
-      priorityScore: number,
-      dueDate: Date | null = null
+      userId: Task["userId"],
+      title: Task["title"],
+      category: Task["category"],
+      priorityLevel: Task["priorityLevel"],
+      priorityScore: Task["priorityScore"],
+      dueDate: Date | null = null,
     ) => {
       return await createTask(prismaClient, userId, {
         title,
@@ -104,8 +105,8 @@ describe("tasksRepository (integration)", () => {
       });
 
       expect(page1.tasks).toHaveLength(2);
-      expect(page1.totalCount).toBe(5);
-      expect(page1.hasMore).toBe(true);
+      expect(page1.pagination.totalCount).toBe(5);
+      expect(page1.pagination.hasMore).toBe(true);
 
       const page2 = await findTasks(prismaClient, mockUserId, {
         skip: 2,
@@ -115,8 +116,8 @@ describe("tasksRepository (integration)", () => {
       });
 
       expect(page2.tasks).toHaveLength(2);
-      expect(page2.totalCount).toBe(5);
-      expect(page2.hasMore).toBe(true);
+      expect(page2.pagination.totalCount).toBe(5);
+      expect(page2.pagination.hasMore).toBe(true);
 
       const page3 = await findTasks(prismaClient, mockUserId, {
         skip: 4,
@@ -126,8 +127,8 @@ describe("tasksRepository (integration)", () => {
       });
 
       expect(page3.tasks).toHaveLength(1);
-      expect(page3.totalCount).toBe(5);
-      expect(page3.hasMore).toBe(false);
+      expect(page3.pagination.totalCount).toBe(5);
+      expect(page3.pagination.hasMore).toBe(false);
     });
 
     it("should return paginated tasks with default options", async () => {
@@ -142,8 +143,8 @@ describe("tasksRepository (integration)", () => {
       });
 
       expect(result.tasks).toHaveLength(2);
-      expect(result.totalCount).toBe(2);
-      expect(result.hasMore).toBe(false);
+      expect(result.pagination.totalCount).toBe(2);
+      expect(result.pagination.hasMore).toBe(false);
     });
 
     it("should filter by userId only", async () => {
@@ -158,7 +159,7 @@ describe("tasksRepository (integration)", () => {
       });
 
       expect(result.tasks).toHaveLength(1);
-      expect(result.totalCount).toBe(1);
+      expect(result.pagination.totalCount).toBe(1);
       expect(result.tasks[0].userId).toBe(mockUserId);
     });
 
@@ -183,7 +184,7 @@ describe("tasksRepository (integration)", () => {
       });
 
       expect(result.tasks).toHaveLength(1);
-      expect(result.totalCount).toBe(1);
+      expect(result.pagination.totalCount).toBe(1);
       expect(result.tasks[0].category).toBe("work");
     });
 
@@ -202,7 +203,7 @@ describe("tasksRepository (integration)", () => {
       });
 
       expect(result.tasks).toHaveLength(1);
-      expect(result.totalCount).toBe(1);
+      expect(result.pagination.totalCount).toBe(1);
       expect(result.tasks[0].priorityLevel).toBe("high");
     });
 
@@ -224,7 +225,7 @@ describe("tasksRepository (integration)", () => {
       });
 
       expect(result.tasks).toHaveLength(2);
-      expect(result.totalCount).toBe(2);
+      expect(result.pagination.totalCount).toBe(2);
       expect(result.tasks.every((t) => t.category === "work")).toBe(true);
       expect(result.tasks.every((t) => t.priorityLevel === "high")).toBe(true);
     });
@@ -283,8 +284,8 @@ describe("tasksRepository (integration)", () => {
       });
 
       expect(result.tasks).toHaveLength(0);
-      expect(result.totalCount).toBe(0);
-      expect(result.hasMore).toBe(false);
+      expect(result.pagination.totalCount).toBe(0);
+      expect(result.pagination.hasMore).toBe(false);
     });
   });
 });
