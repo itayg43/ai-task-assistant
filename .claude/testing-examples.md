@@ -2,6 +2,26 @@
 
 Detailed examples for testing patterns. The concise rules are in `.claude/rules/testing.md`.
 
+## Conventions
+
+### Naming
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Mock variables | `mock` prefix | `mockRedisClient`, `mockLogger` |
+| Mock factories | `create<Thing>Mock` | `createLoggerMock()` |
+| Test constants | `mock` prefix | `mockRequestId`, `mockUserId` |
+| Test-specific data | `test` prefix | `testMetadata`, `testPayload` |
+| Test descriptions | Start with "should" | `it("should acquire lock...")` |
+
+### Structure
+
+- Use Arrange-Act-Assert pattern
+- Use `it.each()` for table-driven tests with multiple scenarios
+- Controller integration tests: use `supertest` with the full Express app
+- Unit tests for middleware/utilities: mock `Request`/`Response` directly
+- Test both success and error paths
+
 ## Mock Hoisting
 
 **Correct - inline mocks in `vi.hoisted()`:**

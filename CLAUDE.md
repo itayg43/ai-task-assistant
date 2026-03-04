@@ -131,13 +131,8 @@ Schema at `backend/services/tasks/prisma/schema.prisma`. Two models: `Task` (wit
 
 ## Testing
 
-- **Framework**: Vitest with `globals: true` (no need to import `describe`/`it`/`expect`)
-- **Test files**: Colocated with source code as `*.test.ts` (unit) or `*.integration.test.ts` (integration)
-- **Standard tests**: `npm test -- --run` runs unit + integration tests (excludes database/prompts)
-- **Database tests**: `npm run test:db` runs Prisma repository tests with real PostgreSQL
-- **Mocking**: Use `vi.mock()` with path aliases (e.g., `vi.mock('@config/env', ...)`)
-- **Fire-and-forget testing**: Use `waitForBackgroundTasks()` from `@shared/test-utils` after triggering `void` operations
-- **Detailed patterns**: See `.claude/rules/testing.md` for mock hoisting, shared mocks, and test structure
+- **Framework**: Vitest with `globals: true`, test files colocated as `*.test.ts` / `*.integration.test.ts`
+- **Patterns**: See `.claude/rules/testing.md` for mocking, test scope, and conventions
 
 ## Infrastructure (Docker Compose)
 
