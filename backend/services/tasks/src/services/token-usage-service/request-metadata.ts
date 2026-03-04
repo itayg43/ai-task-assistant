@@ -18,13 +18,12 @@ export const storeRequestMetadata = async (
   metadata: RequestMetadata,
 ): Promise<void> => {
   const key = getRequestMetadataKey(requestId);
-  const serializedMetadata = JSON.stringify(metadata);
 
   try {
     await redisClient.setex(
       key,
       REQUEST_METADATA_TTL_SECONDS,
-      serializedMetadata,
+      JSON.stringify(metadata),
     );
 
     logger.debug("Request metadata stored successfully", {
@@ -46,26 +45,32 @@ export const getRequestMetadata = async (
   requestId: string,
 ): Promise<RequestMetadata | null> => {
   const key = getRequestMetadataKey(requestId);
-  const serializedMetadata = await redisClient.get(key);
+  const storedMetadata = await redisClient.get(key);
 
-  if (!serializedMetadata) {
-    logger.debug("Request metadata not found", { requestId, key });
+  if (!storedMetadata) {
+    logger.debug("Request metadata not found", {
+      requestId,
+      key,
+    });
+
     return null;
   }
 
   try {
-    const metadata = JSON.parse(serializedMetadata) as RequestMetadata;
+    const metadata = JSON.parse(storedMetadata) as RequestMetadata;
+
     logger.debug("Request metadata retrieved successfully", {
       requestId,
       key,
     });
+
     return metadata;
   } catch (error) {
     logger.error("Failed to parse request metadata", error, {
       requestId,
       key,
-      serializedMetadata,
     });
+
     return null;
   }
 };

@@ -1,14 +1,13 @@
-import { AuthenticationContext } from "@shared/types";
+import type { AuthenticationContext } from "@shared/types";
 
 declare global {
   namespace Express {
     interface Locals {
-      authenticationContext?: AuthenticationContext;
       requestId: string;
+      authenticationContext?: AuthenticationContext;
       tokenUsage?: {
         tokensReserved: number;
         windowStartTimestamp: number;
-        actualTokens?: number;
       };
     }
   }

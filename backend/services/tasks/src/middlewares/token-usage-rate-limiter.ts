@@ -2,7 +2,6 @@ import { redis } from "@clients/redis";
 import { redlock } from "@clients/redlock";
 import { env } from "@config/env";
 import { createTokenUsageRateLimiter } from "@shared/middlewares/token-usage-rate-limiter/create-token-usage-rate-limiter";
-import { createUpdateTokenUsageMiddleware } from "@shared/middlewares/token-usage-rate-limiter/update-token-usage";
 import type { TokenUsageRateLimiterConfig } from "@shared/types";
 
 const baseOpenaiTokenUsageRateLimiterConfig: Omit<
@@ -25,14 +24,6 @@ export const openaiTokenUsageRateLimiter = {
   createTask: createTokenUsageRateLimiter(
     redis,
     redlock,
-    createTaskTokenUsageRateLimiterConfig
+    createTaskTokenUsageRateLimiterConfig,
   ),
 } as const;
-
-export const openaiUpdateTokenUsage = createUpdateTokenUsageMiddleware(
-  redis,
-  redlock,
-  env.SERVICE_NAME,
-  env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
-  env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS
-);

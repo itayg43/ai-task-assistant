@@ -138,7 +138,6 @@ describe("requestMetadata", () => {
         {
           requestId: mockTokenUsageRequestId,
           key: testKey,
-          serializedMetadata: invalidJson,
         },
       );
     });
