@@ -20,7 +20,7 @@ export const createTokenUsageRateLimiter =
   (
     redisClient: Redis,
     redlockClient: Redlock,
-    config: TokenUsageRateLimiterConfig
+    config: TokenUsageRateLimiterConfig,
   ) =>
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -29,7 +29,7 @@ export const createTokenUsageRateLimiter =
       const lockKey = getTokenBucketLockKey(
         config.serviceName,
         config.rateLimiterName,
-        userId
+        userId,
       );
 
       const logContext = {
@@ -50,23 +50,21 @@ export const createTokenUsageRateLimiter =
           {
             requestId: res.locals.requestId,
             operation: "processTokenUsage - tokenUsage",
-          }
+          },
         );
 
         if (!result.allowed) {
           logger.warn(
             `Request from user ${userId} declined by token usage rate limiter`,
-            logContext
+            logContext,
           );
 
           throw new TooManyRequestsError();
         }
 
-        // Store reservation data for later use by update middleware
         res.locals.tokenUsage = {
           tokensReserved: result.tokensReserved,
           windowStartTimestamp: result.windowStartTimestamp,
-          // actualTokens will be set by the controller after AI call
         };
 
         logger.info(
@@ -75,7 +73,7 @@ export const createTokenUsageRateLimiter =
             ...logContext,
             tokensReserved: result.tokensReserved,
             tokensRemaining: result.tokensRemaining,
-          }
+          },
         );
 
         next();
