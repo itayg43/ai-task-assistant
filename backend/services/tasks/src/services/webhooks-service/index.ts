@@ -1,1 +1,4 @@
-export { createTaskHandler } from "./webhooks-service";
+export {
+  createTaskFailureCallbackHandler,
+  createTaskSuccessCallbackHandler,
+} from "./webhooks-service";

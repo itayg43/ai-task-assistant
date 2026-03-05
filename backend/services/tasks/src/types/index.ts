@@ -5,7 +5,9 @@ export type {
   TExecuteCapabilityConfig,
 } from "./ai-capability";
 export type {
+  CreateTaskWebhookFailureInput,
   CreateTaskWebhookInput,
+  CreateTaskWebhookSuccessInput,
   TCreateTaskAiErrorContext,
 } from "./create-task-webhook-input";
 export type { TOpenaiMetadata, TOpenaiMetadataRecord } from "./openai-metadata";

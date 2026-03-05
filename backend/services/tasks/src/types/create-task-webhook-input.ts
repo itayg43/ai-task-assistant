@@ -6,9 +6,17 @@ export type CreateTaskWebhookInput = z.infer<
   typeof createTaskWebhookInputSchema
 >;
 
-// Extract error context type from webhook input
 type CreateTaskWebhookBody = CreateTaskWebhookInput["body"];
-export type TCreateTaskAiErrorContext = Extract<
+
+export type CreateTaskWebhookSuccessInput = Extract<
+  CreateTaskWebhookBody,
+  { success: true }
+>;
+
+export type CreateTaskWebhookFailureInput = Extract<
   CreateTaskWebhookBody,
   { success: false }
->["error"]["context"];
+>;
+
+export type TCreateTaskAiErrorContext =
+  CreateTaskWebhookFailureInput["error"]["context"];
