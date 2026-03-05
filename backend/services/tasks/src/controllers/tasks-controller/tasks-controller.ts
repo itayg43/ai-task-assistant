@@ -40,11 +40,12 @@ export const createTask = async (
   const { userId } = getAuthenticationContext(res);
   const { naturalLanguage } = req.body;
 
-  const metadata: RequestMetadata | null = res.locals.tokenUsage
+  const tokenUsage = res.locals.tokenUsage;
+  const metadata: RequestMetadata | null = tokenUsage
     ? {
         requestId,
         userId,
-        tokenUsage: res.locals.tokenUsage,
+        tokenUsage,
         startTime,
         serviceName: env.SERVICE_NAME,
         rateLimiterName: env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
