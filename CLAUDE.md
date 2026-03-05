@@ -74,7 +74,7 @@ This pattern is used by production systems like Stripe (webhook processing), Git
 **Request Path** (synchronous):
 
 1. Client → Tasks Service `POST /api/v1/tasks` with natural language
-2. Rate limiter reserves tokens, stores metadata in Redis (1-hour TTL)
+2. Rate limiter reserves tokens, stores metadata in Redis (30-second TTL)
 3. Tasks Service → AI Service `POST /api/v1/capabilities/:capability`
 4. AI Service validates input, queues message to RabbitMQ
 5. Tasks Service receives `202 Accepted`, returns to client
@@ -99,10 +99,10 @@ This pattern is used by production systems like Stripe (webhook processing), Git
 
 - **Capability System**: Strategy pattern in `services/ai/src/capabilities/`. Each capability has a handler, input/output Zod schemas, and prompt injection fields.
 - **Repository Pattern**: Data access in `services/tasks/src/repositories/`. Functions accept both `PrismaClient` and `PrismaTransactionClient` for transaction support.
-- **Token Usage System**: Reserve tokens upfront (rate limiter), store metadata in Redis (1-hour TTL), reconcile actual vs reserved tokens asynchronously via webhook callbacks. Handles all error scenarios (vague input with tokens, API failures with 0 tokens, request-path errors). Uses `reconcileTokensIfPossible()` helper for DRY pattern.
+- **Token Usage System**: Reserve tokens upfront (rate limiter), store metadata in Redis (30-second TTL), reconcile actual vs reserved tokens asynchronously via webhook callbacks. Handles all error scenarios (vague input with tokens, API failures with 0 tokens, request-path errors).
 - **Higher-order wrappers**: `withRetry` (exponential backoff), `withLock` (Redlock distributed locking), `withMetrics` (Prometheus recording), `withDuration` (timing).
 - **Custom Error Hierarchy**: All errors extend `BaseError` with `statusCode` and `context`. Types: `AuthenticationError`, `BadRequestError`, `ForbiddenError`, `InternalError`, `NotFoundError`, `ServiceUnavailableError`, `TooManyRequestsError`. Internal error context (like `type`) is preserved for service-to-service communication but stripped before returning to clients.
-- **Middleware chain**: `requestId → authentication → requestResponseMetadata → rateLimiter → validateSchema → controller → errorHandler`. Validated data stored in `res.locals`.
+- **Middleware chain**: Tasks routes: `requestId → authentication → requestResponseMetadata → rateLimiter → validateSchema → controller → errorHandler`. Webhook routes: `validateSchema → controller → errorHandler` (no auth — service-to-service calls, userId comes from Redis metadata). Validated data stored in `res.locals`.
 - **Zod validation**: All request/response schemas use Zod. Access validated data via `getValidatedQuery<T>(res)`, `getValidatedParams<T>(res)`, `getCapabilityValidatedInput(res)`.
 - **Environment config**: Each service has `src/config/env.ts` using `envalid` for validation. Separate `.env.dev` and `.env.test` files per service.
 

@@ -24,8 +24,4 @@ routers.use(
   tasksRouter,
 );
 
-routers.use(
-  "/api/v1/webhooks",
-  [authentication, requestResponseMetadata],
-  webhooksRouter,
-);
+routers.use("/api/v1/webhooks", webhooksRouter);

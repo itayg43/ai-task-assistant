@@ -231,17 +231,9 @@ describe("webhooksController (integration)", () => {
         mockTasksServiceRequestId,
       );
 
-      // Wait for background tasks to complete
-      await waitForBackgroundTasks();
-
-      // Verify success metrics use fallback timestamp
-      expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
-        TASKS_OPERATION.CREATE_TASK,
-        expect.any(Number), // Falls back to Date.now()
-        mockTasksServiceRequestId,
-      );
-
-      // Verify reconciliation was NOT called (no metadata available)
+      // Verify no further processing occurred (early return)
+      expect(mockedCreateTaskHandler).not.toHaveBeenCalled();
+      expect(mockRecordTasksApiSuccess).not.toHaveBeenCalled();
       expect(mockReconcileTokenUsage).not.toHaveBeenCalled();
     });
 
