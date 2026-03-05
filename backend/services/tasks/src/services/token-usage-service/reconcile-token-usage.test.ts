@@ -86,8 +86,8 @@ describe("reconcileTokenUsage", () => {
       mockRequestMetadata.rateLimiterName,
       mockUserId,
       mockActualTokens,
-      mockRequestMetadata.tokensReserved,
-      mockRequestMetadata.windowStartTimestamp,
+      mockRequestMetadata.tokenUsage.reserved,
+      mockRequestMetadata.tokenUsage.windowStart,
     );
     expect(mockLoggerDebug).toHaveBeenCalledWith(
       "Token usage reconciled successfully",

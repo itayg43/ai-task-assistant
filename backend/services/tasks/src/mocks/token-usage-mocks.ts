@@ -8,8 +8,10 @@ export const mockLockTtlMs = 5000;
 export const mockRequestMetadata: RequestMetadata = {
   requestId: mockTokenUsageRequestId,
   userId: mockUserId,
-  tokensReserved: 500,
-  windowStartTimestamp: 1234567890000,
+  tokenUsage: {
+    reserved: 500,
+    windowStart: 1234567890000,
+  },
   startTime: 1234567890000,
   serviceName: "tasks",
   rateLimiterName: "openai-token-usage",

@@ -226,8 +226,8 @@ describe("tasksController (integration)", () => {
         mockOpenaiTokenUsageRateLimiter.mockImplementation(
           (_req, res, next) => {
             res.locals.tokenUsage = {
-              tokensReserved: 200,
-              windowStartTimestamp: Date.now(),
+              reserved: 200,
+              windowStart: Date.now(),
             };
             next();
           },
@@ -267,8 +267,10 @@ describe("tasksController (integration)", () => {
           expect.objectContaining({
             requestId: expect.any(String),
             userId: 1,
-            tokensReserved: 200,
-            windowStartTimestamp: expect.any(Number),
+            tokenUsage: {
+              reserved: 200,
+              windowStart: expect.any(Number),
+            },
             startTime: expect.any(Number),
             serviceName: "tasks",
             rateLimiterName: "openai-token-usage",
@@ -330,8 +332,8 @@ describe("tasksController (integration)", () => {
       // Set up middleware to provide tokenUsage
       mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) => {
         _res.locals.tokenUsage = {
-          tokensReserved: 100,
-          windowStartTimestamp: Date.now(),
+          reserved: 100,
+          windowStart: Date.now(),
         };
         next();
       });
@@ -350,8 +352,10 @@ describe("tasksController (integration)", () => {
         expect.objectContaining({
           requestId: expect.any(String),
           userId: 1,
-          tokensReserved: 100,
-          windowStartTimestamp: expect.any(Number),
+          tokenUsage: {
+            reserved: 100,
+            windowStart: expect.any(Number),
+          },
           startTime: expect.any(Number),
           serviceName: expect.any(String),
           rateLimiterName: expect.any(String),
@@ -367,8 +371,8 @@ describe("tasksController (integration)", () => {
       // Set up middleware to provide tokenUsage
       mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) => {
         _res.locals.tokenUsage = {
-          tokensReserved: 100,
-          windowStartTimestamp: Date.now(),
+          reserved: 100,
+          windowStart: Date.now(),
         };
         next();
       });

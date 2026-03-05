@@ -35,7 +35,11 @@ export const storeRequestMetadata = async (
     logger.error(
       `Failed to store request metadata for requestId: ${requestId}`,
       error,
-      { key, requestId, metadata },
+      {
+        key,
+        requestId,
+        metadata,
+      },
     );
   }
 };

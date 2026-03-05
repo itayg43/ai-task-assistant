@@ -22,6 +22,7 @@ export type {
 } from "./services-callbacks";
 export type { TokenBucketRateLimiterConfig } from "./token-bucket-rate-limiter-config";
 export type { TokenBucketState } from "./token-bucket-state";
+export type { TokenUsage } from "./token-usage";
 export type { TokenUsageRateLimiterConfig } from "./token-usage-rate-limiter-config";
 export type { TokenUsageState } from "./token-usage-state";
 export type { WithMetricsOptions } from "./with-metrics-options";

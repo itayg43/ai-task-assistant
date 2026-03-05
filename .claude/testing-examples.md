@@ -119,7 +119,7 @@ it("should parse metadata successfully", async () => {
 
 // Redundant - doesn't test new behavior
 it("should handle different metadata values", async () => {
-  const differentMetadata = { userId: 999, tokensReserved: 1500, ... };
+  const differentMetadata = { userId: 999, tokenUsage: { reserved: 1500, windowStart: Date.now() }, ... };
   vi.mocked(redis.get).mockResolvedValue(JSON.stringify(differentMetadata));
   const result = await getRequestMetadata(redis, requestId);
   expect(result).toEqual(differentMetadata);
@@ -182,8 +182,7 @@ expect(mockFunction).toHaveBeenCalledWith(testMetadata);
 ```typescript
 mockGetRequestMetadata.mockResolvedValue({
   userId: mockUserId,
-  tokensReserved: 200,
-  windowStartTimestamp: Date.now(),
+  tokenUsage: { reserved: 200, windowStart: Date.now() },
   startTime: Date.now(),
   serviceName: "tasks",
   rateLimiterName: "openai-token-usage",

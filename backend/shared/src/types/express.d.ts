@@ -1,4 +1,5 @@
 import { AuthenticationContext } from "./authentication-context";
+import { TokenUsage } from "./token-usage";
 
 declare global {
   namespace Express {
@@ -7,11 +8,7 @@ declare global {
       requestId?: string;
       validatedQuery?: Record<string, unknown>;
       validatedParams?: Record<string, unknown>;
-      tokenUsage?: {
-        tokensReserved: number;
-        windowStartTimestamp: number;
-        actualTokens?: number;
-      };
+      tokenUsage?: TokenUsage;
     }
   }
 }

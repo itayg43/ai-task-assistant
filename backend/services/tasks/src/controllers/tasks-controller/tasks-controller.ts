@@ -34,9 +34,22 @@ export const createTask = async (
   res: Response<CreateTaskResponse>,
   next: NextFunction,
 ) => {
-  const { requestId } = res.locals;
-  const { naturalLanguage } = req.body;
   const startTime = Date.now();
+
+  const { requestId } = res.locals;
+  const { userId } = getAuthenticationContext(res);
+  const { naturalLanguage } = req.body;
+
+  const metadata: RequestMetadata | null = res.locals.tokenUsage
+    ? {
+        requestId,
+        userId,
+        tokenUsage: res.locals.tokenUsage,
+        startTime,
+        serviceName: env.SERVICE_NAME,
+        rateLimiterName: env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
+      }
+    : null;
 
   try {
     const message = await createTaskHandler(requestId, naturalLanguage);
@@ -46,18 +59,8 @@ export const createTask = async (
       tasksServiceRequestId: requestId,
     });
 
-    if (res.locals.tokenUsage) {
-      const { tokensReserved, windowStartTimestamp } = res.locals.tokenUsage;
-      const { userId } = getAuthenticationContext(res);
-      void storeRequestMetadata(redis, {
-        requestId,
-        userId,
-        tokensReserved,
-        windowStartTimestamp,
-        startTime,
-        serviceName: env.SERVICE_NAME,
-        rateLimiterName: env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
-      });
+    if (metadata) {
+      void storeRequestMetadata(redis, metadata);
     }
   } catch (error) {
     const errorInfo = extractErrorInfo(error);
@@ -68,20 +71,7 @@ export const createTask = async (
       recordPromptInjection(TASKS_OPERATION.CREATE_TASK, requestId);
     }
 
-    if (res.locals.tokenUsage) {
-      const { userId } = getAuthenticationContext(res);
-      const { tokensReserved, windowStartTimestamp } = res.locals.tokenUsage;
-
-      const metadata: RequestMetadata = {
-        requestId,
-        userId,
-        tokensReserved,
-        windowStartTimestamp,
-        startTime,
-        serviceName: env.SERVICE_NAME,
-        rateLimiterName: env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
-      };
-
+    if (metadata) {
       void reconcileTokenUsage(
         redis,
         redlock,

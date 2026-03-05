@@ -114,8 +114,8 @@ describe("createTokenUsageRateLimiter", () => {
     expect(mockResponse.json).not.toHaveBeenCalled();
     expect(mockNextFunction).toHaveBeenCalled();
     expect(mockResponse.locals?.tokenUsage).toEqual({
-      tokensReserved: mockTokenUsageAllowedResponse.tokensReserved,
-      windowStartTimestamp: mockTokenUsageAllowedResponse.windowStartTimestamp,
+      reserved: mockTokenUsageAllowedResponse.tokensReserved,
+      windowStart: mockTokenUsageAllowedResponse.windowStartTimestamp,
     });
   });
 

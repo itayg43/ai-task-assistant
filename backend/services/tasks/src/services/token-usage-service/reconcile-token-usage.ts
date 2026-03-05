@@ -20,8 +20,7 @@ export const reconcileTokenUsage = async (
     const {
       requestId,
       userId,
-      tokensReserved,
-      windowStartTimestamp,
+      tokenUsage: { reserved, windowStart },
       serviceName,
       rateLimiterName,
     } = metadata;
@@ -39,8 +38,8 @@ export const reconcileTokenUsage = async (
           rateLimiterName,
           userId,
           actualTokens,
-          tokensReserved,
-          windowStartTimestamp,
+          reserved,
+          windowStart,
         );
       },
       {

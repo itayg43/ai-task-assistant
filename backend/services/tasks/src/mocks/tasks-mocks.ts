@@ -7,6 +7,7 @@ import type {
   Task,
   TaskWithSubtasks,
 } from "@repositories/tasks-repository";
+import type { TokenUsage } from "@shared/types";
 import type {
   CreateTaskWebhookInput,
   GetTasksInput,
@@ -162,9 +163,9 @@ export const mockTaskWithSubtasksWithItems: TaskWithSubtasks = {
   subtasks: mockSubtasks,
 };
 
-export const mockTokenUsage = {
-  tokensReserved: 100,
-  windowStartTimestamp: 1000000,
+export const mockTokenUsage: TokenUsage = {
+  reserved: 100,
+  windowStart: 1000000,
 };
 
 export const mockGetTasksInputQuery: GetTasksInput["query"] = {

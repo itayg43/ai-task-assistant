@@ -63,8 +63,8 @@ export const createTokenUsageRateLimiter =
         }
 
         res.locals.tokenUsage = {
-          tokensReserved: result.tokensReserved,
-          windowStartTimestamp: result.windowStartTimestamp,
+          reserved: result.tokensReserved,
+          windowStart: result.windowStartTimestamp,
         };
 
         logger.info(
