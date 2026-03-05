@@ -49,7 +49,8 @@ export const createTask = async (
     if (res.locals.tokenUsage) {
       const { tokensReserved, windowStartTimestamp } = res.locals.tokenUsage;
       const { userId } = getAuthenticationContext(res);
-      void storeRequestMetadata(redis, requestId, {
+      void storeRequestMetadata(redis, {
+        requestId,
         userId,
         tokensReserved,
         windowStartTimestamp,
@@ -72,6 +73,7 @@ export const createTask = async (
       const { tokensReserved, windowStartTimestamp } = res.locals.tokenUsage;
 
       const metadata: RequestMetadata = {
+        requestId,
         userId,
         tokensReserved,
         windowStartTimestamp,
@@ -83,7 +85,6 @@ export const createTask = async (
       void reconcileTokenUsage(
         redis,
         redlock,
-        requestId,
         metadata,
         0,
         env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,

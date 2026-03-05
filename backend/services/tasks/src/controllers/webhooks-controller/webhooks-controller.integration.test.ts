@@ -135,7 +135,6 @@ describe("webhooksController (integration)", () => {
       expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
         expect.any(Object), // redis
         expect.any(Object), // redlock
-        mockTasksServiceRequestId,
         testMetadata,
         expect.any(Number), // actualTokens
         mockLockTtlMs,
@@ -175,7 +174,6 @@ describe("webhooksController (integration)", () => {
       expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
         expect.any(Object), // redis
         expect.any(Object), // redlock
-        mockTasksServiceRequestId,
         mockRequestMetadata,
         150, // mockAiCapabilityResponse has 100 input + 50 output tokens
         mockLockTtlMs,
@@ -209,7 +207,6 @@ describe("webhooksController (integration)", () => {
       expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
         expect.any(Object), // redis
         expect.any(Object), // redlock
-        mockTasksServiceRequestId,
         mockRequestMetadata,
         0, // No tokens consumed
         mockLockTtlMs,
@@ -274,7 +271,6 @@ describe("webhooksController (integration)", () => {
       expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
         expect.any(Object), // redis
         expect.any(Object), // redlock
-        mockTasksServiceRequestId,
         mockRequestMetadata,
         0, // No OpenAI call involved
         mockLockTtlMs,

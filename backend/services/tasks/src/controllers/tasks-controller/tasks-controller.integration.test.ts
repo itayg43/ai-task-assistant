@@ -264,8 +264,8 @@ describe("tasksController (integration)", () => {
         expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
           expect.any(Object), // redis
           expect.any(Object), // redlock
-          expect.any(String), // requestId
           expect.objectContaining({
+            requestId: expect.any(String),
             userId: 1,
             tokensReserved: 200,
             windowStartTimestamp: expect.any(Number),
@@ -347,8 +347,8 @@ describe("tasksController (integration)", () => {
 
       expect(mockStoreRequestMetadata).toHaveBeenCalledWith(
         expect.any(Object),
-        expect.any(String),
         expect.objectContaining({
+          requestId: expect.any(String),
           userId: 1,
           tokensReserved: 100,
           windowStartTimestamp: expect.any(Number),

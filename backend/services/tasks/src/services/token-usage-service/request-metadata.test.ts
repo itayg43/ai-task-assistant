@@ -51,11 +51,7 @@ describe("requestMetadata", () => {
 
   describe("storeRequestMetadata", () => {
     it("should store metadata in Redis with correct TTL", async () => {
-      await storeRequestMetadata(
-        mockRedisClient,
-        mockTokenUsageRequestId,
-        mockRequestMetadata,
-      );
+      await storeRequestMetadata(mockRedisClient, mockRequestMetadata);
 
       expect(mockRedisClient.setex).toHaveBeenCalledWith(
         testKey,
@@ -65,11 +61,7 @@ describe("requestMetadata", () => {
     });
 
     it("should log debug message on successful storage", async () => {
-      await storeRequestMetadata(
-        mockRedisClient,
-        mockTokenUsageRequestId,
-        mockRequestMetadata,
-      );
+      await storeRequestMetadata(mockRedisClient, mockRequestMetadata);
 
       expect(mockLoggerDebug).toHaveBeenCalledWith(
         "Request metadata stored successfully",

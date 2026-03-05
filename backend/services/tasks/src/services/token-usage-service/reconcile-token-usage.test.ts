@@ -58,7 +58,6 @@ describe("reconcileTokenUsage", () => {
     await reconcileTokenUsage(
       mockRedisClient,
       mockRedlockClient,
-      mockTokenUsageRequestId,
       mockRequestMetadata,
       mockActualTokens,
       mockLockTtlMs,
@@ -108,7 +107,6 @@ describe("reconcileTokenUsage", () => {
     await reconcileTokenUsage(
       mockRedisClient,
       mockRedlockClient,
-      mockTokenUsageRequestId,
       mockRequestMetadata,
       mockActualTokens,
       mockLockTtlMs,

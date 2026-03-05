@@ -12,13 +12,13 @@ const logger = createLogger("reconcileTokenUsage");
 export const reconcileTokenUsage = async (
   redisClient: Redis,
   redlockClient: Redlock,
-  requestId: string,
   metadata: RequestMetadata,
   actualTokens: number,
   lockTtlMs: number,
 ): Promise<void> => {
   try {
     const {
+      requestId,
       userId,
       tokensReserved,
       windowStartTimestamp,
@@ -58,7 +58,7 @@ export const reconcileTokenUsage = async (
     // Error already logged by withLock, but catch here to prevent unhandled rejection
     // when called with fire-and-forget pattern (void reconcileTokenUsage(...))
     logger.error("Token usage reconciliation failed", error, {
-      requestId,
+      requestId: metadata.requestId,
       metadata,
       actualTokens,
     });

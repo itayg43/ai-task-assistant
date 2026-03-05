@@ -14,9 +14,9 @@ export const getRequestMetadataKey = (requestId: string): string => {
 
 export const storeRequestMetadata = async (
   redisClient: Redis,
-  requestId: string,
   metadata: RequestMetadata,
 ): Promise<void> => {
+  const { requestId } = metadata;
   const key = getRequestMetadataKey(requestId);
 
   try {

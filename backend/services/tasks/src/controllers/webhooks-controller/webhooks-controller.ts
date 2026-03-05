@@ -77,7 +77,6 @@ export const createTask = async (
           void reconcileTokenUsage(
             redis,
             redlock,
-            tasksServiceRequestId,
             metadata,
             extractOpenaiTokenUsage(context.openaiMetadata),
             env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,
@@ -89,7 +88,6 @@ export const createTask = async (
           void reconcileTokenUsage(
             redis,
             redlock,
-            tasksServiceRequestId,
             metadata,
             0,
             env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,
@@ -123,7 +121,6 @@ export const createTask = async (
       void reconcileTokenUsage(
         redis,
         redlock,
-        tasksServiceRequestId,
         metadata,
         extractOpenaiTokenUsage(openaiMetadata),
         env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,
@@ -142,7 +139,6 @@ export const createTask = async (
       void reconcileTokenUsage(
         redis,
         redlock,
-        tasksServiceRequestId,
         metadata,
         0,
         env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,

@@ -6,6 +6,7 @@ export const mockActualTokens = 450;
 export const mockLockTtlMs = 5000;
 
 export const mockRequestMetadata: RequestMetadata = {
+  requestId: mockTokenUsageRequestId,
   userId: mockUserId,
   tokensReserved: 500,
   windowStartTimestamp: 1234567890000,
