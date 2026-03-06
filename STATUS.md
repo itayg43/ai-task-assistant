@@ -1,6 +1,6 @@
 # Project Status
 
-**Last Updated:** 2026-02-21
+**Last Updated:** 2026-03-06
 **Current Branch:** `feature/itaygur/execute-capabilities-async`
 
 ---
@@ -9,14 +9,7 @@
 
 ### 🔴 HIGH Priority (Must Fix Before Merge)
 
-#### 1. Unchecked Non-Null Assertion in Transaction
-
-- **Location:** `backend/services/tasks/src/services/webhooks-service/webhooks-service.ts` (line 18)
-- **Issue:** `return taskWithSubtasks!` without validation
-- **Impact:** Potential runtime crash if concurrent task deletion occurs during webhook processing
-- **Status:** 🔲 Not started
-
-#### 2. Untyped Generic in OpenAI Client
+#### 1. Untyped Generic in OpenAI Client
 
 - **Location:** `backend/services/ai/src/clients/openai/openai.ts` (line 15)
 - **Issue:** `<any, TOutput>` type parameter exposes untyped input
@@ -27,14 +20,14 @@
 
 ### 🟡 MEDIUM Priority (Should Fix Before Merge)
 
-#### 3. Untyped `any` in Prompt Injection Validation
+#### 2. Untyped `any` in Prompt Injection Validation
 
 - **Location:** `backend/services/ai/src/middlewares/validate-prompt-injection/validate-prompt-injection.ts` (line 25)
 - **Issue:** Helper function uses untyped `any` for nested object traversal
 - **Impact:** No type safety for validation logic
 - **Status:** 🔲 Not started
 
-#### 4. Hardcoded Service URLs in Business Logic
+#### 3. Hardcoded Service URLs in Business Logic
 
 - **Location:** `backend/services/tasks/src/services/tasks-service/tasks-service.ts` (line 16)
 - **Issue:** Callback URL hardcoded with service hostname and port
@@ -45,36 +38,36 @@
 
 ### 🟢 LOW Priority (Nice to Have)
 
-#### 5. Magic Numbers in Metrics Histogram Buckets
+#### 4. Magic Numbers in Metrics Histogram Buckets
 
 - **Location:** `backend/services/tasks/src/metrics/tasks-metrics.ts` (line 26)
 - **Issue:** Hardcoded values lack semantic meaning
 - **Status:** 🔲 Not started
 
-#### 6. Inconsistent Metadata Cleanup Error Handling
+#### 5. Inconsistent Metadata Cleanup Error Handling
 
 - **Location:** `backend/services/tasks/src/services/token-usage-service/request-metadata.ts` (lines 35-41, 64-70, 78-90)
 - **Issue:** All operations silently log errors but don't propagate them
 - **Status:** 🔲 Not started
 
-#### 7. Test Coverage Gap: Metadata Cleanup Errors
+#### 6. Test Coverage Gap: Metadata Cleanup Errors
 
 - **Location:** `backend/services/tasks/src/controllers/webhooks-controller/webhooks-controller.integration.test.ts`
 - **Issue:** No tests for failure scenarios in `deleteRequestMetadata()`
 - **Status:** 🔲 Not started
 
-#### 8. Race Condition Documentation Gap
+#### 7. Race Condition Documentation Gap
 
 - **Location:** `backend/shared/src/utils/token-bucket/process-token-bucket/process-token-bucket.ts` (lines 42-45)
 - **Issue:** Comment explains lock protection, but no corresponding comment at middleware level
 - **Status:** 🔲 Not started
 
-#### 9. Inconsistent Logger Usage
+#### 8. Inconsistent Logger Usage
 
 - **Issue:** Some modules use logger consistently, others don't
 - **Status:** 🔲 Not started
 
-#### 10-12. Minor Type Safety & Pattern Issues
+#### 9-11. Minor Type Safety & Pattern Issues
 
 - Various minor improvements across the codebase
 - **Status:** 🔲 Not started
