@@ -23,39 +23,31 @@ export const createTask = async (
   const { tasksServiceRequestId } =
     getValidatedQuery<CreateTaskWebhookInput["query"]>(res);
 
+  const requestIds = {
+    aiServiceRequestId,
+    tasksServiceRequestId,
+  };
+
   const metadata = await getRequestMetadata(redis, tasksServiceRequestId);
 
   if (!metadata) {
-    logger.warn("Metadata not found (expired or never existed)", {
-      tasksServiceRequestId,
-      aiServiceRequestId,
-    });
-
+    logger.warn("Metadata not found (expired or never existed)", requestIds);
     recordMetadataNotFound(tasksServiceRequestId);
-
     res.sendStatus(StatusCodes.OK);
-
     return;
   }
-
-  const requestIds = { aiServiceRequestId, tasksServiceRequestId };
 
   if (!success) {
     const { error } = req.body;
 
     createTaskFailureCallbackHandler(requestIds, metadata, error);
-  } else {
-    const {
-      result: { result, openaiMetadata },
-    } = req.body;
-
-    await createTaskSuccessCallbackHandler(
-      requestIds,
-      metadata,
-      result,
-      openaiMetadata,
-    );
+    res.sendStatus(StatusCodes.OK);
+    return;
   }
+
+  const { result } = req.body;
+
+  void createTaskSuccessCallbackHandler(requestIds, metadata, result);
 
   res.sendStatus(StatusCodes.OK);
 };

@@ -56,6 +56,10 @@ export const mockAiCapabilityResponse: TAiCapabilityResponse<TParsedTask> = {
   aiServiceRequestId: "ai-service-request-id-123",
 };
 
+export const mockOpenaiTotalTokens =
+  mockAiCapabilityResponse.openaiMetadata.core.tokens.input +
+  mockAiCapabilityResponse.openaiMetadata.core.tokens.output;
+
 export const mockParseTaskVagueInputErrorData: Extract<
   TCreateTaskAiErrorContext,
   { type: typeof AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR }

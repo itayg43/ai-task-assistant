@@ -13,7 +13,7 @@ import {
   createTaskFailureCallbackHandler,
   createTaskSuccessCallbackHandler,
 } from "@services/webhooks-service";
-import type { Mocked, RequestMetadata } from "@shared/types";
+import type { Mocked } from "@shared/types";
 import type { CreateTaskWebhookInput } from "@types";
 import { app } from "../../app";
 
@@ -98,11 +98,7 @@ describe("webhooksController (integration)", () => {
     const createTaskUrl = "/api/v1/webhooks/create-task";
 
     it(`should return ${StatusCodes.OK} and call success handler on successful callback`, async () => {
-      const testMetadata: RequestMetadata = {
-        ...mockRequestMetadata,
-        startTime: Date.now() - 1000,
-      };
-      mockGetRequestMetadata.mockResolvedValue(testMetadata);
+      mockGetRequestMetadata.mockResolvedValue(mockRequestMetadata);
 
       const testPayload: CreateTaskWebhookInput["body"] =
         mockCreateTaskWebhookSuccessBody;
@@ -118,9 +114,8 @@ describe("webhooksController (integration)", () => {
           aiServiceRequestId: testPayload.aiServiceRequestId,
           tasksServiceRequestId: mockTasksServiceRequestId,
         },
-        testMetadata,
-        testPayload.result.result,
-        testPayload.result.openaiMetadata,
+        mockRequestMetadata,
+        testPayload.result,
       );
       expect(mockedFailureHandler).not.toHaveBeenCalled();
     });

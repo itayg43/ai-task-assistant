@@ -7,6 +7,7 @@ import {
   mockCreateTaskWebhookOpenaiApiErrorBody,
   mockCreateTaskWebhookSuccessBody,
   mockCreateTaskWebhookVagueInputErrorBody,
+  mockOpenaiTotalTokens,
   mockTasksServiceRequestId,
   mockTaskWithSubtasks,
 } from "@mocks/tasks-mocks";
@@ -32,9 +33,13 @@ vi.mock("@clients/redlock", () => ({
   redlock: {},
 }));
 
+const { MOCK_LOCK_TTL_MS } = vi.hoisted(() => ({
+  MOCK_LOCK_TTL_MS: 10000,
+}));
+
 vi.mock("@config/env", () => ({
   env: {
-    OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS: 10000,
+    OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS: MOCK_LOCK_TTL_MS,
   },
 }));
 
@@ -71,8 +76,11 @@ vi.mock("@services/token-usage-service", () => ({
   reconcileTokenUsage: mockReconcileTokenUsage,
 }));
 
+vi.mock("@shared/utils/with-retry", () => ({
+  withRetry: vi.fn((_config: unknown, fn: () => unknown) => fn()),
+}));
+
 describe("webhooksService", () => {
-  const mockLockTtlMs = 10000;
   const mockRequestIds = {
     aiServiceRequestId: mockAiCapabilityResponse.aiServiceRequestId,
     tasksServiceRequestId: mockTasksServiceRequestId,
@@ -83,16 +91,18 @@ describe("webhooksService", () => {
   });
 
   describe("createTaskSuccessCallbackHandler", () => {
-    const { result, openaiMetadata } = mockCreateTaskWebhookSuccessBody.result;
-
     it("should create task, record success metrics, and reconcile with actual tokens", async () => {
-      setupPrismaTransaction();
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) => {
+        const tx = {};
+        vi.mocked(createTask).mockResolvedValue({ id: 1 } as any);
+        vi.mocked(findTaskById).mockResolvedValue(mockTaskWithSubtasks);
+        return fn(tx);
+      });
 
       await createTaskSuccessCallbackHandler(
         mockRequestIds,
         mockRequestMetadata,
-        result,
-        openaiMetadata,
+        mockCreateTaskWebhookSuccessBody.result,
       );
 
       expect(mockRecordTasksApiSuccess).toHaveBeenCalledWith(
@@ -107,19 +117,18 @@ describe("webhooksService", () => {
         expect.any(Object),
         expect.any(Object),
         mockRequestMetadata,
-        150, // 100 input + 50 output tokens
-        mockLockTtlMs,
+        mockOpenaiTotalTokens,
+        MOCK_LOCK_TTL_MS,
       );
     });
 
-    it("should record failure metrics and still reconcile with actual tokens when DB transaction fails", async () => {
+    it("should record failure metrics and reconcile with actual tokens when all DB retries fail", async () => {
       vi.mocked(prisma.$transaction).mockRejectedValue(new Error("DB Error"));
 
       await createTaskSuccessCallbackHandler(
         mockRequestIds,
         mockRequestMetadata,
-        result,
-        openaiMetadata,
+        mockCreateTaskWebhookSuccessBody.result,
       );
 
       expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
@@ -129,79 +138,62 @@ describe("webhooksService", () => {
 
       await waitForBackgroundTasks();
 
-      // Reconciles with actual tokens (OpenAI call already happened, regardless of DB failure)
       expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
         expect.any(Object),
         expect.any(Object),
         mockRequestMetadata,
-        150, // 100 input + 50 output tokens
-        mockLockTtlMs,
+        mockOpenaiTotalTokens,
+        MOCK_LOCK_TTL_MS,
       );
     });
   });
 
   describe("createTaskFailureCallbackHandler", () => {
-    it(`should record vague input metric and reconcile with actual tokens for ${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR}`, async () => {
-      const { error } = mockCreateTaskWebhookVagueInputErrorBody;
+    it.each([
+      {
+        name: `${AI_ERROR_TYPE.PARSE_TASK_VAGUE_INPUT_ERROR}`,
+        error: mockCreateTaskWebhookVagueInputErrorBody.error,
+        expectedTokens: mockOpenaiTotalTokens,
+        expectsVagueInput: true,
+      },
+      {
+        name: "non-vague-input error",
+        error: mockCreateTaskWebhookOpenaiApiErrorBody.error,
+        expectedTokens: 0,
+        expectsVagueInput: false,
+      },
+    ])(
+      "should record failure metric and reconcile tokens for $name",
+      async ({ error, expectedTokens, expectsVagueInput }) => {
+        createTaskFailureCallbackHandler(
+          mockRequestIds,
+          mockRequestMetadata,
+          error,
+        );
 
-      createTaskFailureCallbackHandler(
-        mockRequestIds,
-        mockRequestMetadata,
-        error,
-      );
+        expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
+          TASKS_OPERATION.CREATE_TASK,
+          mockTasksServiceRequestId,
+        );
 
-      expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
-        TASKS_OPERATION.CREATE_TASK,
-        mockTasksServiceRequestId,
-      );
-      expect(mockRecordVagueInput).toHaveBeenCalledWith(
-        mockTasksServiceRequestId,
-      );
+        if (expectsVagueInput) {
+          expect(mockRecordVagueInput).toHaveBeenCalledWith(
+            mockTasksServiceRequestId,
+          );
+        } else {
+          expect(mockRecordVagueInput).not.toHaveBeenCalled();
+        }
 
-      await waitForBackgroundTasks();
+        await waitForBackgroundTasks();
 
-      expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.any(Object),
-        mockRequestMetadata,
-        150, // 100 input + 50 output tokens
-        mockLockTtlMs,
-      );
-    });
-
-    it("should reconcile with 0 tokens for non-vague-input errors", async () => {
-      const { error } = mockCreateTaskWebhookOpenaiApiErrorBody;
-
-      createTaskFailureCallbackHandler(
-        mockRequestIds,
-        mockRequestMetadata,
-        error,
-      );
-
-      expect(mockRecordTasksApiFailure).toHaveBeenCalledWith(
-        TASKS_OPERATION.CREATE_TASK,
-        mockTasksServiceRequestId,
-      );
-      expect(mockRecordVagueInput).not.toHaveBeenCalled();
-
-      await waitForBackgroundTasks();
-
-      expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.any(Object),
-        mockRequestMetadata,
-        0,
-        mockLockTtlMs,
-      );
-    });
+        expect(mockReconcileTokenUsage).toHaveBeenCalledWith(
+          expect.any(Object),
+          expect.any(Object),
+          mockRequestMetadata,
+          expectedTokens,
+          MOCK_LOCK_TTL_MS,
+        );
+      },
+    );
   });
 });
-
-function setupPrismaTransaction() {
-  vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) => {
-    const tx = {};
-    vi.mocked(createTask).mockResolvedValue({ id: 1 } as any);
-    vi.mocked(findTaskById).mockResolvedValue(mockTaskWithSubtasks);
-    return fn(tx);
-  });
-}

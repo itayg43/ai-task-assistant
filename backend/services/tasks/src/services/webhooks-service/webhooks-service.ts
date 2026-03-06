@@ -12,7 +12,9 @@ import { createManySubtasks } from "@repositories/subtasks-repository";
 import { createTask, findTaskById } from "@repositories/tasks-repository";
 import { reconcileTokenUsage } from "@services/token-usage-service";
 import { createLogger } from "@shared/config/create-logger";
+import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import type { RequestMetadata } from "@shared/types";
+import { withRetry } from "@shared/utils/with-retry";
 import type {
   CreateTaskWebhookFailureInput,
   CreateTaskWebhookSuccessInput,
@@ -30,22 +32,30 @@ const logger = createLogger("webhooksService");
 export const createTaskSuccessCallbackHandler = async (
   requestIds: RequestIds,
   metadata: RequestMetadata,
-  parsedTask: CreateTaskWebhookSuccessInput["result"]["result"],
-  openaiMetadata: CreateTaskWebhookSuccessInput["result"]["openaiMetadata"],
+  result: CreateTaskWebhookSuccessInput["result"],
 ) => {
   const { tasksServiceRequestId } = requestIds;
   const { userId } = metadata;
+  const { result: parsedTask, openaiMetadata } = result;
 
   try {
-    const createdTask = await prisma.$transaction(async (tx) => {
-      const task = await createTask(tx, userId, parsedTask);
+    const createdTask = await withRetry(
+      DEFAULT_RETRY_CONFIG,
+      () =>
+        prisma.$transaction(async (tx) => {
+          const task = await createTask(tx, userId, parsedTask);
 
-      if (parsedTask.subtasks && parsedTask.subtasks.length > 0) {
-        await createManySubtasks(tx, task.id, userId, parsedTask.subtasks);
-      }
+          if (parsedTask.subtasks && parsedTask.subtasks.length > 0) {
+            await createManySubtasks(tx, task.id, userId, parsedTask.subtasks);
+          }
 
-      return (await findTaskById(tx, task.id, userId))!;
-    });
+          return (await findTaskById(tx, task.id, userId))!;
+        }),
+      {
+        requestId: tasksServiceRequestId,
+        operation: "createTaskCallback",
+      },
+    );
 
     logger.info("Task created successfully from callback", requestIds);
 
