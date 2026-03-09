@@ -72,7 +72,7 @@ describe("executeParse", () => {
     } as any);
 
     mockedWithRetry = vi.mocked(withRetry);
-    mockedWithRetry.mockImplementation(async (_config, fn) => {
+    mockedWithRetry.mockImplementation(async (fn) => {
       return await fn();
     });
 

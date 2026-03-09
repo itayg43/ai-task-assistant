@@ -1,7 +1,6 @@
 import * as amqp from "amqplib";
 
 import { createLogger } from "../../config/create-logger";
-import { DEFAULT_RETRY_CONFIG } from "../../constants";
 import { withRetry } from "../../utils/with-retry";
 
 const logger = createLogger("rabbitmq");
@@ -10,7 +9,6 @@ export const createRabbitMQConnection = async (
   url: string
 ): Promise<amqp.ChannelModel> => {
   return withRetry(
-    DEFAULT_RETRY_CONFIG,
     async () => {
       logger.info("Connecting to RabbitMQ...");
 

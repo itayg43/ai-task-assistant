@@ -15,7 +15,6 @@ import {
 } from "@metrics/ai-service-metrics";
 import { capabilitiesQueueMessageDataSchema } from "@schemas";
 import { createLogger } from "@shared/config/create-logger";
-import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { BadRequestError, InternalError } from "@shared/errors";
 import { ExtractedErrorInfo } from "@shared/types";
 import { extractErrorInfo } from "@shared/utils/extract-error-info";
@@ -41,7 +40,6 @@ const sendCallbackHandler = async (
     });
 
     await withRetry(
-      DEFAULT_RETRY_CONFIG,
       async () => {
         await tasksClient.post(callbackUrl, {
           ...payload,

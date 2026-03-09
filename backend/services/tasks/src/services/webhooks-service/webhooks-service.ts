@@ -12,7 +12,6 @@ import { createManySubtasks } from "@repositories/subtasks-repository";
 import { createTask, findTaskById } from "@repositories/tasks-repository";
 import { reconcileTokenUsage } from "@services/token-usage-service";
 import { createLogger } from "@shared/config/create-logger";
-import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import type { RequestMetadata } from "@shared/types";
 import { withRetry } from "@shared/utils/with-retry";
 import type {
@@ -40,7 +39,6 @@ export const createTaskSuccessCallbackHandler = async (
 
   try {
     const createdTask = await withRetry(
-      DEFAULT_RETRY_CONFIG,
       () =>
         prisma.$transaction(async (tx) => {
           const task = await createTask(tx, userId, parsedTask);

@@ -28,7 +28,7 @@ describe("withRetry", () => {
 
   it("should return result on first successful attempt", async () => {
     const mockFn = vi.fn().mockResolvedValue("success");
-    const result = await withRetry(mockRetryConfig, mockFn, mockContext);
+    const result = await withRetry(mockFn, mockContext, mockRetryConfig);
 
     expect(result).toBe("success");
     expect(mockFn).toHaveBeenCalledTimes(1);
@@ -39,7 +39,7 @@ describe("withRetry", () => {
       .fn()
       .mockRejectedValueOnce(new Error("First failure"))
       .mockResolvedValue("success");
-    const result = await withRetry(mockRetryConfig, mockFn, mockContext);
+    const result = await withRetry(mockFn, mockContext, mockRetryConfig);
 
     expect(result).toBe("success");
     expect(mockFn).toHaveBeenCalledTimes(2);
@@ -49,7 +49,7 @@ describe("withRetry", () => {
     const mockFn = vi.fn().mockRejectedValue(new Error("Always fails"));
 
     await expect(
-      withRetry(mockRetryConfig, mockFn, mockContext)
+      withRetry(mockFn, mockContext, mockRetryConfig)
     ).rejects.toThrow("Always fails");
 
     expect(mockFn).toHaveBeenCalledTimes(3);
@@ -79,7 +79,7 @@ describe("withRetry", () => {
       const mockFn = vi.fn().mockRejectedValue(error);
 
       await expect(
-        withRetry(mockRetryConfig, mockFn, mockContext)
+        withRetry(mockFn, mockContext, mockRetryConfig)
       ).rejects.toThrow(error);
 
       expect(mockFn).toHaveBeenCalledTimes(1);
@@ -95,7 +95,7 @@ describe("withRetry", () => {
         .mockRejectedValueOnce(internalError)
         .mockRejectedValueOnce(internalError)
         .mockResolvedValue("success");
-      const result = await withRetry(mockRetryConfig, mockFn, mockContext);
+      const result = await withRetry(mockFn, mockContext, mockRetryConfig);
 
       expect(result).toBe("success");
       expect(mockFn).toHaveBeenCalledTimes(3);

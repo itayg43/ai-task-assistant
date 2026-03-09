@@ -77,7 +77,7 @@ vi.mock("@services/token-usage-service", () => ({
 }));
 
 vi.mock("@shared/utils/with-retry", () => ({
-  withRetry: vi.fn((_config: unknown, fn: () => unknown) => fn()),
+  withRetry: vi.fn((fn: () => unknown) => fn()),
 }));
 
 describe("webhooksService", () => {

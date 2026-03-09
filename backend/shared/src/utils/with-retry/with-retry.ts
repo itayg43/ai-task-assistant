@@ -1,4 +1,5 @@
 import { createLogger } from "../../config/create-logger";
+import { DEFAULT_RETRY_CONFIG } from "../../constants";
 import { RetryConfig } from "../../types";
 import {
   extractErrorInfo,
@@ -13,9 +14,9 @@ export type TWithRetryContext = {
 };
 
 export const withRetry = async <T>(
-  config: RetryConfig,
   fn: () => Promise<T>,
-  context: TWithRetryContext
+  context: TWithRetryContext,
+  config: RetryConfig = DEFAULT_RETRY_CONFIG
 ) => {
   const { maxAttempts, baseDelayMs, backoffMultiplier } = config;
 

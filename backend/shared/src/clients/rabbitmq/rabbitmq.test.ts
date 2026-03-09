@@ -1,7 +1,6 @@
 import * as amqp from "amqplib";
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 
-import { DEFAULT_RETRY_CONFIG } from "../../constants";
 import { closeRabbitMQConnection, createRabbitMQConnection } from "./rabbitmq";
 
 const { mockAmqpConnect, mockWithRetry } = vi.hoisted(() => ({
@@ -35,7 +34,7 @@ describe("rabbitmq", () => {
     } as unknown as amqp.ChannelModel;
     mockAmqpConnect.mockResolvedValue(mockConnection);
 
-    mockWithRetry.mockImplementation(async (_config, fn) => {
+    mockWithRetry.mockImplementation(async (fn) => {
       return await fn();
     });
   });
@@ -49,7 +48,6 @@ describe("rabbitmq", () => {
       const result = await createRabbitMQConnection(mockUrl);
 
       expect(mockWithRetry).toHaveBeenCalledWith(
-        DEFAULT_RETRY_CONFIG,
         expect.any(Function),
         {
           operation: "createRabbitMQConnection",
@@ -75,7 +73,7 @@ describe("rabbitmq", () => {
         .mockRejectedValueOnce(connectionError)
         .mockResolvedValueOnce(mockConnection);
 
-      mockWithRetry.mockImplementation(async (_config, fn) => {
+      mockWithRetry.mockImplementation(async (fn) => {
         try {
           return await fn();
         } catch (error) {
@@ -95,7 +93,7 @@ describe("rabbitmq", () => {
       const connectionError = new Error("Connection failed");
 
       mockAmqpConnect.mockRejectedValue(connectionError);
-      mockWithRetry.mockImplementation(async (_config, fn) => {
+      mockWithRetry.mockImplementation(async (fn) => {
         return await fn();
       });
 

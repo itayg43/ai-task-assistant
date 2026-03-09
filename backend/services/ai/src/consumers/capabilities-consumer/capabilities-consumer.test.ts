@@ -15,7 +15,6 @@ import {
   setupConsumeWithMessage,
 } from "@mocks/rabbitmq-mocks";
 import { mockAiServiceRequestId } from "@mocks/request-ids";
-import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { InternalError } from "@shared/errors";
 
 const {
@@ -103,7 +102,7 @@ describe("capabilitiesConsumer", () => {
       (result) => result,
     );
 
-    mockWithRetry.mockImplementation(async (_config, fn) => {
+    mockWithRetry.mockImplementation(async (fn) => {
       return await fn();
     });
   });
@@ -266,7 +265,6 @@ describe("capabilitiesConsumer", () => {
 
       expect(mockExtractErrorInfo).toHaveBeenCalled();
       expect(mockWithRetry).toHaveBeenCalledWith(
-        DEFAULT_RETRY_CONFIG,
         expect.any(Function),
         {
           requestId: mockAiServiceRequestId,
@@ -304,7 +302,6 @@ describe("capabilitiesConsumer", () => {
 
       expect(mockExtractErrorInfo).toHaveBeenCalledWith(executionError);
       expect(mockWithRetry).toHaveBeenCalledWith(
-        DEFAULT_RETRY_CONFIG,
         expect.any(Function),
         {
           requestId: mockAiServiceRequestId,

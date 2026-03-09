@@ -3,7 +3,6 @@ import { PrismaClient } from "@prisma/client";
 export { Prisma, PrismaClient } from "@prisma/client";
 
 import { createLogger } from "../config/create-logger";
-import { DEFAULT_RETRY_CONFIG } from "../constants";
 import { withRetry } from "../utils/with-retry";
 
 const logger = createLogger("prisma");
@@ -22,7 +21,6 @@ export const createPrismaClient = (databaseUrl: string) => {
 
 export const connectPrismaClient = async (prisma: PrismaClient) => {
   return await withRetry(
-    DEFAULT_RETRY_CONFIG,
     async () => {
       logger.info("Connecting Prisma client...");
       await prisma.$connect();

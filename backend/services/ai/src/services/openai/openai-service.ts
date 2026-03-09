@@ -8,7 +8,6 @@ import {
   recordOpenAiApiSuccessMetrics,
 } from "@metrics/openai-metrics";
 import { createLogger } from "@shared/config/create-logger";
-import { DEFAULT_RETRY_CONFIG } from "@shared/constants";
 import { InternalError } from "@shared/errors";
 import { withRetry } from "@shared/utils/with-retry";
 import { Capability } from "@types";
@@ -38,7 +37,6 @@ export const executeParse = async <TOutput>(
 
     const startTime = Date.now();
     const response = await withRetry(
-      DEFAULT_RETRY_CONFIG,
       async () => {
         return await parseWithValidation<TOutput>(prompt, (id) => {
           openaiResponseId = id;
