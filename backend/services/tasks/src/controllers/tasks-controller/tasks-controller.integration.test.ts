@@ -128,9 +128,13 @@ vi.mock("@services/token-usage-service", () => ({
 describe("tasksController (integration)", () => {
   beforeEach(async () => {
     mockTokenBucketRateLimiter.mockImplementation((_req, _res, next) => next());
-    mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) =>
-      next(),
-    );
+    mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, res, next) => {
+      res.locals.tokenUsage = {
+        reserved: 100,
+        windowStart: Date.now(),
+      };
+      next();
+    });
     mockOpenaiUpdateTokenUsage.mockImplementation((_req, _res, next) => next());
   });
 
@@ -395,24 +399,6 @@ describe("tasksController (integration)", () => {
       await waitForBackgroundTasks();
 
       expect(mockStoreRequestMetadata).toHaveBeenCalled();
-    });
-
-    it("should not call storeRequestMetadata when tokenUsage is undefined", async () => {
-      mockedExecuteCapability.mockResolvedValue(
-        mockAiCapabilityImmediateResponse,
-      );
-
-      // Don't set tokenUsage in middleware
-      mockOpenaiTokenUsageRateLimiter.mockImplementation((_req, _res, next) => {
-        next();
-      });
-
-      const response = await request(app).post(createTaskUrl).send({
-        naturalLanguage: mockNaturalLanguage,
-      });
-
-      expect(response.status).toBe(StatusCodes.ACCEPTED);
-      expect(mockStoreRequestMetadata).not.toHaveBeenCalled();
     });
   });
 

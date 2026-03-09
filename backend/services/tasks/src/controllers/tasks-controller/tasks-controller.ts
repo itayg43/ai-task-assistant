@@ -19,6 +19,7 @@ import { BaseError } from "@shared/errors";
 import type { RequestMetadata } from "@shared/types";
 import { getAuthenticationContext } from "@shared/utils/authentication-context";
 import { extractErrorInfo } from "@shared/utils/extract-error-info";
+import { getTokenUsageContext } from "@shared/utils/token-usage-context";
 import { getValidatedQuery } from "@shared/utils/validated-query";
 import { withMetrics } from "@shared/utils/with-metrics";
 import type {
@@ -40,17 +41,15 @@ export const createTask = async (
   const { userId } = getAuthenticationContext(res);
   const { naturalLanguage } = req.body;
 
-  const tokenUsage = res.locals.tokenUsage;
-  const metadata: RequestMetadata | null = tokenUsage
-    ? {
-        requestId,
-        userId,
-        tokenUsage,
-        startTime,
-        serviceName: env.SERVICE_NAME,
-        rateLimiterName: env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
-      }
-    : null;
+  const tokenUsage = getTokenUsageContext(res);
+  const metadata: RequestMetadata = {
+    requestId,
+    userId,
+    tokenUsage,
+    startTime,
+    serviceName: env.SERVICE_NAME,
+    rateLimiterName: env.OPENAI_TOKEN_USAGE_RATE_LIMITER_NAME,
+  };
 
   try {
     const message = await createTaskHandler(requestId, naturalLanguage);
@@ -60,9 +59,7 @@ export const createTask = async (
       tasksServiceRequestId: requestId,
     });
 
-    if (metadata) {
-      void storeRequestMetadata(redis, metadata);
-    }
+    void storeRequestMetadata(redis, metadata);
   } catch (error) {
     const errorInfo = extractErrorInfo(error);
 
@@ -72,15 +69,13 @@ export const createTask = async (
       recordPromptInjection(TASKS_OPERATION.CREATE_TASK, requestId);
     }
 
-    if (metadata) {
-      void reconcileTokenUsage(
-        redis,
-        redlock,
-        metadata,
-        0,
-        env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,
-      );
-    }
+    void reconcileTokenUsage(
+      redis,
+      redlock,
+      metadata,
+      0,
+      env.OPENAI_TOKEN_USAGE_RATE_LIMITER_LOCK_TTL_MS,
+    );
 
     next(new BaseError(errorInfo.message, errorInfo.status));
   }
