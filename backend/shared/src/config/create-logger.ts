@@ -39,8 +39,16 @@ function log(
 }
 
 function serializeError(error: unknown) {
+  if (error === null || error === undefined) {
+    return "Error value was null or undefined";
+  }
+
   if (error instanceof Error) {
     return error.stack || `${error.name}: ${error.message}`;
+  }
+
+  if (typeof error === "object") {
+    return JSON.stringify(error, null, 2);
   }
 
   return String(error);
