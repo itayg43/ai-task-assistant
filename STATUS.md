@@ -7,17 +7,6 @@
 
 ## Code Quality Issues (Pre-Merge)
 
-### 🔴 HIGH Priority (Must Fix Before Merge)
-
-#### 1. Untyped Generic in OpenAI Client
-
-- **Location:** `backend/services/ai/src/clients/openai/openai.ts` (line 15)
-- **Issue:** `<any, TOutput>` type parameter exposes untyped input
-- **Impact:** Loss of type safety for OpenAI API calls
-- **Status:** 🔲 Not started
-
----
-
 ### 🟡 MEDIUM Priority (Should Fix Before Merge)
 
 #### 2. Untyped `any` in Prompt Injection Validation

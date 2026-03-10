@@ -12,7 +12,7 @@ export const parseWithValidation = async <TOutput>(
   prompt: ResponseCreateParamsNonStreaming,
   onResponseReceived?: (id: string) => void,
 ) => {
-  const response = await openai.responses.parse<any, TOutput>(prompt);
+  const response = await openai.responses.parse<ResponseCreateParamsNonStreaming, TOutput>(prompt);
 
   if (onResponseReceived) {
     onResponseReceived(response.id);
